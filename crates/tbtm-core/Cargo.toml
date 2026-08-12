@@ -1,0 +1,21 @@
+[package]
+name = "tbtm-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+deunicode.workspace = true
+git2.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+time.workspace = true
+unicode-normalization.workspace = true
+unicode-script.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

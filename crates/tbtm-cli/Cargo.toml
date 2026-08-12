@@ -1,0 +1,16 @@
+[package]
+name = "tbtm"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "tbtm"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tbtm-core = { path = "../tbtm-core" }
