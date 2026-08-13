@@ -1,8 +1,10 @@
 use deunicode::deunicode;
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, OpenFlags, params};
 use serde::{Deserialize, Serialize};
 use std::{
-    fs, io,
+    fs,
+    fs::OpenOptions,
+    io,
     path::{Path, PathBuf},
 };
 use thiserror::Error;
@@ -25,6 +27,27 @@ pub enum Error {
     InvalidInitialization,
     #[error("GITIGNORE_UPDATE_FAILED: {0}")]
     GitignoreUpdate(#[source] io::Error),
+    #[error("repository is not initialized at {path}; run `tbtm init`")]
+    RepositoryNotInitialized { path: PathBuf },
+    #[error("invalid repository configuration ({check}) at {path}: {message}")]
+    InvalidConfiguration {
+        check: &'static str,
+        path: PathBuf,
+        message: String,
+        mismatched_fields: Vec<String>,
+    },
+    #[error("database unavailable ({check}) at {path}: {message}")]
+    DatabaseUnavailable {
+        check: &'static str,
+        path: PathBuf,
+        message: String,
+    },
+    #[error("permission denied during {check} at {path}: {message}")]
+    PermissionDenied {
+        check: &'static str,
+        path: PathBuf,
+        message: String,
+    },
     #[error("{phase}: {source}")]
     Phase {
         phase: &'static str,
@@ -50,7 +73,59 @@ impl Error {
             Self::AlreadyInitialized => "ALREADY_INITIALIZED",
             Self::InvalidInitialization => "INVALID_INITIALIZATION",
             Self::GitignoreUpdate(_) => "GITIGNORE_UPDATE_FAILED",
+            Self::RepositoryNotInitialized { .. } => "REPOSITORY_NOT_INITIALIZED",
+            Self::InvalidConfiguration { .. } => "INVALID_CONFIGURATION",
+            Self::DatabaseUnavailable { .. } => "DATABASE_UNAVAILABLE",
+            Self::PermissionDenied { .. } => "PERMISSION_DENIED",
             Self::Phase { phase, .. } => phase,
+        }
+    }
+
+    pub fn details(&self) -> serde_json::Value {
+        match self {
+            Self::RepositoryNotInitialized { path } => serde_json::json!({
+                "check": "workspace",
+                "path": path,
+                "suggestion": "Run `tbtm init` from the repository root."
+            }),
+            Self::InvalidConfiguration {
+                check,
+                path,
+                mismatched_fields,
+                ..
+            } => serde_json::json!({
+                "check": check,
+                "path": path,
+                "mismatchedFields": mismatched_fields,
+                "suggestion": "Restore a matching config and database from backup, or reinitialize the repository."
+            }),
+            Self::DatabaseUnavailable { check, path, .. } => serde_json::json!({
+                "check": check,
+                "path": path,
+                "suggestion": "Restore a valid database from backup or reinitialize the repository."
+            }),
+            Self::PermissionDenied { check, path, .. } => serde_json::json!({
+                "check": check,
+                "path": path,
+                "suggestion": "Grant access to the path and retry."
+            }),
+            _ => serde_json::json!({}),
+        }
+    }
+
+    pub fn suggestion(&self) -> Option<&'static str> {
+        match self {
+            Self::RepositoryNotInitialized { .. } => {
+                Some("Run `tbtm init` from the repository root.")
+            }
+            Self::InvalidConfiguration { .. } => Some(
+                "Restore a matching config and database from backup, or reinitialize the repository.",
+            ),
+            Self::DatabaseUnavailable { .. } => {
+                Some("Restore a valid database from backup or reinitialize the repository.")
+            }
+            Self::PermissionDenied { .. } => Some("Grant access to the path and retry."),
+            _ => None,
         }
     }
 }
@@ -60,13 +135,36 @@ pub struct RepositoryRoot(PathBuf);
 
 impl RepositoryRoot {
     pub fn discover(current: &Path) -> Result<Self, Error> {
-        let canonical = current
-            .canonicalize()
-            .map_err(|e| Error::phase("REPOSITORY_DISCOVERY_FAILED", e))?;
-        let root = git2::Repository::discover(&canonical)
-            .ok()
-            .and_then(|repo| repo.workdir().map(Path::to_path_buf))
-            .unwrap_or(canonical);
+        let canonical = current.canonicalize().map_err(|error| {
+            if error.kind() == io::ErrorKind::PermissionDenied {
+                Error::PermissionDenied {
+                    check: "repository discovery",
+                    path: current.to_path_buf(),
+                    message: error.to_string(),
+                }
+            } else {
+                Error::phase("REPOSITORY_DISCOVERY_FAILED", error)
+            }
+        })?;
+        check_git_marker_access(&canonical).map_err(|error| {
+            if error.kind() == io::ErrorKind::PermissionDenied {
+                Error::PermissionDenied {
+                    check: "Git repository discovery",
+                    path: canonical.clone(),
+                    message: error.to_string(),
+                }
+            } else {
+                Error::phase("REPOSITORY_DISCOVERY_FAILED", error)
+            }
+        })?;
+        let root = match git2::Repository::discover(&canonical) {
+            Ok(repository) => repository
+                .workdir()
+                .map(Path::to_path_buf)
+                .unwrap_or(canonical),
+            Err(error) if error.code() == git2::ErrorCode::NotFound => canonical,
+            Err(error) => return Err(Error::phase("REPOSITORY_DISCOVERY_FAILED", error)),
+        };
         Ok(Self(root))
     }
 
@@ -79,13 +177,50 @@ impl RepositoryRoot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Config {
     pub schema_version: u32,
     pub repository_id: Uuid,
     pub prefix: String,
     pub database: String,
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AccessIntent {
+    ReadOnly,
+    ReadWrite,
+}
+
+#[derive(Debug)]
+pub struct ResolvedRepository {
+    pub repository_root: PathBuf,
+    pub config_path: PathBuf,
+    pub database_path: PathBuf,
+    pub config: Config,
+    connection: Connection,
+}
+
+impl ResolvedRepository {
+    pub fn connection(&self) -> &Connection {
+        &self.connection
+    }
+
+    pub fn connection_mut(&mut self) -> &mut Connection {
+        &mut self.connection
+    }
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RepositoryHealth {
+    pub repository_root: PathBuf,
+    pub config_path: PathBuf,
+    pub database_path: PathBuf,
+    pub repository_id: Uuid,
+    pub prefix: String,
+    pub schema_version: u32,
+    pub health: &'static str,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -109,6 +244,313 @@ pub struct UninstallResult {
     pub failed: Vec<String>,
     pub stealth_lines_planned: usize,
     pub stealth_lines_removed: usize,
+}
+
+pub fn resolve_repository(
+    current: &Path,
+    access: AccessIntent,
+) -> Result<ResolvedRepository, Error> {
+    let root = RepositoryRoot::discover(current)?;
+    resolve_workspace(root, access)
+}
+
+fn resolve_workspace(
+    root: RepositoryRoot,
+    access: AccessIntent,
+) -> Result<ResolvedRepository, Error> {
+    let workspace = root.workspace();
+    let workspace_metadata = match fs::symlink_metadata(&workspace) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            return Err(Error::RepositoryNotInitialized { path: workspace });
+        }
+        Err(error) => return Err(path_access_error("workspace", &workspace, error)),
+    };
+    if workspace_metadata.file_type().is_symlink() || !workspace_metadata.is_dir() {
+        return Err(invalid_configuration(
+            "workspace",
+            &workspace,
+            ".tbtm must be a real directory owned by the repository",
+        ));
+    }
+
+    let config_path = workspace.join(CONFIG_FILE);
+    let config = load_config(&config_path)?;
+
+    let database_path = workspace.join(DATABASE_FILE);
+    let database_metadata = fs::symlink_metadata(&database_path)
+        .map_err(|error| path_database_error("database access", &database_path, error))?;
+    if database_metadata.file_type().is_symlink() || !database_metadata.is_file() {
+        return Err(Error::DatabaseUnavailable {
+            check: "database access",
+            path: database_path,
+            message: "database must be an existing regular file, not a symlink".to_owned(),
+        });
+    }
+
+    let flags = match access {
+        AccessIntent::ReadOnly => OpenFlags::SQLITE_OPEN_READ_ONLY,
+        AccessIntent::ReadWrite => OpenFlags::SQLITE_OPEN_READ_WRITE,
+    } | OpenFlags::SQLITE_OPEN_NO_MUTEX
+        | OpenFlags::SQLITE_OPEN_NOFOLLOW;
+    let connection = Connection::open_with_flags(&database_path, flags)
+        .map_err(|error| sqlite_open_error(&database_path, access, error))?;
+    connection
+        .query_row("PRAGMA schema_version", [], |row| row.get::<_, i64>(0))
+        .map_err(|error| sqlite_access_error("database validation", &database_path, error))?;
+
+    Ok(ResolvedRepository {
+        repository_root: root.0,
+        config_path,
+        database_path,
+        config,
+        connection,
+    })
+}
+
+fn load_config(path: &Path) -> Result<Config, Error> {
+    let metadata = fs::symlink_metadata(path)
+        .map_err(|error| path_config_error("config access", path, error))?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err(invalid_configuration(
+            "config access",
+            path,
+            "config must be an existing regular file, not a symlink",
+        ));
+    }
+    let bytes = fs::read(path).map_err(|error| path_config_error("config read", path, error))?;
+    let config: Config = serde_json::from_slice(&bytes)
+        .map_err(|error| invalid_configuration("config parse", path, error.to_string()))?;
+    validate_config(&config, path)?;
+    Ok(config)
+}
+
+pub fn inspect_repository_health(current: &Path) -> Result<RepositoryHealth, Error> {
+    let resolved = resolve_repository(current, AccessIntent::ReadOnly)?;
+    let metadata: (String, String, String) = resolved
+        .connection
+        .query_row(
+            "SELECT repository_id, prefix, created_at FROM repository_metadata WHERE singleton = 1",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .map_err(|error| {
+            sqlite_access_error("repository metadata", &resolved.database_path, error)
+        })?;
+    let database_schema: Option<i64> = resolved
+        .connection
+        .query_row("SELECT MAX(version) FROM schema_migrations", [], |row| {
+            row.get(0)
+        })
+        .map_err(|error| sqlite_access_error("schema metadata", &resolved.database_path, error))?;
+
+    let mut mismatched_fields = Vec::new();
+    if metadata.0 != resolved.config.repository_id.to_string() {
+        mismatched_fields.push("repositoryId".to_owned());
+    }
+    if metadata.1 != resolved.config.prefix {
+        mismatched_fields.push("prefix".to_owned());
+    }
+    if database_schema != Some(i64::from(resolved.config.schema_version)) {
+        mismatched_fields.push("schemaVersion".to_owned());
+    }
+    if metadata.2 != resolved.config.created_at {
+        mismatched_fields.push("createdAt".to_owned());
+    }
+    if !mismatched_fields.is_empty() {
+        return Err(Error::InvalidConfiguration {
+            check: "config/database metadata agreement",
+            path: resolved.database_path,
+            message: format!("mismatched fields: {}", mismatched_fields.join(", ")),
+            mismatched_fields,
+        });
+    }
+
+    let mut statement = resolved
+        .connection
+        .prepare("PRAGMA quick_check")
+        .map_err(|error| sqlite_access_error("quick_check", &resolved.database_path, error))?;
+    let rows = statement
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|error| sqlite_access_error("quick_check", &resolved.database_path, error))?;
+    let results: Result<Vec<_>, _> = rows.collect();
+    let results = results
+        .map_err(|error| sqlite_access_error("quick_check", &resolved.database_path, error))?;
+    drop(statement);
+    if results.as_slice() != ["ok"] {
+        return Err(Error::DatabaseUnavailable {
+            check: "quick_check",
+            path: resolved.database_path,
+            message: results.join("; "),
+        });
+    }
+
+    Ok(RepositoryHealth {
+        repository_root: resolved.repository_root,
+        config_path: resolved.config_path,
+        database_path: resolved.database_path,
+        repository_id: resolved.config.repository_id,
+        prefix: resolved.config.prefix,
+        schema_version: resolved.config.schema_version,
+        health: "healthy",
+    })
+}
+
+fn validate_config(config: &Config, path: &Path) -> Result<(), Error> {
+    if config.schema_version != 1 {
+        return Err(invalid_configuration(
+            "schemaVersion",
+            path,
+            format!("unsupported schema version {}", config.schema_version),
+        ));
+    }
+    if normalize_prefix(&config.prefix).ok().as_deref() != Some(config.prefix.as_str()) {
+        return Err(invalid_configuration(
+            "prefix",
+            path,
+            "prefix must already be normalized",
+        ));
+    }
+    if config.database != DATABASE_FILE {
+        return Err(invalid_configuration(
+            "database",
+            path,
+            "schema version 1 requires the exact value `tbtm.db`",
+        ));
+    }
+    let created_at = OffsetDateTime::parse(&config.created_at, &Rfc3339).map_err(|error| {
+        invalid_configuration(
+            "createdAt",
+            path,
+            format!("invalid RFC 3339 value: {error}"),
+        )
+    })?;
+    if created_at.offset() != time::UtcOffset::UTC {
+        return Err(invalid_configuration(
+            "createdAt",
+            path,
+            "timestamp must use a UTC offset",
+        ));
+    }
+    Ok(())
+}
+
+fn invalid_configuration(check: &'static str, path: &Path, message: impl Into<String>) -> Error {
+    Error::InvalidConfiguration {
+        check,
+        path: path.to_path_buf(),
+        message: message.into(),
+        mismatched_fields: Vec::new(),
+    }
+}
+
+fn path_access_error(check: &'static str, path: &Path, error: io::Error) -> Error {
+    if error.kind() == io::ErrorKind::PermissionDenied {
+        Error::PermissionDenied {
+            check,
+            path: path.to_path_buf(),
+            message: error.to_string(),
+        }
+    } else {
+        invalid_configuration(check, path, error.to_string())
+    }
+}
+
+fn path_config_error(check: &'static str, path: &Path, error: io::Error) -> Error {
+    path_access_error(check, path, error)
+}
+
+fn path_database_error(check: &'static str, path: &Path, error: io::Error) -> Error {
+    if error.kind() == io::ErrorKind::PermissionDenied {
+        Error::PermissionDenied {
+            check,
+            path: path.to_path_buf(),
+            message: error.to_string(),
+        }
+    } else {
+        Error::DatabaseUnavailable {
+            check,
+            path: path.to_path_buf(),
+            message: error.to_string(),
+        }
+    }
+}
+
+fn sqlite_access_error(check: &'static str, path: &Path, error: rusqlite::Error) -> Error {
+    let permission_denied = matches!(
+        error,
+        rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error {
+                code: rusqlite::ErrorCode::PermissionDenied,
+                ..
+            },
+            _
+        )
+    );
+    if permission_denied {
+        Error::PermissionDenied {
+            check,
+            path: path.to_path_buf(),
+            message: error.to_string(),
+        }
+    } else {
+        Error::DatabaseUnavailable {
+            check,
+            path: path.to_path_buf(),
+            message: error.to_string(),
+        }
+    }
+}
+
+fn sqlite_open_error(path: &Path, access: AccessIntent, error: rusqlite::Error) -> Error {
+    let cannot_open = matches!(
+        error,
+        rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error {
+                code: rusqlite::ErrorCode::CannotOpen,
+                ..
+            },
+            _
+        )
+    );
+    if cannot_open {
+        let filesystem_result = match access {
+            AccessIntent::ReadOnly => fs::File::open(path).map(|_| ()),
+            AccessIntent::ReadWrite => OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(path)
+                .map(|_| ()),
+        };
+        if let Err(filesystem_error) = filesystem_result
+            && filesystem_error.kind() == io::ErrorKind::PermissionDenied
+        {
+            return Error::PermissionDenied {
+                check: "database open",
+                path: path.to_path_buf(),
+                message: filesystem_error.to_string(),
+            };
+        }
+    }
+    sqlite_access_error("database open", path, error)
+}
+
+fn check_git_marker_access(current: &Path) -> io::Result<()> {
+    for ancestor in current.ancestors() {
+        let marker = ancestor.join(".git");
+        let metadata = match fs::symlink_metadata(&marker) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(error),
+        };
+        if metadata.is_dir() {
+            fs::read_dir(marker)?.next().transpose()?;
+        } else if metadata.is_file() {
+            fs::File::open(marker)?;
+        }
+        break;
+    }
+    Ok(())
 }
 
 pub fn normalize_prefix(input: &str) -> Result<String, Error> {
@@ -286,33 +728,27 @@ fn write_config(path: &Path, config: &Config) -> Result<(), Error> {
 }
 
 fn valid_workspace(workspace: &Path) -> Result<bool, Error> {
-    if fs::symlink_metadata(workspace)
-        .map_err(|e| Error::phase("WORKSPACE_INSPECTION_FAILED", e))?
-        .file_type()
-        .is_symlink()
-    {
-        return Ok(false);
-    }
-    let config: Config = serde_json::from_slice(
-        &fs::read(workspace.join(CONFIG_FILE))
-            .map_err(|e| Error::phase("WORKSPACE_INSPECTION_FAILED", e))?,
-    )
-    .map_err(|e| Error::phase("WORKSPACE_INSPECTION_FAILED", e))?;
-    if config.schema_version != 1 || config.database != DATABASE_FILE {
-        return Ok(false);
-    }
-    let connection = Connection::open(workspace.join(DATABASE_FILE))
-        .map_err(|e| Error::phase("WORKSPACE_INSPECTION_FAILED", e))?;
-    let (id, prefix, created_at): (String, String, String) = connection
+    let root_path = workspace.parent().ok_or_else(|| {
+        Error::phase(
+            "WORKSPACE_INSPECTION_FAILED",
+            io::Error::other("workspace has no repository parent"),
+        )
+    })?;
+    let root_path = root_path
+        .canonicalize()
+        .map_err(|error| Error::phase("WORKSPACE_INSPECTION_FAILED", error))?;
+    let resolved = resolve_workspace(RepositoryRoot(root_path), AccessIntent::ReadOnly)?;
+    let (id, prefix, created_at): (String, String, String) = resolved
+        .connection
         .query_row(
             "SELECT repository_id, prefix, created_at FROM repository_metadata WHERE singleton = 1",
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
         .map_err(|e| Error::phase("WORKSPACE_INSPECTION_FAILED", e))?;
-    Ok(id == config.repository_id.to_string()
-        && prefix == config.prefix
-        && created_at == config.created_at)
+    Ok(id == resolved.config.repository_id.to_string()
+        && prefix == resolved.config.prefix
+        && created_at == resolved.config.created_at)
 }
 
 pub fn add_stealth_rule(root: &Path) -> Result<bool, Error> {
@@ -462,6 +898,10 @@ fn remove_stealth_lines(path: &Path) -> io::Result<usize> {
 
 pub fn exit_code(error: &Error) -> i32 {
     match error {
+        Error::DatabaseUnavailable { .. } => 1,
+        Error::InvalidConfiguration { .. } => 2,
+        Error::RepositoryNotInitialized { .. } => 3,
+        Error::PermissionDenied { .. } => 5,
         Error::InvalidPrefix | Error::AlreadyInitialized | Error::InvalidInitialization => 2,
         Error::Phase {
             phase: "FORCE_CONFIRMATION_REQUIRED" | "CONFIRMATION_REQUIRED",
@@ -478,6 +918,7 @@ pub fn exit_code(error: &Error) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{Seek, SeekFrom, Write};
     use tempfile::tempdir;
 
     #[test]
@@ -519,5 +960,303 @@ mod tests {
         let result = uninstall(temp.path(), true).unwrap();
         assert_eq!(result.planned.len(), 1);
         assert_eq!(fs::read(temp.path().join(".gitignore")).unwrap(), before);
+    }
+
+    #[test]
+    fn validates_schema_one_config_fields() {
+        let path = Path::new("config.json");
+        let base = Config {
+            schema_version: 1,
+            repository_id: Uuid::new_v4(),
+            prefix: "example".to_owned(),
+            database: DATABASE_FILE.to_owned(),
+            created_at: "2026-08-12T12:00:00Z".to_owned(),
+        };
+        validate_config(&base, path).unwrap();
+
+        for database in ["../tbtm.db", "nested/tbtm.db", "/tmp/tbtm.db", "other.db"] {
+            let mut config = base.clone();
+            config.database = database.to_owned();
+            assert!(matches!(
+                validate_config(&config, path),
+                Err(Error::InvalidConfiguration {
+                    check: "database",
+                    ..
+                })
+            ));
+        }
+
+        let mut config = base.clone();
+        config.prefix = "Not Normalized".to_owned();
+        assert!(validate_config(&config, path).is_err());
+        config = base.clone();
+        config.created_at = "2026-08-12T12:00:00+07:00".to_owned();
+        assert!(validate_config(&config, path).is_err());
+        config = base;
+        config.schema_version = 2;
+        assert!(validate_config(&config, path).is_err());
+
+        let unknown_field = serde_json::json!({
+            "schemaVersion": 1,
+            "repositoryId": Uuid::new_v4(),
+            "prefix": "example",
+            "database": "tbtm.db",
+            "createdAt": "2026-08-12T12:00:00Z",
+            "redirect": "outside.db"
+        });
+        assert!(serde_json::from_value::<Config>(unknown_field).is_err());
+        let invalid_uuid = serde_json::json!({
+            "schemaVersion": 1,
+            "repositoryId": "not-a-uuid",
+            "prefix": "example",
+            "database": "tbtm.db",
+            "createdAt": "2026-08-12T12:00:00Z"
+        });
+        assert!(serde_json::from_value::<Config>(invalid_uuid).is_err());
+    }
+
+    #[test]
+    fn missing_database_is_not_created() {
+        let temp = tempdir().unwrap();
+        let initialized =
+            initialize(temp.path(), Some("stored-prefix"), false, false, false).unwrap();
+        fs::remove_file(&initialized.database_path).unwrap();
+
+        let error = resolve_repository(temp.path(), AccessIntent::ReadOnly).unwrap_err();
+        assert!(matches!(error, Error::DatabaseUnavailable { .. }));
+        let error = resolve_repository(temp.path(), AccessIntent::ReadWrite).unwrap_err();
+        assert!(matches!(error, Error::DatabaseUnavailable { .. }));
+        assert!(!initialized.database_path.exists());
+    }
+
+    #[test]
+    fn invalid_sqlite_is_database_unavailable() {
+        let temp = tempdir().unwrap();
+        let initialized = initialize(temp.path(), None, false, false, false).unwrap();
+        fs::write(&initialized.database_path, b"this is not sqlite").unwrap();
+
+        let error = resolve_repository(temp.path(), AccessIntent::ReadOnly).unwrap_err();
+
+        assert!(matches!(error, Error::DatabaseUnavailable { .. }));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn config_symlink_is_invalid_configuration() {
+        use std::os::unix::fs::symlink;
+
+        let temp = tempdir().unwrap();
+        let initialized = initialize(temp.path(), None, false, false, false).unwrap();
+        let outside = temp.path().join("outside-config.json");
+        fs::rename(&initialized.config_path, &outside).unwrap();
+        symlink(&outside, &initialized.config_path).unwrap();
+
+        let error = resolve_repository(temp.path(), AccessIntent::ReadOnly).unwrap_err();
+
+        assert!(matches!(
+            error,
+            Error::InvalidConfiguration {
+                check: "config access",
+                ..
+            }
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unreadable_database_is_permission_denied() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempdir().unwrap();
+        let initialized = initialize(temp.path(), None, false, false, false).unwrap();
+        let original_permissions = fs::metadata(&initialized.database_path)
+            .unwrap()
+            .permissions();
+        fs::set_permissions(
+            &initialized.database_path,
+            fs::Permissions::from_mode(0o000),
+        )
+        .unwrap();
+
+        let error = resolve_repository(temp.path(), AccessIntent::ReadOnly).unwrap_err();
+
+        fs::set_permissions(&initialized.database_path, original_permissions).unwrap();
+        assert!(matches!(error, Error::PermissionDenied { .. }));
+        assert_eq!(exit_code(&error), 5);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unreadable_git_marker_is_permission_denied() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempdir().unwrap();
+        git2::Repository::init(temp.path()).unwrap();
+        let marker = temp.path().join(".git");
+        let original_permissions = fs::metadata(&marker).unwrap().permissions();
+        fs::set_permissions(&marker, fs::Permissions::from_mode(0o000)).unwrap();
+
+        let error = RepositoryRoot::discover(temp.path()).unwrap_err();
+
+        fs::set_permissions(&marker, original_permissions).unwrap();
+        assert!(matches!(error, Error::PermissionDenied { .. }));
+        assert_eq!(exit_code(&error), 5);
+    }
+
+    #[test]
+    fn health_is_read_only_and_uses_stored_identity() {
+        let temp = tempdir().unwrap();
+        let initialized =
+            initialize(temp.path(), Some("stored-prefix"), false, false, false).unwrap();
+        let config_before = fs::read(&initialized.config_path).unwrap();
+        let database_before = fs::read(&initialized.database_path).unwrap();
+
+        let health = inspect_repository_health(temp.path()).unwrap();
+
+        assert_eq!(health.repository_id, initialized.repository_id);
+        assert_eq!(health.prefix, "stored-prefix");
+        assert_eq!(health.health, "healthy");
+        assert_eq!(fs::read(&initialized.config_path).unwrap(), config_before);
+        assert_eq!(
+            fs::read(&initialized.database_path).unwrap(),
+            database_before
+        );
+        let workspace_entries: Vec<_> = fs::read_dir(temp.path().join(".tbtm"))
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        assert_eq!(workspace_entries.len(), 2);
+    }
+
+    #[test]
+    fn health_reports_metadata_mismatches() {
+        for (statement, expected) in [
+            (
+                "UPDATE repository_metadata SET repository_id = '00000000-0000-0000-0000-000000000000'",
+                "repositoryId",
+            ),
+            (
+                "UPDATE repository_metadata SET prefix = 'different'",
+                "prefix",
+            ),
+            ("UPDATE schema_migrations SET version = 2", "schemaVersion"),
+            ("DELETE FROM schema_migrations", "schemaVersion"),
+            (
+                "UPDATE repository_metadata SET created_at = '2000-01-01T00:00:00Z'",
+                "createdAt",
+            ),
+        ] {
+            let temp = tempdir().unwrap();
+            let initialized = initialize(temp.path(), None, false, false, false).unwrap();
+            let connection = Connection::open(&initialized.database_path).unwrap();
+            connection.execute(statement, []).unwrap();
+            drop(connection);
+            let database_before = fs::read(&initialized.database_path).unwrap();
+
+            let error = inspect_repository_health(temp.path()).unwrap_err();
+            match error {
+                Error::InvalidConfiguration {
+                    mismatched_fields, ..
+                } => assert_eq!(mismatched_fields, [expected]),
+                other => panic!("unexpected error: {other}"),
+            }
+            assert_eq!(
+                fs::read(&initialized.database_path).unwrap(),
+                database_before
+            );
+        }
+    }
+
+    #[test]
+    fn failed_quick_check_is_read_only_and_database_unavailable() {
+        let temp = tempdir().unwrap();
+        let initialized = initialize(temp.path(), None, false, false, false).unwrap();
+        let connection = Connection::open(&initialized.database_path).unwrap();
+        let page_size: i64 = connection
+            .query_row("PRAGMA page_size", [], |row| row.get(0))
+            .unwrap();
+        let statuses_root_page: i64 = connection
+            .query_row(
+                "SELECT rootpage FROM sqlite_schema WHERE name = 'statuses'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        drop(connection);
+        let mut database = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&initialized.database_path)
+            .unwrap();
+        database
+            .seek(SeekFrom::Start(
+                ((statuses_root_page - 1) * page_size).try_into().unwrap(),
+            ))
+            .unwrap();
+        database.write_all(&[0xff]).unwrap();
+        database.sync_all().unwrap();
+        drop(database);
+        let config_before = fs::read(&initialized.config_path).unwrap();
+        let database_before = fs::read(&initialized.database_path).unwrap();
+        let mut entries_before: Vec<_> = fs::read_dir(temp.path().join(".tbtm"))
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        entries_before.sort();
+
+        let error = inspect_repository_health(temp.path()).unwrap_err();
+
+        assert!(matches!(
+            error,
+            Error::DatabaseUnavailable {
+                check: "quick_check",
+                ..
+            }
+        ));
+        assert_eq!(fs::read(&initialized.config_path).unwrap(), config_before);
+        assert_eq!(
+            fs::read(&initialized.database_path).unwrap(),
+            database_before
+        );
+        let mut entries_after: Vec<_> = fs::read_dir(temp.path().join(".tbtm"))
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        entries_after.sort();
+        assert_eq!(entries_after, entries_before);
+    }
+
+    #[test]
+    fn repository_rename_keeps_stored_identity_and_prefix() {
+        let parent = tempdir().unwrap();
+        let original = parent.path().join("original-name");
+        let renamed = parent.path().join("renamed-directory");
+        fs::create_dir(&original).unwrap();
+        let initialized =
+            initialize(&original, Some("stored-prefix"), false, false, false).unwrap();
+        fs::rename(&original, &renamed).unwrap();
+
+        let health = inspect_repository_health(&renamed).unwrap();
+
+        assert_eq!(health.repository_id, initialized.repository_id);
+        assert_eq!(health.prefix, "stored-prefix");
+    }
+
+    #[test]
+    fn resolves_nearest_git_root_from_nested_directory() {
+        let temp = tempdir().unwrap();
+        git2::Repository::init(temp.path()).unwrap();
+        let initialized = initialize(temp.path(), Some("git-prefix"), false, false, false).unwrap();
+        let nested = temp.path().join("one/two");
+        fs::create_dir_all(&nested).unwrap();
+
+        let resolved = resolve_repository(&nested, AccessIntent::ReadOnly).unwrap();
+
+        assert_eq!(
+            resolved.repository_root,
+            temp.path().canonicalize().unwrap()
+        );
+        assert_eq!(resolved.config.repository_id, initialized.repository_id);
+        assert_eq!(resolved.config.prefix, "git-prefix");
     }
 }

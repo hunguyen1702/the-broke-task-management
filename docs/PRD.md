@@ -98,6 +98,8 @@ An agent operates under its registered identity when claiming tasks, updating ta
 
 Each source-code repository uses one SQLite database. Repository initialization records product configuration, including the task ID prefix.
 
+Git linked worktrees that belong to the same common Git repository are separate working directories but one logical Agent Task repository. They must ultimately resolve to one shared configuration and SQLite database so agents working in different worktrees observe the same identities, tasks, and claims. The canonical shared-storage location and compatibility path for repositories already initialized independently per worktree are solution-design decisions covered by Story E1-S5.
+
 The default prefix is the normalized repository directory name. The user may override it during initialization with a CLI option such as `--prefix`.
 
 Renaming the repository directory after initialization does not change the stored prefix or any existing task ID.
@@ -351,6 +353,7 @@ Availability must be recalculated from current state after relevant changes, inc
 - Report every filesystem artifact created, modified, or left incomplete when initialization fails.
 - Provide an explicit, confirmed uninstall operation that removes repository-local TBTM artifacts and the exact `/.tbtm/` rule without following symlinks or deleting paths outside the repository root.
 - Show repository configuration and database health.
+- Resolve linked worktrees of one common Git repository to the same task configuration and database without relying on unsafe user-controlled path redirection.
 
 ### FR-2 Agent registry
 
@@ -585,6 +588,7 @@ The MVP is accepted when all of the following are demonstrably true:
 15. Visual Studio Code provides the complete board and task-management scope defined in FR-12.
 16. Two local processes can read and mutate repository state without corrupting the database.
 17. Failed initialization identifies partial artifacts, and under normal local operation `tbtm uninstall` can preview and remove repository-local TBTM artifacts without following symlinks or traversing outside the repository root.
+18. Agents operating from linked worktrees of the same Git repository observe one shared repository identity, task database, and claim state.
 
 ## 14. Epic and story backlog
 
@@ -647,6 +651,25 @@ Acceptance criteria:
 - Human and JSON output are supported.
 
 Dependencies: E1-S3, E5-S1.
+
+#### Story E1-S5: Share repository state across Git worktrees
+
+**Planning status:** Open; deferred until after the basic repository and agent CLI flow, but required before multi-worktree concurrency is considered complete.
+
+As a coding agent working in a Git linked worktree, I want every worktree of the same repository to resolve one shared Agent Task database so that agents coordinate identities, tasks, and claims across isolated source-code workspaces.
+
+Acceptance criteria:
+
+- The main worktree and every linked worktree resolve the same logical repository identity, configuration, and SQLite database.
+- Non-Git directories and repositories without linked worktrees retain the existing repository-local behavior.
+- Shared-state discovery is derived from trusted Git repository metadata rather than arbitrary database paths from configuration.
+- Normal worktree use does not require symlinking `.tbtm` or the SQLite database.
+- Concurrent commands from different worktrees preserve SQLite integrity and atomic claim behavior.
+- Missing or inaccessible common Git metadata, configuration, or database paths produce the existing actionable repository, database, and permission error categories.
+- Existing repositories initialized independently in multiple worktrees are never silently merged or overwritten; the implementation provides an explicit compatibility, selection, or migration path.
+- Repository status from any worktree remains read-only and does not create persistent SQLite journal, WAL, or shared-memory artifacts as a side effect.
+
+Dependencies: E1-S2.
 
 ### Epic E2: Task content and lifecycle
 
@@ -1150,7 +1173,7 @@ Acceptance criteria:
 - Losing operations return claim conflict.
 - No test produces duplicate active claims or database corruption.
 
-Dependencies: E5-S1, E5-S2.
+Dependencies: E1-S5, E5-S1, E5-S2.
 
 #### Story E9-S2: Verify graph and availability invariants
 
@@ -1197,7 +1220,7 @@ The stories should not be implemented strictly epic-by-epic. A dependency-orient
 1. **Foundation:** E1-S1, E1-S2, E1-S3, E3-S1.
 2. **Minimal task core:** E2-S1, E2-S2, E2-S3.
 3. **Graph core:** E4-S1, E4-S2.
-4. **Claim core:** E5-S1, E5-S3, E5-S4.
+4. **Shared multi-worktree foundation and claim core:** E1-S5, E5-S1, E5-S3, E5-S4.
 5. **Availability and atomic acquisition:** E4-S3, E4-S4, E5-S2.
 6. **Lifecycle completion:** E2-S5, E2-S6, E5-S5, E3-S2 through E3-S4.
 7. **Task context:** E2-S4 and E6.
@@ -1212,6 +1235,7 @@ For detailed planning, each story should be decomposed into technical tasks only
 
 - CLI packaging and distribution model.
 - Database access boundary shared by CLI and extension.
+- Canonical shared-state location and upgrade policy for Git linked worktrees.
 - Database migration strategy.
 - Transaction and local concurrency strategy.
 - JSON response envelope and exit-code contract.

@@ -4,7 +4,9 @@ use std::{
     io::{self, IsTerminal, Write},
     process::ExitCode,
 };
-use tbtm_core::{Error, exit_code, initialize, uninstall};
+use tbtm_core::{
+    Error, RepositoryHealth, exit_code, initialize, inspect_repository_health, uninstall,
+};
 
 #[derive(Parser)]
 #[command(name = "tbtm", version, about = "Repository-local task management")]
@@ -25,6 +27,26 @@ enum Command {
         long_about = "Remove .tbtm, direct-root TBTM backups and staging directories, plus exact /.tbtm/ rules. This is destructive; use --dry-run to inspect targets first."
     )]
     Uninstall(UninstallArgs),
+    #[command(about = "Inspect repository configuration and health")]
+    Repo(RepoArgs),
+}
+
+#[derive(Args)]
+struct RepoArgs {
+    #[command(subcommand)]
+    command: RepoCommand,
+}
+
+#[derive(Subcommand)]
+enum RepoCommand {
+    #[command(about = "Validate repository config and database without changing them")]
+    Status(RepoStatusArgs),
+}
+
+#[derive(Args)]
+struct RepoStatusArgs {
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Args)]
@@ -80,8 +102,9 @@ fn main() -> ExitCode {
 
 fn run() -> Result<(), (Error, bool)> {
     let cli = Cli::parse();
+    let json = command_uses_json(&cli.command);
     let current = std::env::current_dir()
-        .map_err(|error| (Error::phase("REPOSITORY_DISCOVERY_FAILED", error), false))?;
+        .map_err(|error| (Error::phase("REPOSITORY_DISCOVERY_FAILED", error), json))?;
     match cli.command {
         Command::Init(args) => {
             let initial = initialize(
@@ -152,8 +175,25 @@ fn run() -> Result<(), (Error, bool)> {
                 ));
             }
         }
+        Command::Repo(args) => match args.command {
+            RepoCommand::Status(args) => {
+                let result =
+                    inspect_repository_health(&current).map_err(|error| (error, args.json))?;
+                render_repository_health(&result, args.json);
+            }
+        },
     }
     Ok(())
+}
+
+fn command_uses_json(command: &Command) -> bool {
+    match command {
+        Command::Init(args) => args.json,
+        Command::Uninstall(args) => args.json,
+        Command::Repo(RepoArgs {
+            command: RepoCommand::Status(args),
+        }) => args.json,
+    }
 }
 
 fn confirm(prompt: &str) -> io::Result<bool> {
@@ -189,6 +229,20 @@ fn render_success<T: Serialize>(data: &T, json: bool) {
     }
 }
 
+fn render_repository_health(result: &RepositoryHealth, json: bool) {
+    if json {
+        render_success(result, true);
+    } else {
+        println!("Repository root: {}", result.repository_root.display());
+        println!("Config: {}", result.config_path.display());
+        println!("Database: {}", result.database_path.display());
+        println!("Repository ID: {}", result.repository_id);
+        println!("Prefix: {}", result.prefix);
+        println!("Schema version: {}", result.schema_version);
+        println!("Health: {}", result.health);
+    }
+}
+
 fn render_error(error: &Error, json: bool) {
     if json {
         println!(
@@ -199,12 +253,15 @@ fn render_error(error: &Error, json: bool) {
                 error: Some(ApiError {
                     code: error.code().to_owned(),
                     message: error.to_string(),
-                    details: serde_json::json!({})
+                    details: error.details()
                 })
             })
             .expect("serializable response")
         );
     } else {
         eprintln!("{}: {error}", error.code());
+        if let Some(suggestion) = error.suggestion() {
+            eprintln!("Next step: {suggestion}");
+        }
     }
 }
