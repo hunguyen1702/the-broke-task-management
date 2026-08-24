@@ -19,6 +19,135 @@ fn initialize(current: &std::path::Path) {
     );
 }
 
+fn linked_worktree() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+    let temp = tempdir().unwrap();
+    let main = temp.path().join("main");
+    let linked = temp.path().join("linked");
+    fs::create_dir(&main).unwrap();
+    for arguments in [
+        vec!["init", "--quiet"],
+        vec!["config", "user.email", "test@example.com"],
+        vec!["config", "user.name", "Test"],
+        vec!["commit", "--allow-empty", "--quiet", "-m", "initial"],
+    ] {
+        assert!(
+            Command::new("git")
+                .current_dir(&main)
+                .args(arguments)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    assert!(
+        Command::new("git")
+            .current_dir(&main)
+            .args([
+                "worktree",
+                "add",
+                "--quiet",
+                "-b",
+                "linked",
+                linked.to_str().unwrap()
+            ])
+            .status()
+            .unwrap()
+            .success()
+    );
+    (temp, main, linked)
+}
+
+#[test]
+fn linked_worktree_uses_only_main_worktree_store() {
+    let (_temp, main, linked) = linked_worktree();
+    let local_workspace = linked.join(".tbtm");
+    fs::create_dir(&local_workspace).unwrap();
+    fs::write(local_workspace.join("sentinel"), b"linked-local").unwrap();
+
+    let init = tbtm(
+        &linked,
+        &["init", "--prefix", "shared", "--stealth", "--json"],
+    );
+    assert!(
+        init.status.success(),
+        "{}",
+        String::from_utf8_lossy(&init.stderr)
+    );
+    assert!(main.join(".tbtm/config.json").is_file());
+    assert!(!linked.join(".gitignore").exists());
+    assert_eq!(
+        fs::read(linked.join(".tbtm/sentinel")).unwrap(),
+        b"linked-local"
+    );
+    assert!(
+        fs::read_to_string(main.join(".gitignore"))
+            .unwrap()
+            .contains("/.tbtm/")
+    );
+
+    let status = tbtm(&linked, &["repo", "status", "--json"]);
+    assert!(status.status.success());
+    let response: Value = serde_json::from_slice(&status.stdout).unwrap();
+    assert_eq!(
+        response["data"]["repositoryRoot"],
+        main.canonicalize().unwrap().to_string_lossy().as_ref()
+    );
+    assert_eq!(
+        response["data"]["worktreeRoot"],
+        linked.canonicalize().unwrap().to_string_lossy().as_ref()
+    );
+    assert_eq!(response["data"]["prefix"], "shared");
+
+    let uninstall = tbtm(&linked, &["uninstall", "--dry-run", "--json"]);
+    assert!(uninstall.status.success());
+    let response: Value = serde_json::from_slice(&uninstall.stdout).unwrap();
+    let planned = response["data"]["planned"].as_array().unwrap();
+    assert!(planned.iter().any(|path| {
+        path.as_str()
+            == Some(
+                main.join(".tbtm")
+                    .canonicalize()
+                    .unwrap()
+                    .to_string_lossy()
+                    .as_ref(),
+            )
+    }));
+    assert!(planned.iter().all(|path| {
+        !path
+            .as_str()
+            .unwrap()
+            .starts_with(linked.to_string_lossy().as_ref())
+    }));
+    assert_eq!(
+        fs::read(linked.join(".tbtm/sentinel")).unwrap(),
+        b"linked-local"
+    );
+}
+
+#[test]
+fn bare_git_repository_is_unavailable_without_mutation() {
+    let temp = tempdir().unwrap();
+    assert!(
+        Command::new("git")
+            .current_dir(temp.path())
+            .args(["init", "--bare", "--quiet"])
+            .status()
+            .unwrap()
+            .success()
+    );
+
+    let output = tbtm(temp.path(), &["init", "--json"]);
+
+    assert_eq!(output.status.code(), Some(1));
+    let response: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(response["error"]["code"], "REPOSITORY_UNAVAILABLE");
+    assert_eq!(
+        response["error"]["details"]["phase"],
+        "current worktree resolution"
+    );
+    assert!(!temp.path().join(".tbtm").exists());
+}
+
 #[test]
 fn repo_status_json_reports_healthy_repository_from_nested_directory() {
     let temp = tempdir().unwrap();
@@ -41,10 +170,19 @@ fn repo_status_json_reports_healthy_repository_from_nested_directory() {
         String::from_utf8_lossy(&output.stderr)
     );
     let response: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let canonical_root = temp.path().canonicalize().unwrap();
     assert_eq!(response["ok"], true);
     assert_eq!(response["data"]["prefix"], "stored-prefix");
     assert_eq!(response["data"]["schemaVersion"], 1);
     assert_eq!(response["data"]["health"], "healthy");
+    assert_eq!(
+        response["data"]["repositoryRoot"],
+        canonical_root.to_string_lossy().as_ref()
+    );
+    assert_eq!(
+        response["data"]["worktreeRoot"],
+        canonical_root.to_string_lossy().as_ref()
+    );
     assert_eq!(response["error"], Value::Null);
 }
 
@@ -59,6 +197,7 @@ fn repo_status_human_output_is_concise() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     for field in [
         "Repository root:",
+        "Worktree root:",
         "Config:",
         "Database:",
         "Repository ID:",

@@ -48,6 +48,11 @@ pub enum Error {
         path: PathBuf,
         message: String,
     },
+    #[error("repository unavailable during {phase}: {message}")]
+    RepositoryUnavailable {
+        phase: &'static str,
+        message: String,
+    },
     #[error("{phase}: {source}")]
     Phase {
         phase: &'static str,
@@ -77,6 +82,7 @@ impl Error {
             Self::InvalidConfiguration { .. } => "INVALID_CONFIGURATION",
             Self::DatabaseUnavailable { .. } => "DATABASE_UNAVAILABLE",
             Self::PermissionDenied { .. } => "PERMISSION_DENIED",
+            Self::RepositoryUnavailable { .. } => "REPOSITORY_UNAVAILABLE",
             Self::Phase { phase, .. } => phase,
         }
     }
@@ -109,6 +115,10 @@ impl Error {
                 "path": path,
                 "suggestion": "Grant access to the path and retry."
             }),
+            Self::RepositoryUnavailable { phase, .. } => serde_json::json!({
+                "phase": phase,
+                "suggestion": "Repair the Git worktree metadata or run the command from a usable non-bare worktree."
+            }),
             _ => serde_json::json!({}),
         }
     }
@@ -125,16 +135,29 @@ impl Error {
                 Some("Restore a valid database from backup or reinitialize the repository.")
             }
             Self::PermissionDenied { .. } => Some("Grant access to the path and retry."),
+            Self::RepositoryUnavailable { .. } => Some(
+                "Repair the Git worktree metadata or run the command from a usable non-bare worktree.",
+            ),
             _ => None,
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RepositoryRoot(PathBuf);
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorktreeRoot(PathBuf);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RepositoryDiscovery {
+    pub repository_root: RepositoryRoot,
+    pub worktree_root: WorktreeRoot,
+    pub common_git_dir: Option<PathBuf>,
+}
+
 impl RepositoryRoot {
-    pub fn discover(current: &Path) -> Result<Self, Error> {
+    pub fn discover(current: &Path) -> Result<RepositoryDiscovery, Error> {
         let canonical = current.canonicalize().map_err(|error| {
             if error.kind() == io::ErrorKind::PermissionDenied {
                 Error::PermissionDenied {
@@ -157,15 +180,56 @@ impl RepositoryRoot {
                 Error::phase("REPOSITORY_DISCOVERY_FAILED", error)
             }
         })?;
-        let root = match git2::Repository::discover(&canonical) {
-            Ok(repository) => repository
-                .workdir()
-                .map(Path::to_path_buf)
-                .unwrap_or(canonical),
-            Err(error) if error.code() == git2::ErrorCode::NotFound => canonical,
-            Err(error) => return Err(Error::phase("REPOSITORY_DISCOVERY_FAILED", error)),
+        let repository = match git2::Repository::discover(&canonical) {
+            Ok(repository) => repository,
+            Err(error) if error.code() == git2::ErrorCode::NotFound => {
+                return Ok(RepositoryDiscovery {
+                    repository_root: Self(canonical.clone()),
+                    worktree_root: WorktreeRoot(canonical),
+                    common_git_dir: None,
+                });
+            }
+            Err(error) => return Err(repository_unavailable("Git repository discovery", error)),
         };
-        Ok(Self(root))
+        let worktree = repository
+            .workdir()
+            .ok_or_else(|| Error::RepositoryUnavailable {
+                phase: "current worktree resolution",
+                message: "bare Git repositories are not supported".to_owned(),
+            })?;
+        let worktree_root = canonicalize_git_path("current worktree canonicalization", worktree)?;
+        let common_git_dir = canonicalize_git_path(
+            "common Git directory canonicalization",
+            repository.commondir(),
+        )?;
+        let main_repository = git2::Repository::open(&common_git_dir)
+            .map_err(|error| repository_unavailable("main worktree resolution", error))?;
+        let main_worktree =
+            main_repository
+                .workdir()
+                .ok_or_else(|| Error::RepositoryUnavailable {
+                    phase: "main worktree resolution",
+                    message: "Git common metadata does not identify a usable main worktree"
+                        .to_owned(),
+                })?;
+        let repository_root =
+            canonicalize_git_path("main worktree canonicalization", main_worktree)?;
+        let validated_common = canonicalize_git_path(
+            "common Git metadata validation",
+            main_repository.commondir(),
+        )?;
+        if validated_common != common_git_dir {
+            return Err(Error::RepositoryUnavailable {
+                phase: "common Git metadata validation",
+                message: "current and main worktrees do not share one common Git directory"
+                    .to_owned(),
+            });
+        }
+        Ok(RepositoryDiscovery {
+            repository_root: Self(repository_root),
+            worktree_root: WorktreeRoot(worktree_root),
+            common_git_dir: Some(common_git_dir),
+        })
     }
 
     pub fn path(&self) -> &Path {
@@ -173,6 +237,36 @@ impl RepositoryRoot {
     }
     fn workspace(&self) -> PathBuf {
         self.0.join(".tbtm")
+    }
+}
+
+impl WorktreeRoot {
+    pub fn path(&self) -> &Path {
+        &self.0
+    }
+}
+
+fn canonicalize_git_path(phase: &'static str, path: &Path) -> Result<PathBuf, Error> {
+    path.canonicalize().map_err(|error| {
+        if error.kind() == io::ErrorKind::PermissionDenied {
+            Error::PermissionDenied {
+                check: phase,
+                path: path.to_path_buf(),
+                message: error.to_string(),
+            }
+        } else {
+            Error::RepositoryUnavailable {
+                phase,
+                message: error.to_string(),
+            }
+        }
+    })
+}
+
+fn repository_unavailable(phase: &'static str, error: impl std::fmt::Display) -> Error {
+    Error::RepositoryUnavailable {
+        phase,
+        message: error.to_string(),
     }
 }
 
@@ -195,6 +289,7 @@ pub enum AccessIntent {
 #[derive(Debug)]
 pub struct ResolvedRepository {
     pub repository_root: PathBuf,
+    pub worktree_root: PathBuf,
     pub config_path: PathBuf,
     pub database_path: PathBuf,
     pub config: Config,
@@ -215,6 +310,7 @@ impl ResolvedRepository {
 #[serde(rename_all = "camelCase")]
 pub struct RepositoryHealth {
     pub repository_root: PathBuf,
+    pub worktree_root: PathBuf,
     pub config_path: PathBuf,
     pub database_path: PathBuf,
     pub repository_id: Uuid,
@@ -250,12 +346,13 @@ pub fn resolve_repository(
     current: &Path,
     access: AccessIntent,
 ) -> Result<ResolvedRepository, Error> {
-    let root = RepositoryRoot::discover(current)?;
-    resolve_workspace(root, access)
+    let discovery = RepositoryRoot::discover(current)?;
+    resolve_workspace(discovery.repository_root, discovery.worktree_root, access)
 }
 
 fn resolve_workspace(
     root: RepositoryRoot,
+    worktree_root: WorktreeRoot,
     access: AccessIntent,
 ) -> Result<ResolvedRepository, Error> {
     let workspace = root.workspace();
@@ -301,6 +398,7 @@ fn resolve_workspace(
 
     Ok(ResolvedRepository {
         repository_root: root.0,
+        worktree_root: worktree_root.0,
         config_path,
         database_path,
         config,
@@ -387,6 +485,7 @@ pub fn inspect_repository_health(current: &Path) -> Result<RepositoryHealth, Err
 
     Ok(RepositoryHealth {
         repository_root: resolved.repository_root,
+        worktree_root: resolved.worktree_root,
         config_path: resolved.config_path,
         database_path: resolved.database_path,
         repository_id: resolved.config.repository_id,
@@ -588,7 +687,8 @@ pub fn initialize(
     force: bool,
     force_confirmed: bool,
 ) -> Result<InitResult, Error> {
-    let root = RepositoryRoot::discover(current)?;
+    let discovery = RepositoryRoot::discover(current)?;
+    let root = discovery.repository_root;
     let default_prefix = root
         .path()
         .file_name()
@@ -737,7 +837,11 @@ fn valid_workspace(workspace: &Path) -> Result<bool, Error> {
     let root_path = root_path
         .canonicalize()
         .map_err(|error| Error::phase("WORKSPACE_INSPECTION_FAILED", error))?;
-    let resolved = resolve_workspace(RepositoryRoot(root_path), AccessIntent::ReadOnly)?;
+    let resolved = resolve_workspace(
+        RepositoryRoot(root_path.clone()),
+        WorktreeRoot(root_path),
+        AccessIntent::ReadOnly,
+    )?;
     let (id, prefix, created_at): (String, String, String) = resolved
         .connection
         .query_row(
@@ -789,7 +893,7 @@ pub fn add_stealth_rule(root: &Path) -> Result<bool, Error> {
 }
 
 pub fn uninstall(current: &Path, dry_run: bool) -> Result<UninstallResult, Error> {
-    let root = RepositoryRoot::discover(current)?;
+    let root = RepositoryRoot::discover(current)?.repository_root;
     let mut planned = Vec::new();
     for entry in fs::read_dir(root.path()).map_err(|e| Error::phase("UNINSTALL_PLAN_FAILED", e))? {
         let entry = entry.map_err(|e| Error::phase("UNINSTALL_PLAN_FAILED", e))?;

@@ -19,12 +19,12 @@ struct Cli {
 enum Command {
     #[command(
         about = "Create repository-local .tbtm workspace",
-        long_about = "Create repository-local .tbtm/config.json and .tbtm/tbtm.db. If initialization partially fails, inspect reported artifacts and run `tbtm uninstall` before retrying."
+        long_about = "Create .tbtm/config.json and .tbtm/tbtm.db in the canonical main worktree. If initialization partially fails, inspect reported artifacts and run `tbtm uninstall` before retrying."
     )]
     Init(InitArgs),
     #[command(
         about = "Remove repository-local TBTM artifacts",
-        long_about = "Remove .tbtm, direct-root TBTM backups and staging directories, plus exact /.tbtm/ rules. This is destructive; use --dry-run to inspect targets first."
+        long_about = "Remove .tbtm, direct-root TBTM backups and staging directories, plus exact /.tbtm/ rules from the canonical main worktree. This is destructive; use --dry-run to inspect targets first."
     )]
     Uninstall(UninstallArgs),
     #[command(about = "Inspect repository configuration and health")]
@@ -118,7 +118,7 @@ fn run() -> Result<(), (Error, bool)> {
                 Ok(result) => result,
                 Err(error) if error.code() == "FORCE_CONFIRMATION_REQUIRED" && !args.json => {
                     let confirmed =
-                        confirm("Force initialization moves existing .tbtm to a backup. Continue?")
+                        confirm("Force initialization moves the main worktree's existing .tbtm to a backup. Continue?")
                             .map_err(|e| (Error::phase("CONFIRMATION_FAILED", e), args.json))?;
                     if !confirmed {
                         render_success(&serde_json::json!({"cancelled": true}), args.json);
@@ -149,7 +149,7 @@ fn run() -> Result<(), (Error, bool)> {
             }
             if !args.dry_run
                 && !args.yes
-                && !confirm("Uninstall removes TBTM files from this repository. Continue?")
+                && !confirm("Uninstall removes TBTM files from the main worktree. Continue?")
                     .map_err(|e| (Error::phase("CONFIRMATION_FAILED", e), args.json))?
             {
                 render_success(&serde_json::json!({"cancelled": true}), args.json);
@@ -234,6 +234,7 @@ fn render_repository_health(result: &RepositoryHealth, json: bool) {
         render_success(result, true);
     } else {
         println!("Repository root: {}", result.repository_root.display());
+        println!("Worktree root: {}", result.worktree_root.display());
         println!("Config: {}", result.config_path.display());
         println!("Database: {}", result.database_path.display());
         println!("Repository ID: {}", result.repository_id);
