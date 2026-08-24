@@ -754,6 +754,7 @@ name = "tbtm"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "rusqlite",
  "serde",
  "serde_json",
  "tbtm-core",

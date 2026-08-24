@@ -1,5 +1,5 @@
 use deunicode::deunicode;
-use rusqlite::{Connection, OpenFlags, params};
+use rusqlite::{Connection, OpenFlags, TransactionBehavior, params};
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -16,11 +16,15 @@ use uuid::Uuid;
 const CONFIG_FILE: &str = "config.json";
 const DATABASE_FILE: &str = "tbtm.db";
 const STEALTH_RULE: &str = "/.tbtm/";
+const LATEST_MIGRATION: i64 = 2;
+const IDENTITY_RETRY_LIMIT: usize = 8;
 
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("INVALID_PREFIX: prefix must normalize to 1–48 ASCII characters")]
     InvalidPrefix,
+    #[error("agent name must normalize to 1–48 ASCII characters")]
+    InvalidAgentName { normalized: String },
     #[error("ALREADY_INITIALIZED: valid TBTM workspace already exists")]
     AlreadyInitialized,
     #[error("INVALID_INITIALIZATION: existing .tbtm is missing, corrupt, or mismatched")]
@@ -75,6 +79,7 @@ impl Error {
     pub fn code(&self) -> &'static str {
         match self {
             Self::InvalidPrefix => "INVALID_PREFIX",
+            Self::InvalidAgentName { .. } => "INVALID_AGENT_NAME",
             Self::AlreadyInitialized => "ALREADY_INITIALIZED",
             Self::InvalidInitialization => "INVALID_INITIALIZATION",
             Self::GitignoreUpdate(_) => "GITIGNORE_UPDATE_FAILED",
@@ -89,6 +94,11 @@ impl Error {
 
     pub fn details(&self) -> serde_json::Value {
         match self {
+            Self::InvalidAgentName { normalized } => serde_json::json!({
+                "normalized": normalized,
+                "minimumLength": 1,
+                "maximumLength": 48
+            }),
             Self::RepositoryNotInitialized { path } => serde_json::json!({
                 "check": "workspace",
                 "path": path,
@@ -342,6 +352,15 @@ pub struct UninstallResult {
     pub stealth_lines_removed: usize,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentRegistration {
+    pub id: Uuid,
+    pub base_name: String,
+    pub display_name: String,
+    pub created_at: String,
+}
+
 pub fn resolve_repository(
     current: &Path,
     access: AccessIntent,
@@ -435,12 +454,7 @@ pub fn inspect_repository_health(current: &Path) -> Result<RepositoryHealth, Err
         .map_err(|error| {
             sqlite_access_error("repository metadata", &resolved.database_path, error)
         })?;
-    let database_schema: Option<i64> = resolved
-        .connection
-        .query_row("SELECT MAX(version) FROM schema_migrations", [], |row| {
-            row.get(0)
-        })
-        .map_err(|error| sqlite_access_error("schema metadata", &resolved.database_path, error))?;
+    validate_migration_ledger(&resolved.connection, &resolved.database_path)?;
 
     let mut mismatched_fields = Vec::new();
     if metadata.0 != resolved.config.repository_id.to_string() {
@@ -448,9 +462,6 @@ pub fn inspect_repository_health(current: &Path) -> Result<RepositoryHealth, Err
     }
     if metadata.1 != resolved.config.prefix {
         mismatched_fields.push("prefix".to_owned());
-    }
-    if database_schema != Some(i64::from(resolved.config.schema_version)) {
-        mismatched_fields.push("schemaVersion".to_owned());
     }
     if metadata.2 != resolved.config.created_at {
         mismatched_fields.push("createdAt".to_owned());
@@ -653,11 +664,15 @@ fn check_git_marker_access(current: &Path) -> io::Result<()> {
 }
 
 pub fn normalize_prefix(input: &str) -> Result<String, Error> {
+    normalize_name(input).ok_or(Error::InvalidPrefix)
+}
+
+fn normalize_name(input: &str) -> Option<String> {
     if input
         .chars()
         .any(|character| character.is_alphabetic() && character.script() != Script::Latin)
     {
-        return Err(Error::InvalidPrefix);
+        return None;
     }
     let ascii = deunicode(&input.nfc().collect::<String>()).to_ascii_lowercase();
     let mut normalized = String::new();
@@ -675,9 +690,155 @@ pub fn normalize_prefix(input: &str) -> Result<String, Error> {
     }
     let value = normalized.trim_matches('-').to_owned();
     if value.is_empty() || value.len() > 48 {
-        return Err(Error::InvalidPrefix);
+        return None;
     }
-    Ok(value)
+    Some(value)
+}
+
+pub fn normalize_agent_name(input: &str) -> Result<String, Error> {
+    normalize_name(input).ok_or_else(|| Error::InvalidAgentName {
+        normalized: normalize_without_validation(input),
+    })
+}
+
+fn normalize_without_validation(input: &str) -> String {
+    if input
+        .chars()
+        .any(|character| character.is_alphabetic() && character.script() != Script::Latin)
+    {
+        return String::new();
+    }
+    let ascii = deunicode(&input.nfc().collect::<String>()).to_ascii_lowercase();
+    ascii
+        .split(|character: char| !character.is_ascii_lowercase() && !character.is_ascii_digit())
+        .filter(|segment| !segment.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
+pub fn register_agent(current: &Path, input: &str) -> Result<AgentRegistration, Error> {
+    let base_name = normalize_agent_name(input)?;
+    let mut resolved = resolve_repository(current, AccessIntent::ReadWrite)?;
+    resolved
+        .connection
+        .busy_timeout(std::time::Duration::from_secs(5))
+        .map_err(|error| {
+            sqlite_access_error("database busy timeout", &resolved.database_path, error)
+        })?;
+    apply_pending_migrations(&mut resolved)?;
+    register_agent_with(&mut resolved, base_name, Uuid::new_v4)
+}
+
+fn register_agent_with(
+    resolved: &mut ResolvedRepository,
+    base_name: String,
+    mut generate_id: impl FnMut() -> Uuid,
+) -> Result<AgentRegistration, Error> {
+    for _ in 0..IDENTITY_RETRY_LIMIT {
+        let id = generate_id();
+        let display_name = format!("{}-{}", base_name, &id.simple().to_string()[..8]);
+        let created_at = utc_now();
+        let transaction = resolved
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(|error| {
+                sqlite_access_error("agent registration", &resolved.database_path, error)
+            })?;
+        match transaction.execute(
+            "INSERT INTO agents (id, base_name, display_name, created_at) VALUES (?1, ?2, ?3, ?4)",
+            params![id.to_string(), base_name, display_name, created_at],
+        ) {
+            Ok(1) => {
+                transaction.commit().map_err(|error| {
+                    sqlite_access_error("agent registration", &resolved.database_path, error)
+                })?;
+                return Ok(AgentRegistration {
+                    id,
+                    base_name,
+                    display_name,
+                    created_at,
+                });
+            }
+            Err(error) if is_identity_collision(&error) => continue,
+            Err(error) => {
+                return Err(sqlite_access_error(
+                    "agent registration",
+                    &resolved.database_path,
+                    error,
+                ));
+            }
+            Ok(_) => unreachable!("one agent row is inserted"),
+        }
+    }
+    Err(Error::phase(
+        "AGENT_REGISTRATION_FAILED",
+        io::Error::other("unique identity retry limit exhausted"),
+    ))
+}
+
+fn is_identity_collision(error: &rusqlite::Error) -> bool {
+    matches!(
+        error,
+        rusqlite::Error::SqliteFailure(failure, message)
+            if failure.code == rusqlite::ErrorCode::ConstraintViolation
+                && message.as_deref().is_some_and(|message| {
+                    message.contains("agents.id") || message.contains("agents.display_name")
+                })
+    )
+}
+
+fn validate_migration_ledger(connection: &Connection, path: &Path) -> Result<Vec<i64>, Error> {
+    let mut statement = connection
+        .prepare("SELECT version FROM schema_migrations ORDER BY version")
+        .map_err(|error| sqlite_access_error("schema metadata", path, error))?;
+    let versions = statement
+        .query_map([], |row| row.get::<_, i64>(0))
+        .and_then(|rows| rows.collect::<Result<Vec<_>, _>>())
+        .map_err(|error| sqlite_access_error("schema metadata", path, error))?;
+    if versions.is_empty()
+        || versions[0] != 1
+        || versions.windows(2).any(|pair| pair[1] != pair[0] + 1)
+        || versions
+            .last()
+            .is_some_and(|version| *version > LATEST_MIGRATION)
+    {
+        return Err(Error::DatabaseUnavailable {
+            check: "schema metadata",
+            path: path.to_path_buf(),
+            message: "migration ledger is missing, non-sequential, or unsupported".to_owned(),
+        });
+    }
+    Ok(versions)
+}
+
+fn apply_pending_migrations(resolved: &mut ResolvedRepository) -> Result<(), Error> {
+    let transaction = resolved
+        .connection
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|error| {
+            sqlite_access_error("database migration", &resolved.database_path, error)
+        })?;
+    let versions = validate_migration_ledger(&transaction, &resolved.database_path)?;
+    if versions.last() == Some(&LATEST_MIGRATION) {
+        transaction.commit().map_err(|error| {
+            sqlite_access_error("database migration", &resolved.database_path, error)
+        })?;
+        return Ok(());
+    }
+    transaction
+        .execute_batch(include_str!("../migrations/0002_agent_registry.sql"))
+        .and_then(|_| {
+            transaction.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (2, ?1)",
+                [utc_now()],
+            )
+        })
+        .map_err(|error| {
+            sqlite_access_error("database migration", &resolved.database_path, error)
+        })?;
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("database migration", &resolved.database_path, error))
 }
 
 pub fn initialize(
@@ -795,6 +956,15 @@ fn create_database(
     transaction
         .execute(
             "INSERT INTO schema_migrations (version, applied_at) VALUES (1, ?1)",
+            [created_at],
+        )
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute_batch(include_str!("../migrations/0002_agent_registry.sql"))
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute(
+            "INSERT INTO schema_migrations (version, applied_at) VALUES (2, ?1)",
             [created_at],
         )
         .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
@@ -1006,7 +1176,10 @@ pub fn exit_code(error: &Error) -> i32 {
         Error::InvalidConfiguration { .. } => 2,
         Error::RepositoryNotInitialized { .. } => 3,
         Error::PermissionDenied { .. } => 5,
-        Error::InvalidPrefix | Error::AlreadyInitialized | Error::InvalidInitialization => 2,
+        Error::InvalidPrefix
+        | Error::InvalidAgentName { .. }
+        | Error::AlreadyInitialized
+        | Error::InvalidInitialization => 2,
         Error::Phase {
             phase: "FORCE_CONFIRMATION_REQUIRED" | "CONFIRMATION_REQUIRED",
             ..
@@ -1243,8 +1416,6 @@ mod tests {
                 "UPDATE repository_metadata SET prefix = 'different'",
                 "prefix",
             ),
-            ("UPDATE schema_migrations SET version = 2", "schemaVersion"),
-            ("DELETE FROM schema_migrations", "schemaVersion"),
             (
                 "UPDATE repository_metadata SET created_at = '2000-01-01T00:00:00Z'",
                 "createdAt",
@@ -1269,6 +1440,90 @@ mod tests {
                 database_before
             );
         }
+    }
+
+    #[test]
+    fn health_rejects_invalid_migration_ledger_without_writing() {
+        for statement in [
+            "DELETE FROM schema_migrations",
+            "UPDATE schema_migrations SET version = 3 WHERE version = 2",
+        ] {
+            let temp = tempdir().unwrap();
+            let initialized = initialize(temp.path(), None, false, false, false).unwrap();
+            let connection = Connection::open(&initialized.database_path).unwrap();
+            connection.execute(statement, []).unwrap();
+            drop(connection);
+            let database_before = fs::read(&initialized.database_path).unwrap();
+
+            let error = inspect_repository_health(temp.path()).unwrap_err();
+
+            assert!(matches!(
+                error,
+                Error::DatabaseUnavailable {
+                    check: "schema metadata",
+                    ..
+                }
+            ));
+            assert_eq!(
+                fs::read(&initialized.database_path).unwrap(),
+                database_before
+            );
+        }
+    }
+
+    #[test]
+    fn registers_distinct_agents_and_retries_identity_collisions() {
+        let temp = tempdir().unwrap();
+        initialize(temp.path(), None, false, false, false).unwrap();
+        let first = register_agent(temp.path(), "Claude Agent").unwrap();
+        let mut resolved = resolve_repository(temp.path(), AccessIntent::ReadWrite).unwrap();
+        let replacement = Uuid::new_v4();
+        let mut ids = [first.id, replacement].into_iter();
+
+        let second = register_agent_with(&mut resolved, "claude-agent".to_owned(), || {
+            ids.next().unwrap()
+        })
+        .unwrap();
+
+        assert_eq!(first.base_name, "claude-agent");
+        assert_eq!(second.id, replacement);
+        assert_ne!(first.display_name, second.display_name);
+        let count: i64 = resolved
+            .connection()
+            .query_row("SELECT COUNT(*) FROM agents", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn exhausted_identity_retries_leave_no_partial_agent() {
+        let temp = tempdir().unwrap();
+        initialize(temp.path(), None, false, false, false).unwrap();
+        let first = register_agent(temp.path(), "agent").unwrap();
+        let mut resolved = resolve_repository(temp.path(), AccessIntent::ReadWrite).unwrap();
+
+        let error =
+            register_agent_with(&mut resolved, "agent".to_owned(), || first.id).unwrap_err();
+
+        assert_eq!(error.code(), "AGENT_REGISTRATION_FAILED");
+        let count: i64 = resolved
+            .connection()
+            .query_row("SELECT COUNT(*) FROM agents", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn invalid_agent_names_report_normalized_value() {
+        assert!(matches!(
+            normalize_agent_name("中文"),
+            Err(Error::InvalidAgentName { normalized }) if normalized.is_empty()
+        ));
+        let too_long = "a".repeat(49);
+        assert!(matches!(
+            normalize_agent_name(&too_long),
+            Err(Error::InvalidAgentName { normalized }) if normalized == too_long
+        ));
     }
 
     #[test]

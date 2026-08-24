@@ -5,7 +5,8 @@ use std::{
     process::ExitCode,
 };
 use tbtm_core::{
-    Error, RepositoryHealth, exit_code, initialize, inspect_repository_health, uninstall,
+    AgentRegistration, Error, RepositoryHealth, exit_code, initialize, inspect_repository_health,
+    register_agent, uninstall,
 };
 
 #[derive(Parser)]
@@ -29,6 +30,27 @@ enum Command {
     Uninstall(UninstallArgs),
     #[command(about = "Inspect repository configuration and health")]
     Repo(RepoArgs),
+    #[command(about = "Manage repository-local agent identities")]
+    Agent(AgentArgs),
+}
+
+#[derive(Args)]
+struct AgentArgs {
+    #[command(subcommand)]
+    command: AgentCommand,
+}
+
+#[derive(Subcommand)]
+enum AgentCommand {
+    #[command(about = "Register a new repository-local agent identity")]
+    Register(AgentRegisterArgs),
+}
+
+#[derive(Args)]
+struct AgentRegisterArgs {
+    base_name: String,
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Args)]
@@ -182,6 +204,13 @@ fn run() -> Result<(), (Error, bool)> {
                 render_repository_health(&result, args.json);
             }
         },
+        Command::Agent(args) => match args.command {
+            AgentCommand::Register(args) => {
+                let result = register_agent(&current, &args.base_name)
+                    .map_err(|error| (error, args.json))?;
+                render_agent_registration(&result, args.json);
+            }
+        },
     }
     Ok(())
 }
@@ -192,6 +221,9 @@ fn command_uses_json(command: &Command) -> bool {
         Command::Uninstall(args) => args.json,
         Command::Repo(RepoArgs {
             command: RepoCommand::Status(args),
+        }) => args.json,
+        Command::Agent(AgentArgs {
+            command: AgentCommand::Register(args),
         }) => args.json,
     }
 }
@@ -241,6 +273,17 @@ fn render_repository_health(result: &RepositoryHealth, json: bool) {
         println!("Prefix: {}", result.prefix);
         println!("Schema version: {}", result.schema_version);
         println!("Health: {}", result.health);
+    }
+}
+
+fn render_agent_registration(result: &AgentRegistration, json: bool) {
+    if json {
+        render_success(result, true);
+    } else {
+        println!("Agent ID: {}", result.id);
+        println!("Base name: {}", result.base_name);
+        println!("Display name: {}", result.display_name);
+        println!("Created at: {}", result.created_at);
     }
 }
 

@@ -16,4 +16,5 @@ serde_json.workspace = true
 tbtm-core = { path = "../tbtm-core" }
 
 [dev-dependencies]
+rusqlite.workspace = true
 tempfile = "3"
