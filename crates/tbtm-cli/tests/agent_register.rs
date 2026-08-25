@@ -107,8 +107,16 @@ fn registration_upgrades_an_older_schema_one_repository() {
     let database = temp.path().join(".tbtm/tbtm.db");
     let connection = Connection::open(&database).unwrap();
     connection
-        .execute("DELETE FROM schema_migrations WHERE version = 2", [])
+        .execute("DELETE FROM schema_migrations WHERE version >= 2", [])
         .unwrap();
+    connection
+        .execute("DROP TABLE task_code_references", [])
+        .unwrap();
+    connection
+        .execute("DROP TABLE task_external_urls", [])
+        .unwrap();
+    connection.execute("DROP TABLE task_tags", []).unwrap();
+    connection.execute("DROP TABLE tasks", []).unwrap();
     connection.execute("DROP TABLE agents", []).unwrap();
     drop(connection);
     let config_before = fs::read(temp.path().join(".tbtm/config.json")).unwrap();
@@ -132,7 +140,7 @@ fn registration_upgrades_an_older_schema_one_repository() {
         .unwrap()
         .collect::<Result<_, _>>()
         .unwrap();
-    assert_eq!(versions, [1, 2]);
+    assert_eq!(versions, [1, 2, 3]);
 }
 
 #[test]

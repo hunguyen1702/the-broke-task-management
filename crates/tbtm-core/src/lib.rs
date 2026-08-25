@@ -14,11 +14,12 @@ use unicode_script::{Script, UnicodeScript};
 use uuid::Uuid;
 
 pub mod status;
+pub mod task;
 
 const CONFIG_FILE: &str = "config.json";
 const DATABASE_FILE: &str = "tbtm.db";
 const STEALTH_RULE: &str = "/.tbtm/";
-const LATEST_MIGRATION: i64 = 2;
+const LATEST_MIGRATION: i64 = 3;
 const IDENTITY_RETRY_LIMIT: usize = 8;
 
 #[derive(Debug, Error)]
@@ -27,6 +28,24 @@ pub enum Error {
     InvalidPrefix,
     #[error("agent name must normalize to 1–48 ASCII characters")]
     InvalidAgentName { normalized: String },
+    #[error("task title must not be empty")]
+    InvalidTaskTitle,
+    #[error("invalid task type: {value}")]
+    InvalidTaskType { value: String },
+    #[error("priority must be between 0 and 1000000")]
+    InvalidPriority,
+    #[error("estimate must be a finite non-negative number of hours")]
+    InvalidEstimate,
+    #[error("invalid external URL: {value}")]
+    InvalidExternalUrl { value: String },
+    #[error("invalid code reference: {value}")]
+    InvalidCodeReference { value: String },
+    #[error("duplicate or empty task context: {value}")]
+    DuplicateTaskContext { value: String },
+    #[error("agent not found: {id}")]
+    AgentNotFound { id: Uuid },
+    #[error("status not found: {code}")]
+    StatusNotFound { code: String },
     #[error("ALREADY_INITIALIZED: valid TBTM workspace already exists")]
     AlreadyInitialized,
     #[error("INVALID_INITIALIZATION: existing .tbtm is missing, corrupt, or mismatched")]
@@ -82,6 +101,15 @@ impl Error {
         match self {
             Self::InvalidPrefix => "INVALID_PREFIX",
             Self::InvalidAgentName { .. } => "INVALID_AGENT_NAME",
+            Self::InvalidTaskTitle => "INVALID_TASK_TITLE",
+            Self::InvalidTaskType { .. } => "INVALID_TASK_TYPE",
+            Self::InvalidPriority => "INVALID_PRIORITY",
+            Self::InvalidEstimate => "INVALID_ESTIMATE",
+            Self::InvalidExternalUrl { .. } => "INVALID_EXTERNAL_URL",
+            Self::InvalidCodeReference { .. } => "INVALID_CODE_REFERENCE",
+            Self::DuplicateTaskContext { .. } => "DUPLICATE_TASK_CONTEXT",
+            Self::AgentNotFound { .. } => "AGENT_NOT_FOUND",
+            Self::StatusNotFound { .. } => "STATUS_NOT_FOUND",
             Self::AlreadyInitialized => "ALREADY_INITIALIZED",
             Self::InvalidInitialization => "INVALID_INITIALIZATION",
             Self::GitignoreUpdate(_) => "GITIGNORE_UPDATE_FAILED",
@@ -413,6 +441,11 @@ fn resolve_workspace(
         | OpenFlags::SQLITE_OPEN_NOFOLLOW;
     let connection = Connection::open_with_flags(&database_path, flags)
         .map_err(|error| sqlite_open_error(&database_path, access, error))?;
+    if access == AccessIntent::ReadWrite {
+        connection
+            .execute_batch("PRAGMA foreign_keys = ON;")
+            .map_err(|error| sqlite_access_error("foreign key setup", &database_path, error))?;
+    }
     connection
         .query_row("PRAGMA schema_version", [], |row| row.get::<_, i64>(0))
         .map_err(|error| sqlite_access_error("database validation", &database_path, error))?;
@@ -821,23 +854,25 @@ fn apply_pending_migrations(resolved: &mut ResolvedRepository) -> Result<(), Err
             sqlite_access_error("database migration", &resolved.database_path, error)
         })?;
     let versions = validate_migration_ledger(&transaction, &resolved.database_path)?;
-    if versions.last() == Some(&LATEST_MIGRATION) {
-        transaction.commit().map_err(|error| {
-            sqlite_access_error("database migration", &resolved.database_path, error)
-        })?;
-        return Ok(());
+    let current = *versions.last().expect("validated non-empty ledger");
+    for (version, sql) in [
+        (2, include_str!("../migrations/0002_agent_registry.sql")),
+        (3, include_str!("../migrations/0003_task_core.sql")),
+    ] {
+        if version > current {
+            transaction
+                .execute_batch(sql)
+                .and_then(|_| {
+                    transaction.execute(
+                        "INSERT INTO schema_migrations (version, applied_at) VALUES (?1, ?2)",
+                        params![version, utc_now()],
+                    )
+                })
+                .map_err(|error| {
+                    sqlite_access_error("database migration", &resolved.database_path, error)
+                })?;
+        }
     }
-    transaction
-        .execute_batch(include_str!("../migrations/0002_agent_registry.sql"))
-        .and_then(|_| {
-            transaction.execute(
-                "INSERT INTO schema_migrations (version, applied_at) VALUES (2, ?1)",
-                [utc_now()],
-            )
-        })
-        .map_err(|error| {
-            sqlite_access_error("database migration", &resolved.database_path, error)
-        })?;
     transaction
         .commit()
         .map_err(|error| sqlite_access_error("database migration", &resolved.database_path, error))
@@ -967,6 +1002,15 @@ fn create_database(
     transaction
         .execute(
             "INSERT INTO schema_migrations (version, applied_at) VALUES (2, ?1)",
+            [created_at],
+        )
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute_batch(include_str!("../migrations/0003_task_core.sql"))
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute(
+            "INSERT INTO schema_migrations (version, applied_at) VALUES (3, ?1)",
             [created_at],
         )
         .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
@@ -1180,8 +1224,16 @@ pub fn exit_code(error: &Error) -> i32 {
         Error::PermissionDenied { .. } => 5,
         Error::InvalidPrefix
         | Error::InvalidAgentName { .. }
+        | Error::InvalidTaskTitle
+        | Error::InvalidTaskType { .. }
+        | Error::InvalidPriority
+        | Error::InvalidEstimate
+        | Error::InvalidExternalUrl { .. }
+        | Error::InvalidCodeReference { .. }
+        | Error::DuplicateTaskContext { .. }
         | Error::AlreadyInitialized
         | Error::InvalidInitialization => 2,
+        Error::AgentNotFound { .. } | Error::StatusNotFound { .. } => 3,
         Error::Phase {
             phase: "FORCE_CONFIRMATION_REQUIRED" | "CONFIRMATION_REQUIRED",
             ..
@@ -1563,7 +1615,7 @@ mod tests {
     fn health_rejects_invalid_migration_ledger_without_writing() {
         for statement in [
             "DELETE FROM schema_migrations",
-            "UPDATE schema_migrations SET version = 3 WHERE version = 2",
+            "UPDATE schema_migrations SET version = 4 WHERE version = 3",
         ] {
             let temp = tempdir().unwrap();
             let initialized = initialize(temp.path(), None, false, false, false).unwrap();

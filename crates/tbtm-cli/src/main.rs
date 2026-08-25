@@ -6,7 +6,9 @@ use std::{
 };
 use tbtm_core::{
     AgentRegistration, Error, RepositoryHealth, exit_code, initialize, inspect_repository_health,
-    register_agent, uninstall,
+    register_agent,
+    task::{CreateTaskInput, CreatedTask, TaskType, create_task, parse_code_reference},
+    uninstall,
 };
 
 #[derive(Parser)]
@@ -32,6 +34,50 @@ enum Command {
     Repo(RepoArgs),
     #[command(about = "Manage repository-local agent identities")]
     Agent(AgentArgs),
+    #[command(about = "Manage repository-local tasks")]
+    Task(Box<TaskArgs>),
+}
+
+#[derive(Args)]
+struct TaskArgs {
+    #[command(subcommand)]
+    command: TaskCommand,
+}
+
+#[derive(Subcommand)]
+enum TaskCommand {
+    #[command(about = "Create a task")]
+    Create(TaskCreateArgs),
+}
+
+#[derive(Args)]
+struct TaskCreateArgs {
+    #[arg(long)]
+    title: String,
+    #[arg(long = "type")]
+    task_type: String,
+    #[arg(long, default_value = "")]
+    description: String,
+    #[arg(long, default_value = "")]
+    goal: String,
+    #[arg(long, default_value = "")]
+    acceptance_criteria: String,
+    #[arg(long, default_value = "to_do")]
+    status: String,
+    #[arg(long, default_value_t = 50)]
+    priority: i64,
+    #[arg(long)]
+    estimate: Option<f64>,
+    #[arg(long = "tag")]
+    tags: Vec<String>,
+    #[arg(long = "url")]
+    urls: Vec<String>,
+    #[arg(long = "code-ref")]
+    code_references: Vec<String>,
+    #[arg(long)]
+    agent: Option<uuid::Uuid>,
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Args)]
@@ -211,6 +257,37 @@ fn run() -> Result<(), (Error, bool)> {
                 render_agent_registration(&result, args.json);
             }
         },
+        Command::Task(args) => match args.command {
+            TaskCommand::Create(args) => {
+                let task_type =
+                    TaskType::parse(&args.task_type).map_err(|error| (error, args.json))?;
+                let code_references = args
+                    .code_references
+                    .iter()
+                    .map(|value| parse_code_reference(value))
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|error| (error, args.json))?;
+                let result = create_task(
+                    &current,
+                    CreateTaskInput {
+                        title: args.title,
+                        task_type,
+                        description: args.description,
+                        goal: args.goal,
+                        acceptance_criteria: args.acceptance_criteria,
+                        status_code: args.status,
+                        priority: args.priority,
+                        estimate: args.estimate,
+                        tags: args.tags,
+                        external_urls: args.urls,
+                        code_references,
+                        agent_id: args.agent,
+                    },
+                )
+                .map_err(|error| (error, args.json))?;
+                render_created_task(&result, args.json);
+            }
+        },
     }
     Ok(())
 }
@@ -225,6 +302,22 @@ fn command_uses_json(command: &Command) -> bool {
         Command::Agent(AgentArgs {
             command: AgentCommand::Register(args),
         }) => args.json,
+        Command::Task(args) => match &args.command {
+            TaskCommand::Create(args) => args.json,
+        },
+    }
+}
+
+fn render_created_task(result: &CreatedTask, json: bool) {
+    if json {
+        render_success(result, true);
+    } else {
+        println!("Task ID: {}", result.id);
+        println!("Title: {}", result.title);
+        println!("Type: {}", result.task_type.as_str());
+        println!("Status: {}", result.status.name);
+        println!("Priority: {}", result.priority);
+        println!("Actor: {}", result.created_by);
     }
 }
 

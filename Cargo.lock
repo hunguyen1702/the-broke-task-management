@@ -759,6 +759,7 @@ dependencies = [
  "serde_json",
  "tbtm-core",
  "tempfile",
+ "uuid",
 ]
 
 [[package]]
@@ -775,6 +776,7 @@ dependencies = [
  "time",
  "unicode-normalization",
  "unicode-script",
+ "url",
  "uuid",
 ]
 
