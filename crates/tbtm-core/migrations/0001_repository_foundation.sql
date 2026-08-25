@@ -12,6 +12,11 @@ CREATE TABLE repository_metadata (
 
 CREATE TABLE statuses (
     id TEXT PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE CHECK (
+        length(code) > 0
+        AND substr(code, 1, 1) BETWEEN 'a' AND 'z'
+        AND code NOT GLOB '*[^a-z0-9_]*'
+    ),
     name TEXT NOT NULL UNIQUE,
     completed INTEGER NOT NULL CHECK (completed IN (0, 1)),
     display_order INTEGER NOT NULL UNIQUE,

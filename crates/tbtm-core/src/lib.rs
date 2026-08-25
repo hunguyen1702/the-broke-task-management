@@ -13,6 +13,8 @@ use unicode_normalization::UnicodeNormalization;
 use unicode_script::{Script, UnicodeScript};
 use uuid::Uuid;
 
+pub mod status;
+
 const CONFIG_FILE: &str = "config.json";
 const DATABASE_FILE: &str = "tbtm.db";
 const STEALTH_RULE: &str = "/.tbtm/";
@@ -969,12 +971,12 @@ fn create_database(
         )
         .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
     transaction.execute("INSERT INTO repository_metadata (singleton, repository_id, prefix, created_at) VALUES (1, ?1, ?2, ?3)", params![repository_id.to_string(), prefix, created_at]).map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
-    for (name, completed, order) in [
-        ("Todo", false, 0),
-        ("In progress", false, 1),
-        ("Done", true, 2),
+    for (code, name, completed, order) in [
+        ("to_do", "Todo", false, 0),
+        ("in_progress", "In progress", false, 1),
+        ("done", "Done", true, 2),
     ] {
-        transaction.execute("INSERT INTO statuses (id, name, completed, display_order, is_default) VALUES (?1, ?2, ?3, ?4, 1)", params![Uuid::new_v4().to_string(), name, completed, order]).map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+        transaction.execute("INSERT INTO statuses (id, code, name, completed, display_order, is_default) VALUES (?1, ?2, ?3, ?4, ?5, 1)", params![Uuid::new_v4().to_string(), code, name, completed, order]).map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
     }
     transaction
         .commit()
@@ -1226,6 +1228,121 @@ mod tests {
         assert_eq!(
             fs::read_to_string(temp.path().join(".gitignore")).unwrap(),
             "/.tbtm/\n"
+        );
+    }
+
+    #[test]
+    fn initializes_canonical_statuses_and_finds_them_by_exact_code() {
+        let temp = tempdir().unwrap();
+        let initialized = initialize(temp.path(), None, false, false, false).unwrap();
+        let connection = Connection::open(initialized.database_path).unwrap();
+
+        let statuses = [
+            ("to_do", "Todo", false, 0),
+            ("in_progress", "In progress", false, 1),
+            ("done", "Done", true, 2),
+        ];
+        for (code, name, completed, display_order) in statuses {
+            let status = status::find_by_code(&connection, code).unwrap().unwrap();
+            assert!(Uuid::parse_str(&status.id).is_ok());
+            assert_eq!(status.code, code);
+            assert_eq!(status.name, name);
+            assert_eq!(status.completed, completed);
+            assert_eq!(status.display_order, display_order);
+            assert!(status.is_default);
+        }
+        assert!(
+            status::find_by_code(&connection, "TO_DO")
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            status::find_by_code(&connection, "unknown")
+                .unwrap()
+                .is_none()
+        );
+        let count: i64 = connection
+            .query_row("SELECT COUNT(*) FROM statuses", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn status_code_constraints_accept_only_the_documented_grammar() {
+        let temp = tempdir().unwrap();
+        let initialized = initialize(temp.path(), None, false, false, false).unwrap();
+        let connection = Connection::open(initialized.database_path).unwrap();
+
+        for (index, code) in ["a", "custom_2", "z9"].into_iter().enumerate() {
+            connection
+                .execute(
+                    "INSERT INTO statuses (id, code, name, completed, display_order, is_default)
+                     VALUES (?1, ?2, ?3, 0, ?4, 0)",
+                    params![
+                        Uuid::new_v4().to_string(),
+                        code,
+                        format!("Valid {index}"),
+                        10 + index as i64
+                    ],
+                )
+                .unwrap();
+        }
+
+        for (index, code) in ["", "Todo", "2do", "has space", "has-hyphen", "é"]
+            .into_iter()
+            .enumerate()
+        {
+            let result = connection.execute(
+                "INSERT INTO statuses (id, code, name, completed, display_order, is_default)
+                 VALUES (?1, ?2, ?3, 0, ?4, 0)",
+                params![
+                    Uuid::new_v4().to_string(),
+                    code,
+                    format!("Invalid {index}"),
+                    20 + index as i64
+                ],
+            );
+            assert!(result.is_err(), "invalid code was accepted: {code:?}");
+        }
+
+        let null_result = connection.execute(
+            "INSERT INTO statuses (id, code, name, completed, display_order, is_default)
+             VALUES (?1, NULL, 'Null code', 0, 30, 0)",
+            [Uuid::new_v4().to_string()],
+        );
+        assert!(null_result.is_err());
+        let duplicate_result = connection.execute(
+            "INSERT INTO statuses (id, code, name, completed, display_order, is_default)
+             VALUES (?1, 'to_do', 'Different name', 0, 31, 0)",
+            [Uuid::new_v4().to_string()],
+        );
+        assert!(duplicate_result.is_err());
+    }
+
+    #[test]
+    fn status_lookup_obeys_caller_transaction_control() {
+        let temp = tempdir().unwrap();
+        let initialized = initialize(temp.path(), None, false, false, false).unwrap();
+        let mut connection = Connection::open(initialized.database_path).unwrap();
+        let transaction = connection.transaction().unwrap();
+        transaction
+            .execute(
+                "INSERT INTO statuses (id, code, name, completed, display_order, is_default)
+                 VALUES (?1, 'review', 'Review', 0, 10, 0)",
+                [Uuid::new_v4().to_string()],
+            )
+            .unwrap();
+
+        assert!(
+            status::find_by_code(&transaction, "review")
+                .unwrap()
+                .is_some()
+        );
+        transaction.rollback().unwrap();
+        assert!(
+            status::find_by_code(&connection, "review")
+                .unwrap()
+                .is_none()
         );
     }
 
