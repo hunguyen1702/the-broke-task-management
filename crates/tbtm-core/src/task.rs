@@ -2,7 +2,9 @@ use crate::{
     AccessIntent, Error, apply_pending_migrations, resolve_repository, sqlite_access_error, status,
     utc_now,
 };
-use rusqlite::{OptionalExtension, TransactionBehavior, params};
+use rusqlite::{
+    OptionalExtension, Transaction, TransactionBehavior, params, params_from_iter, types::Value,
+};
 use serde::Serialize;
 use std::{collections::HashSet, path::Path};
 use url::Url;
@@ -93,7 +95,53 @@ pub struct TaskStatus {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CreatedTask {
+pub struct TaskHierarchy {
+    pub parent: Option<RelatedTask>,
+    pub children: Vec<RelatedTask>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskDependencies {
+    pub upstream: Vec<RelatedTask>,
+    pub downstream: Vec<RelatedTask>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelatedTask {
+    pub id: String,
+    pub title: String,
+    #[serde(rename = "type")]
+    pub task_type: TaskType,
+    pub status: RelatedTaskStatus,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelatedTaskStatus {
+    pub code: String,
+    pub name: String,
+    pub completed: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskClaim {
+    pub agent: ClaimAgent,
+    pub claimed_at: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaimAgent {
+    pub id: String,
+    pub display_name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FullTask {
     pub id: String,
     pub title: String,
     pub description: String,
@@ -107,14 +155,48 @@ pub struct CreatedTask {
     pub tags: Vec<String>,
     pub external_urls: Vec<String>,
     pub code_references: Vec<CodeReference>,
-    pub parent_id: Option<String>,
-    pub dependencies: Vec<String>,
-    pub claim: Option<String>,
+    pub hierarchy: TaskHierarchy,
+    pub dependencies: TaskDependencies,
+    pub claim: Option<TaskClaim>,
     pub archived: bool,
     pub created_at: String,
     pub updated_at: String,
     pub created_by: String,
     pub updated_by: String,
+}
+
+pub type CreatedTask = FullTask;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArchiveScope {
+    Active,
+    Archived,
+    All,
+}
+
+#[derive(Debug, Clone)]
+pub struct ListTasksInput {
+    pub archive_scope: ArchiveScope,
+    pub status_codes: Vec<String>,
+    pub task_types: Vec<TaskType>,
+    pub tags: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskListItem {
+    pub id: String,
+    pub title: String,
+    #[serde(rename = "type")]
+    pub task_type: TaskType,
+    pub status: TaskStatus,
+    pub priority: i64,
+    pub estimate: Option<f64>,
+    pub tags: Vec<String>,
+    pub archived: bool,
+    pub claim: Option<TaskClaim>,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 pub fn parse_code_reference(value: &str) -> Result<CodeReference, Error> {
@@ -345,8 +427,8 @@ fn insert_task(
         tags: input.tags.clone(),
         external_urls: input.external_urls.clone(),
         code_references: input.code_references.clone(),
-        parent_id: None,
-        dependencies: vec![],
+        hierarchy: empty_hierarchy(),
+        dependencies: empty_dependencies(),
         claim: None,
         archived: false,
         created_at: timestamp.clone(),
@@ -354,6 +436,287 @@ fn insert_task(
         created_by: actor.clone(),
         updated_by: actor,
     })
+}
+
+fn empty_hierarchy() -> TaskHierarchy {
+    TaskHierarchy {
+        parent: None,
+        children: vec![],
+    }
+}
+
+fn empty_dependencies() -> TaskDependencies {
+    TaskDependencies {
+        upstream: vec![],
+        downstream: vec![],
+    }
+}
+
+pub fn view_task(current: &Path, id: &str) -> Result<FullTask, Error> {
+    let mut resolved = resolve_repository(current, AccessIntent::ReadOnly)?;
+    let database_path = resolved.database_path.clone();
+    let transaction = resolved
+        .connection_mut()
+        .transaction()
+        .map_err(|error| sqlite_access_error("task detail snapshot", &database_path, error))?;
+    let mut task = load_full_task(&transaction, id, &database_path)?
+        .ok_or_else(|| Error::TaskNotFound { id: id.to_owned() })?;
+    load_full_context(&transaction, &mut task, &database_path)?;
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("task detail snapshot", &database_path, error))?;
+    Ok(task)
+}
+
+fn load_full_task(
+    transaction: &Transaction<'_>,
+    id: &str,
+    database_path: &Path,
+) -> Result<Option<FullTask>, Error> {
+    transaction
+        .query_row(
+            "SELECT t.id, t.title, t.description, t.goal, t.acceptance_criteria,
+                t.task_type, s.id, s.code, s.name, s.completed, t.priority,
+                t.estimate_hours, t.archived, t.created_at, t.updated_at,
+                CASE WHEN t.created_actor_type = 'user' THEN 'user' ELSE t.created_agent_id END,
+                CASE WHEN t.updated_actor_type = 'user' THEN 'user' ELSE t.updated_agent_id END
+         FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE t.id = ?1",
+            [id],
+            |row| {
+                Ok(FullTask {
+                    id: row.get(0)?,
+                    title: row.get(1)?,
+                    description: row.get(2)?,
+                    goal: row.get(3)?,
+                    acceptance_criteria: row.get(4)?,
+                    task_type: task_type_from_row(row.get::<_, String>(5)?)?,
+                    status: TaskStatus {
+                        id: row.get(6)?,
+                        code: row.get(7)?,
+                        name: row.get(8)?,
+                        completed: row.get(9)?,
+                    },
+                    priority: row.get(10)?,
+                    estimate: row.get(11)?,
+                    tags: vec![],
+                    external_urls: vec![],
+                    code_references: vec![],
+                    hierarchy: empty_hierarchy(),
+                    dependencies: empty_dependencies(),
+                    claim: None,
+                    archived: row.get(12)?,
+                    created_at: row.get(13)?,
+                    updated_at: row.get(14)?,
+                    created_by: row.get(15)?,
+                    updated_by: row.get(16)?,
+                })
+            },
+        )
+        .optional()
+        .map_err(|error| sqlite_access_error("task detail", database_path, error))
+}
+
+fn task_type_from_row(value: String) -> rusqlite::Result<TaskType> {
+    TaskType::parse(&value).map_err(|_| {
+        rusqlite::Error::InvalidColumnType(0, "task_type".to_owned(), rusqlite::types::Type::Text)
+    })
+}
+
+fn load_full_context(
+    transaction: &Transaction<'_>,
+    task: &mut FullTask,
+    database_path: &Path,
+) -> Result<(), Error> {
+    task.tags = load_strings(
+        transaction,
+        "SELECT value FROM task_tags WHERE task_id = ?1 ORDER BY ordinal",
+        &task.id,
+        database_path,
+    )?;
+    task.external_urls = load_strings(
+        transaction,
+        "SELECT url FROM task_external_urls WHERE task_id = ?1 ORDER BY ordinal",
+        &task.id,
+        database_path,
+    )?;
+    let mut statement = transaction.prepare("SELECT path, start_line, end_line, description FROM task_code_references WHERE task_id = ?1 ORDER BY ordinal")
+        .map_err(|error| sqlite_access_error("task code references", database_path, error))?;
+    task.code_references = statement
+        .query_map([&task.id], |row| {
+            Ok(CodeReference {
+                path: row.get(0)?,
+                start_line: row.get(1)?,
+                end_line: row.get(2)?,
+                description: row.get(3)?,
+            })
+        })
+        .and_then(Iterator::collect)
+        .map_err(|error| sqlite_access_error("task code references", database_path, error))?;
+    Ok(())
+}
+
+fn load_strings(
+    transaction: &Transaction<'_>,
+    sql: &str,
+    id: &str,
+    database_path: &Path,
+) -> Result<Vec<String>, Error> {
+    let mut statement = transaction
+        .prepare(sql)
+        .map_err(|error| sqlite_access_error("task context", database_path, error))?;
+    statement
+        .query_map([id], |row| row.get(0))
+        .and_then(Iterator::collect)
+        .map_err(|error| sqlite_access_error("task context", database_path, error))
+}
+
+pub fn list_tasks(current: &Path, input: &ListTasksInput) -> Result<Vec<TaskListItem>, Error> {
+    let mut resolved = resolve_repository(current, AccessIntent::ReadOnly)?;
+    let database_path = resolved.database_path.clone();
+    let transaction = resolved
+        .connection_mut()
+        .transaction()
+        .map_err(|error| sqlite_access_error("task list snapshot", &database_path, error))?;
+    for code in input.status_codes.iter().collect::<HashSet<_>>() {
+        if status::find_by_code(&transaction, code)
+            .map_err(|error| sqlite_access_error("task status filter", &database_path, error))?
+            .is_none()
+        {
+            return Err(Error::StatusNotFound { code: code.clone() });
+        }
+    }
+    let (sql, values) = list_sql(input);
+    let mut statement = transaction
+        .prepare(&sql)
+        .map_err(|error| sqlite_access_error("task list", &database_path, error))?;
+    let rows = statement
+        .query_map(params_from_iter(values), |row| {
+            Ok(TaskListItem {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                task_type: task_type_from_row(row.get::<_, String>(2)?)?,
+                status: TaskStatus {
+                    id: row.get(3)?,
+                    code: row.get(4)?,
+                    name: row.get(5)?,
+                    completed: row.get(6)?,
+                },
+                priority: row.get(7)?,
+                estimate: row.get(8)?,
+                tags: vec![],
+                archived: row.get(9)?,
+                claim: None,
+                created_at: row.get(10)?,
+                updated_at: row.get(11)?,
+            })
+        })
+        .map_err(|error| sqlite_access_error("task list", &database_path, error))?;
+    let mut tasks: Vec<_> = rows
+        .collect::<rusqlite::Result<_>>()
+        .map_err(|error| sqlite_access_error("task list", &database_path, error))?;
+    drop(statement);
+    load_list_tags(&transaction, &mut tasks, &database_path)?;
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("task list snapshot", &database_path, error))?;
+    Ok(tasks)
+}
+
+fn list_sql(input: &ListTasksInput) -> (String, Vec<Value>) {
+    let mut sql = String::from(
+        "SELECT t.id, t.title, t.task_type, s.id, s.code, s.name, s.completed, t.priority, t.estimate_hours, t.archived, t.created_at, t.updated_at FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE 1=1",
+    );
+    let mut values = Vec::new();
+    match input.archive_scope {
+        ArchiveScope::Active => sql.push_str(" AND t.archived = 0"),
+        ArchiveScope::Archived => sql.push_str(" AND t.archived = 1"),
+        ArchiveScope::All => {}
+    }
+    push_in_filter(
+        &mut sql,
+        &mut values,
+        "s.code",
+        input.status_codes.iter().cloned(),
+    );
+    push_in_filter(
+        &mut sql,
+        &mut values,
+        "t.task_type",
+        input
+            .task_types
+            .iter()
+            .map(|value| value.as_str().to_owned()),
+    );
+    if !input.tags.is_empty() {
+        sql.push_str(
+            " AND EXISTS (SELECT 1 FROM task_tags tf WHERE tf.task_id = t.id AND tf.value IN (",
+        );
+        push_placeholders(&mut sql, input.tags.len());
+        sql.push_str("))");
+        values.extend(input.tags.iter().cloned().map(Value::Text));
+    }
+    sql.push_str(" ORDER BY t.priority DESC, t.created_at ASC, t.id ASC");
+    (sql, values)
+}
+
+fn push_in_filter(
+    sql: &mut String,
+    values: &mut Vec<Value>,
+    column: &str,
+    items: impl Iterator<Item = String>,
+) {
+    let items: Vec<_> = items.collect();
+    if items.is_empty() {
+        return;
+    }
+    sql.push_str(" AND ");
+    sql.push_str(column);
+    sql.push_str(" IN (");
+    push_placeholders(sql, items.len());
+    sql.push(')');
+    values.extend(items.into_iter().map(Value::Text));
+}
+
+fn push_placeholders(sql: &mut String, count: usize) {
+    sql.push_str(
+        &std::iter::repeat_n("?", count)
+            .collect::<Vec<_>>()
+            .join(","),
+    );
+}
+
+fn load_list_tags(
+    transaction: &Transaction<'_>,
+    tasks: &mut [TaskListItem],
+    database_path: &Path,
+) -> Result<(), Error> {
+    if tasks.is_empty() {
+        return Ok(());
+    }
+    let mut sql = String::from("SELECT task_id, value FROM task_tags WHERE task_id IN (");
+    push_placeholders(&mut sql, tasks.len());
+    sql.push_str(") ORDER BY task_id, ordinal");
+    let ids: Vec<_> = tasks.iter().map(|task| task.id.clone()).collect();
+    let mut statement = transaction
+        .prepare(&sql)
+        .map_err(|error| sqlite_access_error("task list tags", database_path, error))?;
+    let tags = statement
+        .query_map(params_from_iter(ids), |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })
+        .and_then(Iterator::collect::<rusqlite::Result<Vec<_>>>)
+        .map_err(|error| sqlite_access_error("task list tags", database_path, error))?;
+    let indexes: std::collections::HashMap<_, _> = tasks
+        .iter()
+        .enumerate()
+        .map(|(index, task)| (task.id.clone(), index))
+        .collect();
+    for (id, tag) in tags {
+        tasks[*indexes.get(&id).expect("selected task")]
+            .tags
+            .push(tag);
+    }
+    Ok(())
 }
 
 fn is_task_id_collision(error: &Error) -> bool {

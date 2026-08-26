@@ -7,7 +7,10 @@ use std::{
 use tbtm_core::{
     AgentRegistration, Error, RepositoryHealth, exit_code, initialize, inspect_repository_health,
     register_agent,
-    task::{CreateTaskInput, CreatedTask, TaskType, create_task, parse_code_reference},
+    task::{
+        ArchiveScope, CreateTaskInput, CreatedTask, FullTask, ListTasksInput, TaskListItem,
+        TaskType, create_task, list_tasks, parse_code_reference, view_task,
+    },
     uninstall,
 };
 
@@ -48,6 +51,33 @@ struct TaskArgs {
 enum TaskCommand {
     #[command(about = "Create a task")]
     Create(TaskCreateArgs),
+    #[command(about = "View a task")]
+    View(TaskViewArgs),
+    #[command(about = "List tasks")]
+    List(TaskListArgs),
+}
+
+#[derive(Args)]
+struct TaskViewArgs {
+    id: String,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct TaskListArgs {
+    #[arg(long)]
+    archived: bool,
+    #[arg(long)]
+    all: bool,
+    #[arg(long = "status")]
+    statuses: Vec<String>,
+    #[arg(long = "type")]
+    task_types: Vec<String>,
+    #[arg(long = "tag")]
+    tags: Vec<String>,
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Args)]
@@ -287,6 +317,38 @@ fn run() -> Result<(), (Error, bool)> {
                 .map_err(|error| (error, args.json))?;
                 render_created_task(&result, args.json);
             }
+            TaskCommand::View(args) => {
+                let result = view_task(&current, &args.id).map_err(|error| (error, args.json))?;
+                render_task_detail(&result, args.json);
+            }
+            TaskCommand::List(args) => {
+                if args.archived && args.all {
+                    return Err((Error::ConflictingArguments, args.json));
+                }
+                let task_types = args
+                    .task_types
+                    .iter()
+                    .map(|value| TaskType::parse(value))
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|error| (error, args.json))?;
+                let result = list_tasks(
+                    &current,
+                    &ListTasksInput {
+                        archive_scope: if args.archived {
+                            ArchiveScope::Archived
+                        } else if args.all {
+                            ArchiveScope::All
+                        } else {
+                            ArchiveScope::Active
+                        },
+                        status_codes: args.statuses,
+                        task_types,
+                        tags: args.tags,
+                    },
+                )
+                .map_err(|error| (error, args.json))?;
+                render_task_list(&result, args.json);
+            }
         },
     }
     Ok(())
@@ -304,7 +366,88 @@ fn command_uses_json(command: &Command) -> bool {
         }) => args.json,
         Command::Task(args) => match &args.command {
             TaskCommand::Create(args) => args.json,
+            TaskCommand::View(args) => args.json,
+            TaskCommand::List(args) => args.json,
         },
+    }
+}
+
+fn render_task_detail(result: &FullTask, json: bool) {
+    if json {
+        render_success(result, true);
+        return;
+    }
+    println!("Task ID: {}", result.id);
+    println!("Title: {}", result.title);
+    println!("Type: {}", result.task_type.as_str());
+    println!("Status: {} ({})", result.status.name, result.status.code);
+    println!("Priority: {}", result.priority);
+    println!(
+        "Estimate: {}",
+        result
+            .estimate
+            .map_or_else(|| "—".to_owned(), |value| value.to_string())
+    );
+    println!("Archived: {}", result.archived);
+    println!("Description:\n{}", result.description);
+    println!("Goal:\n{}", result.goal);
+    println!("Acceptance criteria:\n{}", result.acceptance_criteria);
+    println!("Tags: {}", display_values(&result.tags));
+    println!("External URLs: {}", display_values(&result.external_urls));
+    println!("Code references:");
+    if result.code_references.is_empty() {
+        println!("  —");
+    } else {
+        for reference in &result.code_references {
+            let lines = match (reference.start_line, reference.end_line) {
+                (Some(start), Some(end)) => format!(":{start}-{end}"),
+                (Some(start), None) => format!(":{start}"),
+                _ => String::new(),
+            };
+            let description = reference
+                .description
+                .as_ref()
+                .map_or(String::new(), |value| format!(" — {value}"));
+            println!("  {}{}{}", reference.path, lines, description);
+        }
+    }
+    println!("Hierarchy: parent —; children —");
+    println!("Dependencies: upstream —; downstream —");
+    println!("Claim: —");
+    println!("Created: {} by {}", result.created_at, result.created_by);
+    println!("Updated: {} by {}", result.updated_at, result.updated_by);
+}
+
+fn display_values(values: &[String]) -> String {
+    if values.is_empty() {
+        "—".to_owned()
+    } else {
+        values.join(", ")
+    }
+}
+
+fn render_task_list(result: &[TaskListItem], json: bool) {
+    if json {
+        render_success(&result, true);
+        return;
+    }
+    if result.is_empty() {
+        println!("No tasks found.");
+        return;
+    }
+    println!(
+        "{:<28} {:<12} {:<14} {:>8}  TITLE",
+        "ID", "TYPE", "STATUS", "PRIORITY"
+    );
+    for task in result {
+        println!(
+            "{:<28} {:<12} {:<14} {:>8}  {}",
+            task.id,
+            task.task_type.as_str(),
+            task.status.code,
+            task.priority,
+            task.title
+        );
     }
 }
 

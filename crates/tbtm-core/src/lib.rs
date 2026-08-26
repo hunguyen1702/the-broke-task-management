@@ -46,6 +46,10 @@ pub enum Error {
     AgentNotFound { id: Uuid },
     #[error("status not found: {code}")]
     StatusNotFound { code: String },
+    #[error("task not found: {id}")]
+    TaskNotFound { id: String },
+    #[error("--archived and --all cannot be used together")]
+    ConflictingArguments,
     #[error("ALREADY_INITIALIZED: valid TBTM workspace already exists")]
     AlreadyInitialized,
     #[error("INVALID_INITIALIZATION: existing .tbtm is missing, corrupt, or mismatched")]
@@ -110,6 +114,8 @@ impl Error {
             Self::DuplicateTaskContext { .. } => "DUPLICATE_TASK_CONTEXT",
             Self::AgentNotFound { .. } => "AGENT_NOT_FOUND",
             Self::StatusNotFound { .. } => "STATUS_NOT_FOUND",
+            Self::TaskNotFound { .. } => "TASK_NOT_FOUND",
+            Self::ConflictingArguments => "CONFLICTING_ARGUMENTS",
             Self::AlreadyInitialized => "ALREADY_INITIALIZED",
             Self::InvalidInitialization => "INVALID_INITIALIZATION",
             Self::GitignoreUpdate(_) => "GITIGNORE_UPDATE_FAILED",
@@ -1231,9 +1237,12 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::InvalidExternalUrl { .. }
         | Error::InvalidCodeReference { .. }
         | Error::DuplicateTaskContext { .. }
+        | Error::ConflictingArguments
         | Error::AlreadyInitialized
         | Error::InvalidInitialization => 2,
-        Error::AgentNotFound { .. } | Error::StatusNotFound { .. } => 3,
+        Error::AgentNotFound { .. } | Error::StatusNotFound { .. } | Error::TaskNotFound { .. } => {
+            3
+        }
         Error::Phase {
             phase: "FORCE_CONFIRMATION_REQUIRED" | "CONFIRMATION_REQUIRED",
             ..

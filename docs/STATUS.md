@@ -13,7 +13,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 - E2-S1-T1 is implemented.
 - E3-S1-T1 is complete and provides the status-code contract required by task creation.
-- Plan next: E2-S2 to define task detail and list behavior.
+- E2-S2-T1 is implemented and verified.
+- Plan next: E2-S3 to define task-content updates.
 - E1-S4-T1 remains blocked until the task, status, dependency, and active-claim models exist.
 
 ## E1 — Repository foundation and identity
@@ -37,7 +38,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 |---|---|---|---|
 | [E2-S1](epics/E2-S1-create-a-task.md) | done | done | E1-S1, E1-S3, E3-S1 |
 | [E2-S1-T1](tasks/E2-S1-T1-implement-task-creation.md) | done | done | E1-S1-T1, E1-S3-T1, E3-S1-T1 |
-| E2-S2 View and list tasks | needed | not_planned | E2-S1 |
+| [E2-S2](epics/E2-S2-view-and-list-tasks.md) | done | done | E2-S1 |
+| [E2-S2-T1](tasks/E2-S2-T1-implement-task-detail-and-listing.md) | done | done | E2-S1-T1 |
 | E2-S3 Update task content | needed | not_planned | E2-S1, E4-S1 |
 | E2-S4 Manage tags, URLs, estimates, and code references | needed | not_planned | E2-S1 |
 | E2-S5 Archive a task | needed | not_planned | E2-S1, E4-S3, E5-S3 |

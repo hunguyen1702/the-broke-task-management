@@ -78,6 +78,7 @@ Options covered by this story are `--description`, `--goal`, `--acceptance-crite
 
 - The task row and all tag, URL, and code-reference rows commit in one SQLite transaction or leave no task artifacts.
 - JSON returns the entire persisted task in the shared envelope. Optional scalar fields use `null`; collections use `[]`.
+- The shared full-task shape uses `hierarchy: {parent, children}`, `dependencies: {upstream, downstream}`, and `claim`; creation returns null or empty relationship values. E2-S2 owns the normalized read model and retrofits the implemented create serializer to this shape.
 - Human success output shows at least ID, title, type, status display name, priority, and actor.
 - The command is non-interactive when required values and options are supplied.
 

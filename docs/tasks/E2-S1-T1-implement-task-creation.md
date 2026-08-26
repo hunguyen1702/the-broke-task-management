@@ -76,7 +76,7 @@ Use foreign keys with cascade cleanup for child rows even though permanent task 
 
 Represent each actor with a tagged database form equivalent to `user` or `agent + UUID`. Agent actor rows reference the agent registry and must satisfy a constraint that user actors have no agent UUID while agent actors have one. Render this tagged storage as the JSON string `"user"` or the agent UUID.
 
-Parent, dependency, claim, and comment tables are not part of this migration. The create result can return their contract defaults (`parentId: null`, `dependencies: []`, and `claim: null`) without persisting placeholder relationship rows.
+Parent, dependency, claim, and comment tables are not part of this migration. The normalized shared full-task contract uses `hierarchy: {parent, children}`, `dependencies: {upstream, downstream}`, and `claim`; creation returns null or empty relationship values without persisting placeholder rows. E2-S2-T1 retrofits the already implemented create serializer from its original `parentId` and dependency-array shape.
 
 ## Implementation flow
 
@@ -171,8 +171,14 @@ JSON uses the shared envelope and this data shape:
     "tags": [],
     "externalUrls": [],
     "codeReferences": [],
-    "parentId": null,
-    "dependencies": [],
+    "hierarchy": {
+      "parent": null,
+      "children": []
+    },
+    "dependencies": {
+      "upstream": [],
+      "downstream": []
+    },
     "claim": null,
     "archived": false,
     "createdAt": "RFC 3339 UTC timestamp",

@@ -52,6 +52,16 @@ fn minimum_create_returns_defaults_and_persists_one_task() {
     assert_eq!(task["createdAt"], task["updatedAt"]);
     assert_eq!(task["tags"], serde_json::json!([]));
     assert!(task["estimate"].is_null());
+    assert_eq!(
+        task["hierarchy"],
+        serde_json::json!({"parent": null, "children": []})
+    );
+    assert_eq!(
+        task["dependencies"],
+        serde_json::json!({"upstream": [], "downstream": []})
+    );
+    assert!(task["claim"].is_null());
+    assert!(task.get("parentId").is_none());
     let connection = Connection::open(temp.path().join(".tbtm/tbtm.db")).unwrap();
     let count: i64 = connection
         .query_row("SELECT COUNT(*) FROM tasks", [], |row| row.get(0))
