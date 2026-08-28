@@ -163,6 +163,7 @@ Each task contains:
 | Dependencies | Zero or more upstream task relationships |
 | Claim | Optional active claim containing agent and claim time |
 | Archived | Boolean lifecycle flag |
+| Archive reason | Nullable Markdown reason for the current archived state |
 | Created at | Creation timestamp |
 | Updated at | Timestamp of the latest task mutation, including archive/unarchive |
 | Created by | Agent identity or logical `user` actor |
@@ -261,7 +262,7 @@ Rules:
 - Setting a completed status does not automatically unclaim the task.
 - An owning agent can unclaim its task explicitly.
 - The user can explicitly force-unclaim a task.
-- Archiving a task automatically removes its active claim.
+- A successful archive automatically removes its active claim. A foreign active claim blocks normal archive; only the logical `user` may explicitly force the archive after confirming the observed claim.
 
 ### 7.10 Comment
 
@@ -281,7 +282,7 @@ Rules:
 - Comments cannot be edited.
 - An agent can delete only its own comments.
 - The human user can delete any comment.
-- A user may comment on the reason for archiving before or after archive.
+- A user or agent may add comments with supplemental archive context before or after archive; comments do not replace the task's canonical archive reason.
 
 ### 7.11 Archive
 
@@ -289,15 +290,16 @@ Archive removes a task from active planning without deleting its record.
 
 Rules:
 
-- Archive sets the archived flag and updates `updated_at` and `updated_by`.
-- Archive automatically releases any active claim.
+- Archive requires a non-empty Markdown reason, sets the archived flag and archive reason, and updates `updated_at` and `updated_by`.
+- Normal archive is allowed for an unclaimed task or a task claimed by the invoking agent. A task claimed by another agent is rejected unless the logical `user` explicitly force-confirms the observed claim.
+- A successful archive atomically releases any active claim. Force confirmation is bound to the displayed claim identity and claim time so it cannot silently release a replacement claim.
 - Archive counts as effective completion and unblocks downstream tasks.
 - Archived tasks are excluded from available-task queries and active board views by default.
 - Archived tasks remain visible when explicitly requested and remain present in hierarchy and dependency maps.
 - Task content and relationships are not changed while archived.
 - New comments may be added and permitted comments may be deleted while archived.
 - An archived task may be unarchived.
-- Unarchiving restores completion semantics from the task's current status and can block downstream work again.
+- Unarchiving clears the archive reason, restores completion semantics from the task's current status, and can block downstream work again.
 - Before unarchive, the CLI and UI must warn when downstream availability or active claims may be affected.
 
 ## 8. Availability and selection rules
@@ -502,13 +504,14 @@ Status completion and unclaim remain separate operations even when agents common
 
 ### 10.4 Archive and unarchive
 
-1. User archives a task.
-2. System releases its active claim, marks it archived, and updates actor metadata.
-3. Downstream availability is recalculated; archive counts as completion.
-4. User or agent can add a comment explaining the archive.
-5. If the user later requests unarchive, the system evaluates downstream impact.
-6. System warns if the task's incomplete status will block downstream tasks, especially already claimed tasks.
-7. After confirmation, the task is unarchived and availability is recalculated.
+1. User or agent requests archive with a reason.
+2. A foreign active claim blocks normal archive; the logical `user` may explicitly confirm a force override bound to the observed claim.
+3. System atomically releases any permitted active claim, stores the reason, marks the task archived, and updates actor metadata.
+4. Downstream availability is recalculated; archive counts as completion.
+5. User or agent can add a supplemental comment about the archive.
+6. If the user later requests unarchive, the system evaluates downstream impact.
+7. System warns if the task's incomplete status will block downstream tasks, especially already claimed tasks.
+8. After confirmation, the task is unarchived, its archive reason is cleared, and availability is recalculated.
 
 ### 10.5 Concurrent claim
 
@@ -734,11 +737,14 @@ As a user or agent, I want to archive abandoned or obsolete work so that it leav
 
 Acceptance criteria:
 
-- Archive updates task actor metadata.
-- Any active claim is released.
+- Archive requires and stores a non-empty Markdown reason and updates task actor metadata.
+- An unclaimed task or a task claimed by the invoking agent can be archived normally.
+- A foreign active claim blocks archive unless the logical `user` explicitly confirms a force override of that observed claim.
+- Any active claim is released atomically on successful archive.
 - Archived task is effectively completed.
 - Downstream availability is recalculated.
 - Task remains visible in explicit archive and graph views.
+- Status, content, hierarchy, and dependency relationships remain unchanged.
 
 Dependencies: E2-S1, E4-S3, E5-S3.
 
@@ -752,6 +758,7 @@ Acceptance criteria:
 - User is warned when downstream tasks may become blocked.
 - Confirmed unarchive recalculates availability.
 - Task remains unclaimed after unarchive.
+- The current archive reason is cleared.
 
 Dependencies: E2-S5, E4-S4.
 
