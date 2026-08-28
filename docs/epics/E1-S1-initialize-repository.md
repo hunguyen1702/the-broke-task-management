@@ -1,8 +1,12 @@
+---
+id: E1-S1
+kind: epic
+planning_status: done
+implementation_status: done
+depends_on: []
+---
+
 # E1-S1: Initialize a repository
-
-## Status
-
-Ready for implementation.
 
 ## Outcome
 
@@ -35,9 +39,11 @@ tbtm uninstall [--yes] [--dry-run] [--json]
 
 ### Repository root
 
-- Use the nearest Git worktree root.
-- Outside Git, use the current directory.
-- Running from a nested directory still targets the resolved root.
+- In a Git repository, use the main worktree root as the canonical repository root, including when invoked from a linked worktree.
+- Resolve the main worktree through trusted Git common metadata; do not store a user-controlled redirect in TBTM configuration.
+- Outside Git, use the current directory as the repository root.
+- Running from a nested directory still targets the resolved canonical root.
+- See E1-S5 for the linked-worktree resolution contract.
 
 ### Prefix
 
@@ -73,6 +79,8 @@ Initialization creates UUID-backed statuses in this order:
 | Done | true | 2 |
 
 The initial schema and statuses are created in one SQLite transaction.
+
+E3-S1 later extends the status model with stable codes `to_do`, `in_progress`, and `done`. Because no released repository format requires compatibility, that story updates baseline migration `0001` and the fresh-initialization seed path directly; it does not backfill development-only databases. The completed E1-S1 implementation does not itself claim status-code behavior.
 
 ### Existing and forced initialization
 
@@ -112,7 +120,7 @@ The initial schema and statuses are created in one SQLite transaction.
 
 ## Functional acceptance criteria
 
-1. `tbtm init` creates matching `.tbtm/tbtm.db` and `.tbtm/config.json` at the resolved root.
+1. `tbtm init` creates matching `.tbtm/tbtm.db` and `.tbtm/config.json` at the resolved canonical root; invocation from any linked worktree targets the main worktree.
 2. Repository discovery works from root, nested Git directories, and non-Git directories.
 3. Default and custom prefixes follow the documented normalization and length rules.
 4. Config and database contain matching repository UUID, prefix, schema version, and creation time.

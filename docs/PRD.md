@@ -98,7 +98,7 @@ An agent operates under its registered identity when claiming tasks, updating ta
 
 Each source-code repository uses one SQLite database. Repository initialization records product configuration, including the task ID prefix.
 
-Git linked worktrees that belong to the same common Git repository are separate working directories but one logical Agent Task repository. They must ultimately resolve to one shared configuration and SQLite database so agents working in different worktrees observe the same identities, tasks, and claims. The canonical shared-storage location and compatibility path for repositories already initialized independently per worktree are solution-design decisions covered by Story E1-S5.
+Git linked worktrees that belong to the same common Git repository are separate working directories but one logical Agent Task repository. They resolve to one shared configuration and SQLite database stored in the main worktree's `.tbtm` directory so agents working in different worktrees observe the same identities, tasks, and claims. Linked worktrees locate that directory from trusted Git metadata rather than a user-controlled redirect.
 
 The default prefix is the normalized repository directory name. The user may override it during initialization with a CLI option such as `--prefix`.
 
@@ -179,20 +179,22 @@ A code reference contains:
 
 The default statuses are:
 
-| Status | Completed |
-|---|---:|
-| Todo | False |
-| In progress | False |
-| Done | True |
+| Code | Display name | Completed |
+|---|---|---:|
+| `to_do` | Todo | False |
+| `in_progress` | In progress | False |
+| `done` | Done | True |
 
 Each status contains:
 
+- A stable UUID used for database relationships.
+- An immutable, repository-unique machine code matching `[a-z][a-z0-9_]*`.
 - Name.
 - `completed` boolean.
 - Display order for the scrum board.
 - Whether it is a default or custom status.
 
-The user can create, rename, reorder, and delete custom statuses. A status cannot be deleted while any task uses it. Changing `completed` must warn the user that task availability and dependency resolution can change.
+The user can create, rename, reorder, and delete custom statuses. Custom-status creation requires an explicit code; renaming changes only the display name. A status cannot be deleted while any task uses it. Changing `completed` must warn the user that task availability and dependency resolution can change.
 
 A custom status such as `Cancelled` or `Won't fix` may be marked completed.
 
@@ -654,8 +656,6 @@ Dependencies: E1-S3, E5-S1.
 
 #### Story E1-S5: Share repository state across Git worktrees
 
-**Planning status:** Open; deferred until after the basic repository and agent CLI flow, but required before multi-worktree concurrency is considered complete.
-
 As a coding agent working in a Git linked worktree, I want every worktree of the same repository to resolve one shared Agent Task database so that agents coordinate identities, tasks, and claims across isolated source-code workspaces.
 
 Acceptance criteria:
@@ -666,7 +666,7 @@ Acceptance criteria:
 - Normal worktree use does not require symlinking `.tbtm` or the SQLite database.
 - Concurrent commands from different worktrees preserve SQLite integrity and atomic claim behavior.
 - Missing or inaccessible common Git metadata, configuration, or database paths produce the existing actionable repository, database, and permission error categories.
-- Existing repositories initialized independently in multiple worktrees are never silently merged or overwritten; the implementation provides an explicit compatibility, selection, or migration path.
+- This pre-release MVP defines only the canonical single-store layout. Independently initialized per-worktree stores are never selected, merged, migrated, or removed automatically.
 - Repository status from any worktree remains read-only and does not create persistent SQLite journal, WAL, or shared-memory artifacts as a side effect.
 
 Dependencies: E1-S2.
@@ -685,8 +685,9 @@ Acceptance criteria:
 - Priority defaults to 50.
 - Task receives a collision-safe stable ID.
 - Created and updated actor metadata is recorded.
+- Status selection uses an immutable machine code and defaults to `to_do`.
 
-Dependencies: E1-S1, E3-S1.
+Dependencies: E1-S1, E1-S3, E3-S1.
 
 #### Story E2-S2: View and list tasks
 
@@ -709,7 +710,7 @@ Acceptance criteria:
 
 - Mutable fields can be changed with validation.
 - Task ID never changes.
-- Type or parent changes that violate hierarchy are rejected.
+- A type change is rejected if it would make the task's current parent or direct children invalid; assigning, changing, and removing a parent is owned by E4-S1.
 - Updated actor and timestamp are recorded.
 
 Dependencies: E2-S1, E4-S1.
@@ -764,9 +765,10 @@ As a user, I want todo, in-progress, and done statuses so that a new repository 
 
 Acceptance criteria:
 
-- Default statuses exist in board order.
+- Default statuses exist in board order with codes `to_do`, `in_progress`, and `done`.
 - Todo and in-progress are incomplete.
 - Done is completed.
+- Before the first released repository format, the baseline schema may be updated directly; compatibility migration and backfill of earlier development-only databases are not required.
 
 Dependencies: E1-S1.
 
@@ -776,8 +778,9 @@ As a user, I want custom ordered statuses so that the board matches my workflow.
 
 Acceptance criteria:
 
-- A status has name, completed value, and display order.
+- A status has an immutable unique code, display name, completed value, and display order.
 - Custom statuses can be created, renamed, and reordered.
+- Custom-status creation requires an explicit code; rename changes only the display name.
 - Names are validated for repository-level uniqueness.
 
 Dependencies: E3-S1.

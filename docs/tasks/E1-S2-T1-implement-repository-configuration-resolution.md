@@ -1,8 +1,14 @@
+---
+id: E1-S2-T1
+kind: implementation_task
+planning_status: done
+implementation_status: done
+depends_on:
+  - E1-S1-T1
+implementation_commit: f535803
+---
+
 # E1-S2-T1: Implement repository configuration resolution
-
-## Status
-
-Ready for implementation.
 
 ## Parent story
 
@@ -48,15 +54,17 @@ Exact module boundaries may follow the E1-S1 implementation, but resolution, ful
 - Use typed errors with stable product error codes; do not classify errors from rendered message text.
 - Open SQLite with flags that require the file to exist. The resolver receives an access intent such as read-only or read-write; it never creates a missing DB.
 - Use a read-only connection for `repo status` and execute `PRAGMA quick_check` after metadata validation.
+- Treat config/database `schemaVersion` as a compatibility version distinct from ordered entries in `schema_migrations`.
 - Keep implementation synchronous and perform no network access.
 
 ## Implementation flow
 
 ### 1. Resolve repository root
 
-- Use the nearest Git worktree root when available.
+- Use E1-S5 discovery to resolve both the current worktree root and canonical main worktree root when Git is available.
 - Outside Git, use the canonical current directory.
-- Resolve direct child paths `.tbtm/config.json` and `.tbtm/tbtm.db` from the root-owned path type.
+- Resolve direct child paths `.tbtm/config.json` and `.tbtm/tbtm.db` from the canonical repository-root type.
+- Return `REPOSITORY_UNAVAILABLE` before config/database access when Git exists but trusted common/worktree metadata cannot produce a usable main worktree; never fall back to current-worktree storage.
 - Treat an absent `.tbtm` as `REPOSITORY_NOT_INITIALIZED`.
 
 ### 2. Parse and validate config
@@ -89,8 +97,10 @@ The health service used by `repo status`:
 2. Reads repository metadata from the database.
 3. Compares `repositoryId`, `prefix`, `schemaVersion`, and `createdAt` with config.
 4. Returns `INVALID_CONFIGURATION` with the mismatched field names when the pair disagrees.
-5. Runs `PRAGMA quick_check` and requires the successful SQLite result.
-6. Returns a typed healthy result without writing config, database, journal, or WAL files.
+5. Reads `schema_migrations` and validates that applied entries are known, ordered, and internally consistent.
+6. May report pending migrations compatible with the current repository schema version, but never applies them.
+7. Runs `PRAGMA quick_check` and requires the successful SQLite result.
+8. Returns a typed healthy result without writing config, database, journal, or WAL files.
 
 Configure the read-only connection so health inspection cannot trigger migrations or persistent journal changes.
 
@@ -98,7 +108,8 @@ Configure the read-only connection so health inspection cannot trigger migration
 
 Human success output shows:
 
-- Repository root.
+- Canonical repository root.
+- Current worktree root.
 - Config path.
 - Database path.
 - Repository ID.
@@ -113,7 +124,7 @@ JSON success uses the shared E1-S1 envelope and camelCase fields. `health` is `h
 | Exit | Condition |
 |---:|---|
 | 0 | Healthy repository |
-| 1 | Database unavailable or another operational failure |
+| 1 | Repository topology unavailable, database unavailable, or another operational failure |
 | 2 | Invalid or unsupported configuration, including config/DB mismatch |
 | 3 | Repository not initialized |
 | 5 | Permission denied |
@@ -125,19 +136,21 @@ JSON success uses the shared E1-S1 envelope and camelCase fields. `health` is `h
 - Schema-version-1 config parsing and field validation.
 - Exact `tbtm.db` acceptance; absolute, traversal, nested, and alternative paths rejected.
 - UUID, prefix, timestamp, and unsupported-version validation.
-- Typed error and exit-code mapping.
+- Typed repository-topology, config, database, and exit-code mapping.
 - Health-result serialization and human rendering.
 
 ### Integration tests
 
-- Resolve from Git root and nested worktree directories.
+- Resolve from the main worktree, linked worktrees, and nested directories in each.
 - Resolve from a non-Git current directory.
+- Missing, inaccessible, bare, and inconsistent Git common/worktree metadata returns `REPOSITORY_UNAVAILABLE` without per-worktree fallback.
 - Rename the repository directory and retain stored prefix and identity.
 - Missing `.tbtm`, missing config, malformed JSON, invalid fields, and unsupported schema.
 - Missing DB does not create a file.
 - Unreadable, invalid SQLite, corrupt, and operationally unavailable DB classification.
 - Mismatch each of repository ID, prefix, schema version, and creation time.
 - Healthy and failed `PRAGMA quick_check` behavior.
+- Valid, inconsistent, unknown, and pending internal migration histories; status never applies pending migrations.
 - Prove `repo status` does not change config or DB bytes and creates no journal/WAL or other workspace artifacts.
 - Human and JSON snapshots plus exact exit-code assertions.
 - Practical platform tests for Linux, macOS, and Windows path and permission differences.

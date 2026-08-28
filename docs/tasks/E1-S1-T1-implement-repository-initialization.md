@@ -1,8 +1,13 @@
+---
+id: E1-S1-T1
+kind: implementation_task
+planning_status: done
+implementation_status: done
+depends_on: []
+implementation_commit: 8721ecf
+---
+
 # E1-S1-T1: Implement repository initialization
-
-## Status
-
-Ready for implementation.
 
 ## Parent story
 
@@ -54,9 +59,11 @@ Choose current compatible crate patch versions during implementation and record 
 
 ### 1. Repository discovery
 
-- Resolve nearest Git worktree root from current directory.
-- Fall back to canonical current directory when outside Git.
-- Wrap the result in a repository-root type so later paths are always direct children of that root.
+- Resolve the current Git worktree and its main worktree from trusted Git common metadata.
+- Use the main worktree as the canonical repository root, including when invoked from a linked worktree.
+- Fall back to the canonical current directory when outside Git.
+- Wrap the current worktree root and canonical repository root in distinct path types so repository artifacts are always direct children of the canonical root.
+- Do not parse a user-controlled path from TBTM configuration and do not create per-worktree stores. The detailed discovery and validation contract is defined by E1-S5.
 
 ### 2. Prefix normalization
 
@@ -84,6 +91,8 @@ Migration 1 creates at least:
 - `statuses` containing ID, unique name, completed flag, display order, and default flag.
 
 Run migration metadata, repository metadata, and the three default-status inserts in one SQLite transaction. Enable foreign keys and a safe synchronous journal setting. After commit, run an integrity check before writing config.
+
+E3-S1 owns the later addition of immutable codes `to_do`, `in_progress`, and `done`. Before the first released repository format, it may update baseline migration `0001` and the fresh-init inserts directly; compatibility backfill for development-only databases is not required.
 
 ### 4. Config
 
@@ -182,7 +191,7 @@ During uninstall, permission failure takes precedence over other failure codes.
 
 - Init in Git root, nested Git directory, and non-Git directory.
 - Default/custom prefix and invalid prefix.
-- DB/config identity match and exact default statuses.
+- DB/config identity match and exact default status UUID/name/order/completion values.
 - Injected SQLite migration failure proves database records roll back together.
 - Existing valid, corrupt, missing-config, and missing-DB workspace classification.
 - Force confirmation, backup creation, and force on missing workspace.
@@ -228,4 +237,3 @@ Smoke verification:
 - [rusqlite](https://docs.rs/rusqlite/latest/rusqlite/)
 - [clap](https://docs.rs/clap/latest/clap/)
 - [Rust filesystem APIs](https://doc.rust-lang.org/std/fs/)
-

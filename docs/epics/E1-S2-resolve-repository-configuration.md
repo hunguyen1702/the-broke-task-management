@@ -1,8 +1,13 @@
+---
+id: E1-S2
+kind: epic
+planning_status: done
+implementation_status: done
+depends_on:
+  - E1-S1
+---
+
 # E1-S2: Resolve repository configuration
-
-## Status
-
-Ready for implementation.
 
 ## Outcome
 
@@ -23,7 +28,7 @@ tbtm repo status [--json]
 ### Shared repository resolver
 
 - `tbtm-core` provides one resolver for all CLI commands and the future extension boundary.
-- Repository-root discovery follows E1-S1: use the nearest Git worktree root, or the current directory when outside Git.
+- Repository-root discovery follows E1-S1 and E1-S5: use the main worktree root for every worktree of a Git repository, or the current directory when outside Git.
 - Every repository operation performs only the resolution required to locate its database:
   1. Resolve the repository root.
   2. Find and parse `.tbtm/config.json`.
@@ -40,9 +45,10 @@ tbtm repo status [--json]
 1. Run shared repository resolution.
 2. Validate all schema-version-1 config fields.
 3. Compare `repositoryId`, `prefix`, `schemaVersion`, and `createdAt` with database repository metadata.
-4. Run `PRAGMA quick_check`.
+4. Validate that applied internal migrations form a known, ordered, internally consistent history.
+5. Run `PRAGMA quick_check`.
 
-Success reports `health: "healthy"`. The command never repairs, migrates, or otherwise mutates the config or database.
+`schemaVersion` describes repository/config compatibility; internal migration numbers are tracked separately. Success reports `health: "healthy"`. The command may report pending compatible migrations, but never applies them, repairs data, or otherwise mutates the config or database.
 
 ### Configuration rules
 
@@ -58,6 +64,7 @@ The stored prefix is authoritative. Repository discovery never derives it again,
 
 ### Failure classification
 
+- Git was discovered but its common/worktree metadata cannot resolve a usable canonical main worktree: `REPOSITORY_UNAVAILABLE`, exit code 1. This failure occurs before config or database resolution and never falls back to a per-worktree store.
 - No `.tbtm` workspace: `REPOSITORY_NOT_INITIALIZED`, exit code 3.
 - Missing, malformed, unsupported, or unsafe configuration: `INVALID_CONFIGURATION`, exit code 2.
 - Config/database identity or metadata mismatch found by `repo status`: `INVALID_CONFIGURATION`, exit code 2.
@@ -75,6 +82,7 @@ Human output gives a concise repository summary. JSON reuses the E1-S1 envelope:
   "ok": true,
   "data": {
     "repositoryRoot": "/project",
+    "worktreeRoot": "/project-feature",
     "configPath": "/project/.tbtm/config.json",
     "databasePath": "/project/.tbtm/tbtm.db",
     "repositoryId": "UUID",
@@ -90,14 +98,14 @@ Failures use the same stable `error.code`, `error.message`, and `error.details` 
 
 ## Functional acceptance criteria
 
-1. Repository configuration resolves from a Git root, a nested directory in its worktree, and a non-Git directory.
+1. Repository configuration resolves from the main Git worktree, a linked worktree, a nested directory in either worktree, and a non-Git directory.
 2. All repository clients use the shared resolver rather than independently constructing config or database paths.
 3. Resolution uses the stored prefix and repository identity; renaming the enclosing repository directory does not change them.
 4. Schema version 1 accepts only the exact database filename `tbtm.db` and rejects paths that could escape or redirect outside `.tbtm`.
 5. Opening an absent database never creates a new file.
-6. `tbtm repo status` validates config, config/database metadata agreement, and SQLite `quick_check` without changing filesystem or database bytes.
-7. Successful human and JSON output includes repository root, config path, database path, repository ID, stored prefix, schema version, and healthy state.
-8. Uninitialized repositories, invalid configuration, unavailable databases, and permission failures have distinct documented errors and exit behavior.
+6. `tbtm repo status` validates config, config/database metadata agreement, internal migration history, and SQLite `quick_check` without changing filesystem or database bytes.
+7. Successful human and JSON output includes canonical repository root, current worktree root, config path, database path, repository ID, stored prefix, schema version, and healthy state.
+8. Unavailable repository topology, uninitialized repositories, invalid configuration, unavailable databases, and permission failures have distinct documented errors and exit behavior.
 9. Errors identify what failed and provide an actionable recovery direction without attempting repair.
 
 ## Non-functional acceptance criteria
@@ -111,6 +119,7 @@ Failures use the same stable `error.code`, `error.message`, and `error.details` 
 ## Verification
 
 - Resolve initialized repositories from root and nested directories, both inside and outside Git.
+- Exercise missing, inaccessible, bare, and inconsistent Git common/worktree metadata and confirm `REPOSITORY_UNAVAILABLE` occurs before config/database access.
 - Rename a repository directory and confirm the stored identity and prefix remain unchanged.
 - Exercise missing, malformed, unsupported, and unsafe config variants.
 - Exercise missing, unreadable, invalid, corrupt, and metadata-mismatched databases.
@@ -121,7 +130,7 @@ Failures use the same stable `error.code`, `error.message`, and `error.details` 
 ## Out of scope
 
 - Automatic config or database repair.
-- Database migrations or migration policy beyond recognizing supported schema version 1.
+- Applying migrations or defining compatibility policy for future repository schema versions. This story only validates the internal migration history for supported repository schema version 1.
 - Backup creation, restoration, or recovery workflows.
 - Background or periodic repository health monitoring.
 - Agent registration, task operations, or extension refresh behavior.
