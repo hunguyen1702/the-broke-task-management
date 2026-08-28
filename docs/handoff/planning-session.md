@@ -37,13 +37,16 @@ Story đã hoàn tất planning:
 - **E2-S3: Update task content**
   - [Epic plan](../epics/E2-S3-update-task-content.md)
   - [Implementation task](../tasks/E2-S3-T1-implement-task-content-updates.md)
+- **E2-S4: Manage tags, URLs, estimates, and code references**
+  - [Epic plan](../epics/E2-S4-manage-structured-task-context.md)
+  - [Implementation task](../tasks/E2-S4-T1-implement-structured-task-context-updates.md)
 - **E3-S1: Use default statuses**
   - [Epic plan](../epics/E3-S1-use-default-statuses.md)
   - [Implementation task](../tasks/E3-S1-T1-implement-default-status-codes.md)
 
 Story tiếp theo:
 
-- **E2-S4: Manage tags, URLs, estimates, and code references** — chốt collection mutation semantics và structured-context validation/output.
+- **E2-S5: Archive a task** — chốt archive eligibility, relationship/claim handling và observable output/errors.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -52,7 +55,7 @@ Story tiếp theo:
 - **E3-S1-T1** đã hoàn tất tại commit `4d8ebb2`, cung cấp stable status codes và mở khóa task creation.
 - **E2-S1-T1** đã hoàn tất tại commit `ca25528`, cung cấp task creation với explicit actor, atomic aggregate insert, stable task ID, status machine code và structured coding context.
 
-Implementation tiếp theo có thể bắt đầu theo dashboard; **E2-S3-T1** bị block bởi **E4-S1-T1**. Planning tiếp theo là **E2-S4: Manage tags, URLs, estimates, and code references**.
+Implementation tiếp theo có thể bắt đầu theo dashboard; **E2-S4-T1** đã ready, còn **E2-S3-T1** bị block bởi **E4-S1-T1**. Planning tiếp theo là **E2-S5: Archive a task**.
 
 ## Việc đã làm
 
@@ -94,6 +97,10 @@ Implementation tiếp theo có thể bắt đầu theo dashboard; **E2-S3-T1** b
 - Chốt type change giữ stable ID và được validate atomically với current parent cùng direct children; parent mutation vẫn thuộc E4-S1.
 - Chốt actor metadata, valid no-op không ghi dữ liệu, archived-task rejection, full-detail success output và stable exit behavior.
 - Viết epic/task E2-S3; review planning kết luận READY. E2-S3-T1 bị block đến khi E4-S1-T1 cung cấp authoritative hierarchy model.
+- Chốt E2-S4 mở rộng `task update` bằng tri-state set/clear/omit cho estimate và replacement/clear/omit cho tags, URLs, code references.
+- Chốt collection replacement giữ input order, reuse E2-S1 validators và exact duplicate behavior; clear/value conflicts đi qua shared error envelope.
+- Chốt structured patch atomic, actor-aware, active-only và valid no-op không ghi dữ liệu; E2-S4 có thể dựng shared update path trước E2-S3 mà không phụ thuộc E4-S1.
+- Viết epic/task E2-S4; review planning và review tài liệu đều kết luận READY. E2-S4-T1 sẵn sàng implementation trên E2-S1/E2-S2.
 
 ## Quy tắc planning cho mỗi story
 
@@ -180,13 +187,14 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. [E2-S3-T1: Implement task-content updates](../tasks/E2-S3-T1-implement-task-content-updates.md) chưa thể bắt đầu cho đến khi E4-S1 được planned và E4-S1-T1 cung cấp authoritative hierarchy model.
-2. Chọn một task `ready` khác từ [status dashboard](../STATUS.md), hoặc tiếp tục planning E4-S1 nếu muốn mở khóa E2-S3-T1.
+1. [E2-S4-T1: Implement structured task-context updates](../tasks/E2-S4-T1-implement-structured-task-context-updates.md) đã ready trên E2-S1-T1 và E2-S2-T1.
+2. [E2-S3-T1: Implement task-content updates](../tasks/E2-S3-T1-implement-task-content-updates.md) chưa thể bắt đầu cho đến khi E4-S1 được planned và E4-S1-T1 cung cấp authoritative hierarchy model.
+3. Chọn task `ready` từ [status dashboard](../STATUS.md), hoặc tiếp tục planning E4-S1 nếu muốn mở khóa E2-S3-T1.
 
 Nếu tiếp tục planning:
 
-1. Mở `docs/PRD.md` và tìm `Story E2-S4: Manage tags, URLs, estimates, and code references`.
-2. Đọc task model, FR-3 và E2-S1/E2-S3 contracts.
-3. Tóm tắt context E2-S4, rồi hỏi người dùng các quyết định implementation còn thiếu, đặc biệt replacement/add-remove semantics, ordering, duplicate handling và clear behavior.
+1. Mở `docs/PRD.md` và tìm `Story E2-S5: Archive a task`.
+2. Đọc lifecycle/domain rules và các E2, E4, E5 dependency contracts liên quan.
+3. Tóm tắt context E2-S5, rồi hỏi người dùng các quyết định implementation còn thiếu, đặc biệt archive eligibility, active-claim handling, relationship preservation và idempotency/output.
 4. Sau mỗi câu trả lời, spawn review agent theo 5 tiêu chí.
-5. Khi READY, tạo epic và technical task E2-S4, review file, cập nhật danh sách trong handoff này.
+5. Khi READY, tạo epic và technical task E2-S5, review file, cập nhật danh sách trong handoff này.

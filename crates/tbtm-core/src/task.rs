@@ -167,6 +167,22 @@ pub struct FullTask {
 
 pub type CreatedTask = FullTask;
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum PatchValue<T> {
+    Omitted,
+    Set(T),
+    Clear,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UpdateTaskInput {
+    pub estimate: PatchValue<f64>,
+    pub tags: PatchValue<Vec<String>>,
+    pub external_urls: PatchValue<Vec<String>>,
+    pub code_references: PatchValue<Vec<CodeReference>>,
+    pub agent_id: Option<Uuid>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArchiveScope {
     Active,
@@ -466,6 +482,218 @@ pub fn view_task(current: &Path, id: &str) -> Result<FullTask, Error> {
         .commit()
         .map_err(|error| sqlite_access_error("task detail snapshot", &database_path, error))?;
     Ok(task)
+}
+
+pub fn update_task(
+    current: &Path,
+    id: &str,
+    mut input: UpdateTaskInput,
+) -> Result<FullTask, Error> {
+    if matches!(input.estimate, PatchValue::Omitted)
+        && matches!(input.tags, PatchValue::Omitted)
+        && matches!(input.external_urls, PatchValue::Omitted)
+        && matches!(input.code_references, PatchValue::Omitted)
+    {
+        return Err(Error::NoUpdateFields);
+    }
+    let mut resolved = resolve_repository(current, AccessIntent::ReadWrite)?;
+    resolved
+        .connection_mut()
+        .busy_timeout(std::time::Duration::from_secs(5))
+        .map_err(|error| {
+            sqlite_access_error("database busy timeout", &resolved.database_path, error)
+        })?;
+    apply_pending_migrations(&mut resolved)?;
+    let database_path = resolved.database_path.clone();
+    let transaction = resolved
+        .connection_mut()
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|error| sqlite_access_error("task update", &database_path, error))?;
+    let mut task = load_full_task(&transaction, id, &database_path)?
+        .ok_or_else(|| Error::TaskNotFound { id: id.to_owned() })?;
+    if let Some(agent_id) = input.agent_id {
+        let exists = transaction
+            .query_row(
+                "SELECT 1 FROM agents WHERE id = ?1",
+                [agent_id.to_string()],
+                |_| Ok(()),
+            )
+            .optional()
+            .map_err(|error| sqlite_access_error("task actor lookup", &database_path, error))?
+            .is_some();
+        if !exists {
+            return Err(Error::AgentNotFound { id: agent_id });
+        }
+    }
+    normalize_update_input(&mut input)?;
+    if task.archived {
+        return Err(Error::TaskArchived { id: id.to_owned() });
+    }
+    load_full_context(&transaction, &mut task, &database_path)?;
+    let estimate = patch_target(&input.estimate, task.estimate);
+    let tags = collection_target(&input.tags);
+    let urls = collection_target(&input.external_urls);
+    let references = collection_target(&input.code_references);
+    let changed = estimate != task.estimate
+        || tags.as_ref().is_some_and(|value| value != &task.tags)
+        || urls
+            .as_ref()
+            .is_some_and(|value| value != &task.external_urls)
+        || references
+            .as_ref()
+            .is_some_and(|value| value != &task.code_references);
+    if changed {
+        if estimate != task.estimate {
+            transaction
+                .execute(
+                    "UPDATE tasks SET estimate_hours = ?1 WHERE id = ?2",
+                    params![estimate, id],
+                )
+                .map_err(|error| {
+                    sqlite_access_error("task estimate update", &database_path, error)
+                })?;
+        }
+        replace_strings(
+            &transaction,
+            id,
+            "task_tags",
+            "value",
+            tags.as_ref().filter(|v| *v != &task.tags),
+            &database_path,
+        )?;
+        replace_strings(
+            &transaction,
+            id,
+            "task_external_urls",
+            "url",
+            urls.as_ref().filter(|v| *v != &task.external_urls),
+            &database_path,
+        )?;
+        if let Some(values) = references.as_ref().filter(|v| *v != &task.code_references) {
+            transaction
+                .execute("DELETE FROM task_code_references WHERE task_id = ?1", [id])
+                .map_err(|error| {
+                    sqlite_access_error("task code reference replacement", &database_path, error)
+                })?;
+            for (ordinal, value) in values.iter().enumerate() {
+                transaction.execute("INSERT INTO task_code_references (task_id, ordinal, path, start_line, end_line, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6)", params![id, ordinal as i64, value.path, value.start_line, value.end_line, value.description])
+                    .map_err(|error| sqlite_access_error("task code reference replacement", &database_path, error))?;
+            }
+        }
+        let actor_type = if input.agent_id.is_some() {
+            "agent"
+        } else {
+            "user"
+        };
+        let actor_id = input.agent_id.map(|value| value.to_string());
+        transaction.execute("UPDATE tasks SET updated_actor_type = ?1, updated_agent_id = ?2, updated_at = ?3 WHERE id = ?4", params![actor_type, actor_id, utc_now(), id])
+            .map_err(|error| sqlite_access_error("task update metadata", &database_path, error))?;
+        task = load_full_task(&transaction, id, &database_path)?.expect("updated task exists");
+        load_full_context(&transaction, &mut task, &database_path)?;
+    }
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("task update", &database_path, error))?;
+    Ok(task)
+}
+
+fn patch_target<T: Copy>(patch: &PatchValue<T>, current: Option<T>) -> Option<T> {
+    match patch {
+        PatchValue::Omitted => current,
+        PatchValue::Set(value) => Some(*value),
+        PatchValue::Clear => None,
+    }
+}
+
+fn collection_target<T: Clone>(patch: &PatchValue<Vec<T>>) -> Option<Vec<T>> {
+    match patch {
+        PatchValue::Omitted => None,
+        PatchValue::Set(value) => Some(value.clone()),
+        PatchValue::Clear => Some(vec![]),
+    }
+}
+
+fn replace_strings(
+    transaction: &Transaction<'_>,
+    id: &str,
+    table: &str,
+    column: &str,
+    values: Option<&Vec<String>>,
+    database_path: &Path,
+) -> Result<(), Error> {
+    let Some(values) = values else {
+        return Ok(());
+    };
+    transaction
+        .execute(&format!("DELETE FROM {table} WHERE task_id = ?1"), [id])
+        .map_err(|error| sqlite_access_error("task context replacement", database_path, error))?;
+    let sql = format!("INSERT INTO {table} (task_id, ordinal, {column}) VALUES (?1, ?2, ?3)");
+    for (ordinal, value) in values.iter().enumerate() {
+        transaction
+            .execute(&sql, params![id, ordinal as i64, value])
+            .map_err(|error| {
+                sqlite_access_error("task context replacement", database_path, error)
+            })?;
+    }
+    Ok(())
+}
+
+fn normalize_update_input(input: &mut UpdateTaskInput) -> Result<(), Error> {
+    if let PatchValue::Set(value) = input.estimate
+        && (!value.is_finite() || value < 0.0)
+    {
+        return Err(Error::InvalidEstimate);
+    }
+    if let PatchValue::Set(tags) = &mut input.tags {
+        let mut seen = HashSet::new();
+        for tag in tags {
+            *tag = tag.trim().to_owned();
+            if tag.is_empty() || !seen.insert(tag.clone()) {
+                return Err(Error::DuplicateTaskContext { value: tag.clone() });
+            }
+        }
+    }
+    if let PatchValue::Set(urls) = &input.external_urls {
+        let mut seen = HashSet::new();
+        for value in urls {
+            let parsed = Url::parse(value).map_err(|_| Error::InvalidExternalUrl {
+                value: value.clone(),
+            })?;
+            if !matches!(parsed.scheme(), "http" | "https") || parsed.host_str().is_none() {
+                return Err(Error::InvalidExternalUrl {
+                    value: value.clone(),
+                });
+            }
+            if !seen.insert(value.clone()) {
+                return Err(Error::DuplicateTaskContext {
+                    value: value.clone(),
+                });
+            }
+        }
+    }
+    if let PatchValue::Set(references) = &input.code_references {
+        let mut seen = HashSet::new();
+        for value in references {
+            validate_relative_path(&value.path, &value.path)?;
+            if value.start_line == Some(0)
+                || value.end_line == Some(0)
+                || value
+                    .end_line
+                    .zip(value.start_line)
+                    .is_some_and(|(end, start)| end < start)
+            {
+                return Err(Error::InvalidCodeReference {
+                    value: value.path.clone(),
+                });
+            }
+            if !seen.insert(value.clone()) {
+                return Err(Error::DuplicateTaskContext {
+                    value: value.path.clone(),
+                });
+            }
+        }
+    }
+    Ok(())
 }
 
 fn load_full_task(

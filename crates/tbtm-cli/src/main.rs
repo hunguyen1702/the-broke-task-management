@@ -8,8 +8,9 @@ use tbtm_core::{
     AgentRegistration, Error, RepositoryHealth, exit_code, initialize, inspect_repository_health,
     register_agent,
     task::{
-        ArchiveScope, CreateTaskInput, CreatedTask, FullTask, ListTasksInput, TaskListItem,
-        TaskType, create_task, list_tasks, parse_code_reference, view_task,
+        ArchiveScope, CreateTaskInput, CreatedTask, FullTask, ListTasksInput, PatchValue,
+        TaskListItem, TaskType, UpdateTaskInput, create_task, list_tasks, parse_code_reference,
+        update_task, view_task,
     },
     uninstall,
 };
@@ -55,6 +56,33 @@ enum TaskCommand {
     View(TaskViewArgs),
     #[command(about = "List tasks")]
     List(TaskListArgs),
+    #[command(about = "Update a task")]
+    Update(TaskUpdateArgs),
+}
+
+#[derive(Args)]
+struct TaskUpdateArgs {
+    id: String,
+    #[arg(long)]
+    estimate: Option<f64>,
+    #[arg(long)]
+    clear_estimate: bool,
+    #[arg(long = "tag")]
+    tags: Vec<String>,
+    #[arg(long)]
+    clear_tags: bool,
+    #[arg(long = "url")]
+    urls: Vec<String>,
+    #[arg(long)]
+    clear_urls: bool,
+    #[arg(long = "code-ref")]
+    code_references: Vec<String>,
+    #[arg(long)]
+    clear_code_refs: bool,
+    #[arg(long)]
+    agent: Option<uuid::Uuid>,
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Args)]
@@ -349,6 +377,34 @@ fn run() -> Result<(), (Error, bool)> {
                 .map_err(|error| (error, args.json))?;
                 render_task_list(&result, args.json);
             }
+            TaskCommand::Update(args) => {
+                if (args.estimate.is_some() && args.clear_estimate)
+                    || (!args.tags.is_empty() && args.clear_tags)
+                    || (!args.urls.is_empty() && args.clear_urls)
+                    || (!args.code_references.is_empty() && args.clear_code_refs)
+                {
+                    return Err((Error::ConflictingArguments, args.json));
+                }
+                let references = args
+                    .code_references
+                    .iter()
+                    .map(|value| parse_code_reference(value))
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|error| (error, args.json))?;
+                let result = update_task(
+                    &current,
+                    &args.id,
+                    UpdateTaskInput {
+                        estimate: patch(args.estimate, args.clear_estimate),
+                        tags: collection_patch(args.tags, args.clear_tags),
+                        external_urls: collection_patch(args.urls, args.clear_urls),
+                        code_references: collection_patch(references, args.clear_code_refs),
+                        agent_id: args.agent,
+                    },
+                )
+                .map_err(|error| (error, args.json))?;
+                render_task_detail(&result, args.json);
+            }
         },
     }
     Ok(())
@@ -368,7 +424,26 @@ fn command_uses_json(command: &Command) -> bool {
             TaskCommand::Create(args) => args.json,
             TaskCommand::View(args) => args.json,
             TaskCommand::List(args) => args.json,
+            TaskCommand::Update(args) => args.json,
         },
+    }
+}
+
+fn patch<T>(value: Option<T>, clear: bool) -> PatchValue<T> {
+    if clear {
+        PatchValue::Clear
+    } else {
+        value.map_or(PatchValue::Omitted, PatchValue::Set)
+    }
+}
+
+fn collection_patch<T>(values: Vec<T>, clear: bool) -> PatchValue<Vec<T>> {
+    if clear {
+        PatchValue::Clear
+    } else if values.is_empty() {
+        PatchValue::Omitted
+    } else {
+        PatchValue::Set(values)
     }
 }
 

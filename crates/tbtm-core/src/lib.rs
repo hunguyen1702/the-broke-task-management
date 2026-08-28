@@ -48,6 +48,10 @@ pub enum Error {
     StatusNotFound { code: String },
     #[error("task not found: {id}")]
     TaskNotFound { id: String },
+    #[error("task is archived: {id}")]
+    TaskArchived { id: String },
+    #[error("at least one update field must be supplied")]
+    NoUpdateFields,
     #[error("--archived and --all cannot be used together")]
     ConflictingArguments,
     #[error("ALREADY_INITIALIZED: valid TBTM workspace already exists")]
@@ -115,6 +119,8 @@ impl Error {
             Self::AgentNotFound { .. } => "AGENT_NOT_FOUND",
             Self::StatusNotFound { .. } => "STATUS_NOT_FOUND",
             Self::TaskNotFound { .. } => "TASK_NOT_FOUND",
+            Self::TaskArchived { .. } => "TASK_ARCHIVED",
+            Self::NoUpdateFields => "NO_UPDATE_FIELDS",
             Self::ConflictingArguments => "CONFLICTING_ARGUMENTS",
             Self::AlreadyInitialized => "ALREADY_INITIALIZED",
             Self::InvalidInitialization => "INVALID_INITIALIZATION",
@@ -1238,6 +1244,8 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::InvalidCodeReference { .. }
         | Error::DuplicateTaskContext { .. }
         | Error::ConflictingArguments
+        | Error::NoUpdateFields
+        | Error::TaskArchived { .. }
         | Error::AlreadyInitialized
         | Error::InvalidInitialization => 2,
         Error::AgentNotFound { .. } | Error::StatusNotFound { .. } | Error::TaskNotFound { .. } => {
