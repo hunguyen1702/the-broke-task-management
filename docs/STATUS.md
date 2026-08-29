@@ -21,7 +21,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E3-S2 custom statuses are intentionally deferred because the default statuses cover the core MVP workflow.
 - E4-S2-T1 is implemented with transactional dependency management and cycle prevention.
 - E5-S1-T1 is implemented with atomic specified-task claiming, stable conflict and unavailable errors, and claim hydration.
-- E5-S3 planning is complete; E5-S3-T1 is ready to implement owner-controlled unclaim behavior required by safe archive.
+- E5-S3-T1 is implemented with transactional owner-controlled unclaim behavior and shared-worktree claim release.
 - E4-S3 planning is complete; E4-S3-T1 is ready to implement authoritative available-task querying.
 - Plan next on the archive lifecycle path: E4-S4 to define authoritative blocking explanations required by safe unarchive.
 - E1-S4-T1 is ready now that the task, status, dependency, and active-claim models exist.
@@ -87,8 +87,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E5-S1](epics/E5-S1-claim-a-specified-task-atomically.md) | done | done | E1-S3, E2-S1, E3-S1, E4-S2 |
 | [E5-S1-T1](tasks/E5-S1-T1-implement-atomic-specified-task-claiming.md) | done | done | E1-S3-T1, E1-S5-T1, E2-S1-T1, E2-S2-T1, E3-S1-T1, E4-S2-T1 |
 | E5-S2 Claim the next available task atomically | needed | not_planned | E4-S3, E5-S1 |
-| [E5-S3](epics/E5-S3-unclaim-owned-work.md) | done | ready | E5-S1 |
-| [E5-S3-T1](tasks/E5-S3-T1-implement-owner-controlled-task-unclaim.md) | done | ready | E5-S1-T1 |
+| [E5-S3](epics/E5-S3-unclaim-owned-work.md) | done | done | E5-S1 |
+| [E5-S3-T1](tasks/E5-S3-T1-implement-owner-controlled-task-unclaim.md) | done | done | E5-S1-T1 |
 | E5-S4 Force-unclaim stale work | needed | not_planned | E5-S1 |
 | E5-S5 Preserve claim/status independence | needed | not_planned | E3-S1, E5-S1, E5-S3, E2-S5 |
 

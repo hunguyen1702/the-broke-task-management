@@ -10,8 +10,9 @@ use tbtm_core::{
     task::{
         ArchiveScope, ClaimTaskInput, CreateTaskInput, CreatedTask, DependencyInput,
         DependencyResult, FullTask, ListTasksInput, PatchValue, TaskListItem, TaskType,
-        UpdateTaskInput, add_dependency, claim_task, create_task, list_tasks, parse_code_reference,
-        remove_dependency, update_task, view_task,
+        UnclaimTaskInput, UnclaimTaskResult, UpdateTaskInput, add_dependency, claim_task,
+        create_task, list_tasks, parse_code_reference, remove_dependency, unclaim_task,
+        update_task, view_task,
     },
     uninstall,
 };
@@ -63,10 +64,21 @@ enum TaskCommand {
     Dependency(DependencyArgs),
     #[command(about = "Atomically claim an available task")]
     Claim(TaskClaimArgs),
+    #[command(about = "Release an owned task claim")]
+    Unclaim(TaskUnclaimArgs),
 }
 
 #[derive(Args)]
 struct TaskClaimArgs {
+    task_id: String,
+    #[arg(long)]
+    agent: uuid::Uuid,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct TaskUnclaimArgs {
     task_id: String,
     #[arg(long)]
     agent: uuid::Uuid,
@@ -481,6 +493,17 @@ fn run() -> Result<(), (Error, bool)> {
                 .map_err(|error| (error, args.json))?;
                 render_claim(&result, args.json);
             }
+            TaskCommand::Unclaim(args) => {
+                let result = unclaim_task(
+                    &current,
+                    UnclaimTaskInput {
+                        task_id: args.task_id,
+                        agent_id: args.agent,
+                    },
+                )
+                .map_err(|error| (error, args.json))?;
+                render_unclaim(&result, args.json);
+            }
         },
     }
     Ok(())
@@ -505,6 +528,7 @@ fn command_uses_json(command: &Command) -> bool {
                 DependencyCommand::Add(args) | DependencyCommand::Remove(args) => args.json,
             },
             TaskCommand::Claim(args) => args.json,
+            TaskCommand::Unclaim(args) => args.json,
         },
     }
 }
@@ -520,6 +544,15 @@ fn render_claim(result: &FullTask, json: bool) {
         println!("Claimed task: {}", result.id);
         println!("Agent: {}", claim.agent.display_name);
         println!("Claimed at: {}", claim.claimed_at);
+    }
+}
+
+fn render_unclaim(result: &UnclaimTaskResult, json: bool) {
+    if json {
+        render_success(&result.task, true);
+    } else {
+        println!("Unclaimed task: {}", result.task.id);
+        println!("Agent: {}", result.released_agent_display_name);
     }
 }
 

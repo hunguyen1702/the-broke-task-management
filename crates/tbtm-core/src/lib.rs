@@ -57,6 +57,15 @@ pub enum Error {
         agent_display_name: String,
         claimed_at: String,
     },
+    #[error("claim not found: {task_id}")]
+    ClaimNotFound { task_id: String },
+    #[error("claim is not owned by the invoking agent: {task_id}")]
+    ClaimNotOwned {
+        task_id: String,
+        agent_id: String,
+        agent_display_name: String,
+        claimed_at: String,
+    },
     #[error("task is not available: {task_id} ({reason})")]
     TaskNotAvailable {
         task_id: String,
@@ -142,6 +151,8 @@ impl Error {
             Self::TaskNotFound { .. } => "TASK_NOT_FOUND",
             Self::TaskArchived { .. } => "TASK_ARCHIVED",
             Self::ClaimConflict { .. } => "CLAIM_CONFLICT",
+            Self::ClaimNotFound { .. } => "CLAIM_NOT_FOUND",
+            Self::ClaimNotOwned { .. } => "CLAIM_NOT_OWNED",
             Self::TaskNotAvailable { .. } => "TASK_NOT_AVAILABLE",
             Self::NoUpdateFields => "NO_UPDATE_FIELDS",
             Self::SelfDependency { .. } => "SELF_DEPENDENCY",
@@ -188,6 +199,19 @@ impl Error {
                 "dependsOn": depends_on
             }),
             Self::ClaimConflict {
+                task_id,
+                agent_id,
+                agent_display_name,
+                claimed_at,
+            } => serde_json::json!({
+                "taskId": task_id,
+                "agent": {"id": agent_id, "displayName": agent_display_name},
+                "claimedAt": claimed_at
+            }),
+            Self::ClaimNotFound { task_id } => serde_json::json!({
+                "taskId": task_id
+            }),
+            Self::ClaimNotOwned {
                 task_id,
                 agent_id,
                 agent_display_name,
@@ -1359,8 +1383,10 @@ pub fn exit_code(error: &Error) -> i32 {
         Error::AgentNotFound { .. }
         | Error::StatusNotFound { .. }
         | Error::TaskNotFound { .. }
+        | Error::ClaimNotFound { .. }
         | Error::DependencyNotFound { .. } => 3,
         Error::ClaimConflict { .. } => 4,
+        Error::ClaimNotOwned { .. } => 5,
         Error::Phase {
             phase: "FORCE_CONFIRMATION_REQUIRED" | "CONFIRMATION_REQUIRED",
             ..
