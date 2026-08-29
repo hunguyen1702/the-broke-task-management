@@ -20,7 +20,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E2-S6 planning is complete; implementation is blocked until E2-S5-T1 and E4-S4-T1 provide archive lifecycle and authoritative blocking explanations.
 - E3-S2 custom statuses are intentionally deferred because the default statuses cover the core MVP workflow.
 - E4-S2-T1 is implemented with transactional dependency management and cycle prevention.
-- Plan next: E5-S1 to define atomic claiming of a specified task on top of E4-S2.
+- E5-S1 planning is complete; E5-S1-T1 is ready to implement atomic specified-task claiming on top of E4-S2.
+- Plan next on the claim critical path: E5-S3 to define owner-controlled unclaim behavior required by safe archive.
 - E1-S4-T1 remains blocked until the task, status, dependency, and active-claim models exist.
 
 ## E1 — Repository foundation and identity
@@ -80,7 +81,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 | Story | Planning | Implementation | Depends on |
 |---|---|---|---|
-| E5-S1 Claim a specified task atomically | needed | not_planned | E1-S3, E2-S1, E3-S1, E4-S2 |
+| [E5-S1](epics/E5-S1-claim-a-specified-task-atomically.md) | done | ready | E1-S3, E2-S1, E3-S1, E4-S2 |
+| [E5-S1-T1](tasks/E5-S1-T1-implement-atomic-specified-task-claiming.md) | done | ready | E1-S3-T1, E1-S5-T1, E2-S1-T1, E2-S2-T1, E3-S1-T1, E4-S2-T1 |
 | E5-S2 Claim the next available task atomically | needed | not_planned | E4-S3, E5-S1 |
 | E5-S3 Unclaim owned work | needed | not_planned | E5-S1 |
 | E5-S4 Force-unclaim stale work | needed | not_planned | E5-S1 |
