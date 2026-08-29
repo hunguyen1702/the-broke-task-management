@@ -52,6 +52,9 @@ Story đã hoàn tất planning:
 - **E4-S2: Manage dependencies**
   - [Epic plan](../epics/E4-S2-manage-dependencies.md)
   - [Implementation task](../tasks/E4-S2-T1-implement-dependency-management.md)
+- **E4-S3: Query available tasks**
+  - [Epic plan](../epics/E4-S3-query-available-tasks.md)
+  - [Implementation task](../tasks/E4-S3-T1-implement-available-task-querying.md)
 - **E5-S1: Claim a specified task atomically**
   - [Epic plan](../epics/E5-S1-claim-a-specified-task-atomically.md)
   - [Implementation task](../tasks/E5-S1-T1-implement-atomic-specified-task-claiming.md)
@@ -65,7 +68,7 @@ Story được chủ đích defer:
 
 Story tiếp theo nếu tiếp tục planning:
 
-- **E4-S3: Query available tasks** — chốt command/filter contract, exact derived predicate, deterministic output, empty success và snapshot/concurrency behavior trên status, dependency và claim models đã có.
+- **E4-S4: Explain blocking** — chốt command và explanation contract phân biệt archive, completion, claim và unresolved dependencies, gồm recursive context mà không trộn hierarchy với dependency.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -74,10 +77,11 @@ Story tiếp theo nếu tiếp tục planning:
 - **E3-S1-T1** đã hoàn tất tại commit `4d8ebb2`, cung cấp stable status codes và mở khóa task creation.
 - **E2-S1-T1** đã hoàn tất tại commit `ca25528`, cung cấp task creation với explicit actor, atomic aggregate insert, stable task ID, status machine code và structured coding context.
 - **E4-S2-T1** đã được implement và cung cấp authoritative dependency graph cho E5-S1 và E4-S3.
+- **E4-S3-T1** đã planning xong và sẵn sàng implementation trên status, dependency và active-claim models hiện hành.
 - **E5-S1-T1** đã implementation xong, cung cấp authoritative active-claim model, atomic specified-task claim và claim hydration cho các story phụ thuộc.
 - **E5-S3-T1** đã planning xong và sẵn sàng implementation trên authoritative claim model của E5-S1-T1.
 
-E5-S1-T1 đã hoàn tất authoritative claim model; **E5-S3-T1** và **E1-S4-T1** đều `ready`. Trên safe-archive critical path, implement E5-S3-T1 và plan **E4-S3: Query available tasks**; E2-S5-T1 chỉ được mở khóa khi cả hai implementation dependency này hoàn tất. **E2-S6-T1** vẫn bị block bởi E2-S5-T1 và E4-S4-T1, còn **E2-S3-T1** bị block bởi E4-S1-T1. E3-S2 tiếp tục được defer.
+E5-S1-T1 đã hoàn tất authoritative claim model; **E5-S3-T1**, **E4-S3-T1** và **E1-S4-T1** đều `ready`. Trên safe-archive critical path, implement E5-S3-T1 và E4-S3-T1; E2-S5-T1 chỉ được mở khóa khi cả hai implementation dependency này hoàn tất. Tiếp tục plan **E4-S4: Explain blocking** để tiến tới safe unarchive; **E2-S6-T1** vẫn bị block bởi E2-S5-T1 và E4-S4-T1, còn **E2-S3-T1** bị block bởi E4-S1-T1. E3-S2 tiếp tục được defer.
 
 ## Việc đã làm
 
@@ -140,6 +144,11 @@ E5-S1-T1 đã hoàn tất authoritative claim model; **E5-S3-T1** và **E1-S4-T1
 - Chốt mutation output tối giản: human xác nhận cạnh, JSON trả `{taskId, dependsOn}`; `task view` populate direct upstream/downstream summaries và compact list không đổi.
 - Chốt graph validation/mutation/metadata atomic trong immediate transaction, không cache blocking/availability, và cung cấp shared all-upstreams-effective-completed predicate cho E4-S3/E5-S1.
 - Viết epic/task E4-S2; planning review và review tài liệu kết luận READY sau khi bổ sung pending-migration behavior cho read-only task view. E4-S2-T1 sẵn sàng implementation.
+- Chốt E4-S3 với `task available`, exact derived availability predicate và deterministic priority/creation/ID ordering.
+- Chốt repeatable status/type/tag filters theo OR trong nhóm, AND giữa nhóm; known completed status trả empty success, unknown status và invalid type giữ shared errors.
+- Chốt tái sử dụng compact E2-S2 projection, exact empty human/JSON output, không thêm availability hay blocker fields.
+- Chốt read-only no-migration one-snapshot query và caller-owned connection/transaction selector để E5-S2 tái sử dụng nguyên predicate, filters và ordering trong atomic claim-next flow.
+- Viết epic/task E4-S3; decision review và document review đều kết luận READY. E4-S3-T1 sẵn sàng implementation trên E3-S1-T1, E4-S2-T1 và E5-S1-T1.
 - Chốt E5-S1 là agent-only command `task claim <task-id> --agent <uuid>`, không có implicit actor hoặc logical-user claim.
 - Chốt exact availability recheck trong immediate transaction, một authoritative claim row cho mỗi task, same-agent re-claim vẫn là conflict và không cập nhật task status/mutation metadata.
 - Chốt validation precedence ưu tiên existing claim trước archive/completion/dependency blocking; `CLAIM_CONFLICT` trả owner/timestamp và `TASK_NOT_AVAILABLE` dùng ba reason ổn định với unresolved upstream IDs được sort.
@@ -236,15 +245,16 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 Nếu tiếp tục implementation:
 
 1. Implement [E5-S3-T1: Implement owner-controlled task unclaim](../tasks/E5-S3-T1-implement-owner-controlled-task-unclaim.md) trên safe-archive critical path.
-2. [E1-S4-T1: Implement agent and claim listing](../tasks/E1-S4-T1-implement-agent-and-claim-listing.md) cũng đã `ready` nhờ active-claim model của E5-S1-T1.
-3. [E2-S5-T1: Implement safe task archival](../tasks/E2-S5-T1-implement-safe-task-archival.md) chưa thể bắt đầu cho đến khi E4-S3-T1 và E5-S3-T1 cung cấp authoritative availability và claim-release models.
-4. [E2-S6-T1: Implement safe task unarchive](../tasks/E2-S6-T1-implement-safe-task-unarchive.md) chưa thể bắt đầu cho đến khi E2-S5-T1 và E4-S4-T1 cung cấp archive lifecycle và authoritative blocking explanation.
-5. [E2-S3-T1: Implement task-content updates](../tasks/E2-S3-T1-implement-task-content-updates.md) chưa thể bắt đầu cho đến khi E4-S1 được planned và E4-S1-T1 cung cấp authoritative hierarchy model.
+2. Implement [E4-S3-T1: Implement available-task querying](../tasks/E4-S3-T1-implement-available-task-querying.md) để cung cấp authoritative availability model cho safe archive và E5-S2.
+3. [E1-S4-T1: Implement agent and claim listing](../tasks/E1-S4-T1-implement-agent-and-claim-listing.md) cũng đã `ready` nhờ active-claim model của E5-S1-T1.
+4. [E2-S5-T1: Implement safe task archival](../tasks/E2-S5-T1-implement-safe-task-archival.md) chưa thể bắt đầu cho đến khi E4-S3-T1 và E5-S3-T1 cung cấp authoritative availability và claim-release models.
+5. [E2-S6-T1: Implement safe task unarchive](../tasks/E2-S6-T1-implement-safe-task-unarchive.md) chưa thể bắt đầu cho đến khi E2-S5-T1 và E4-S4-T1 cung cấp archive lifecycle và authoritative blocking explanation.
+6. [E2-S3-T1: Implement task-content updates](../tasks/E2-S3-T1-implement-task-content-updates.md) chưa thể bắt đầu cho đến khi E4-S1 được planned và E4-S1-T1 cung cấp authoritative hierarchy model.
 
 Nếu tiếp tục planning:
 
-1. Mở `docs/PRD.md` và tìm `Story E4-S3: Query available tasks`.
-2. Đọc availability/domain rules, E3-S1 completion contract, E4-S2 dependency contract, E5-S1 claim model và E2-S2 list output contract.
-3. Tóm tắt context E4-S3, rồi hỏi người dùng các quyết định implementation còn thiếu, đặc biệt command/filter scope, output projection, empty success và consistency/concurrency behavior.
+1. Mở `docs/PRD.md` và tìm `Story E4-S4: Explain blocking`.
+2. Đọc availability/domain rules, E4-S2 dependency contract, E4-S3 query contract, E5-S1 claim model và E2-S6 downstream-impact contract.
+3. Tóm tắt context E4-S4, rồi hỏi người dùng các quyết định implementation còn thiếu, đặc biệt command scope, precedence/shape của blocker explanations, recursive dependency context và read consistency.
 4. Sau mỗi câu trả lời, spawn review agent theo 5 tiêu chí.
-5. Khi READY, tạo epic và technical task E4-S3, review file, cập nhật danh sách trong handoff này.
+5. Khi READY, tạo epic và technical task E4-S4, review file, cập nhật danh sách trong handoff này.
