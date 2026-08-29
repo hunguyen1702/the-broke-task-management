@@ -19,7 +19,7 @@ pub mod task;
 const CONFIG_FILE: &str = "config.json";
 const DATABASE_FILE: &str = "tbtm.db";
 const STEALTH_RULE: &str = "/.tbtm/";
-const LATEST_MIGRATION: i64 = 3;
+const LATEST_MIGRATION: i64 = 4;
 const IDENTITY_RETRY_LIMIT: usize = 8;
 
 #[derive(Debug, Error)]
@@ -52,6 +52,14 @@ pub enum Error {
     TaskArchived { id: String },
     #[error("at least one update field must be supplied")]
     NoUpdateFields,
+    #[error("a task cannot depend on itself: {task_id}")]
+    SelfDependency { task_id: String },
+    #[error("dependency already exists: {task_id} depends on {depends_on}")]
+    DependencyExists { task_id: String, depends_on: String },
+    #[error("dependency not found: {task_id} depends on {depends_on}")]
+    DependencyNotFound { task_id: String, depends_on: String },
+    #[error("dependency would create a cycle: {task_id} depends on {depends_on}")]
+    DependencyCycle { task_id: String, depends_on: String },
     #[error("--archived and --all cannot be used together")]
     ConflictingArguments,
     #[error("ALREADY_INITIALIZED: valid TBTM workspace already exists")]
@@ -121,6 +129,10 @@ impl Error {
             Self::TaskNotFound { .. } => "TASK_NOT_FOUND",
             Self::TaskArchived { .. } => "TASK_ARCHIVED",
             Self::NoUpdateFields => "NO_UPDATE_FIELDS",
+            Self::SelfDependency { .. } => "SELF_DEPENDENCY",
+            Self::DependencyExists { .. } => "DEPENDENCY_EXISTS",
+            Self::DependencyNotFound { .. } => "DEPENDENCY_NOT_FOUND",
+            Self::DependencyCycle { .. } => "DEPENDENCY_CYCLE",
             Self::ConflictingArguments => "CONFLICTING_ARGUMENTS",
             Self::AlreadyInitialized => "ALREADY_INITIALIZED",
             Self::InvalidInitialization => "INVALID_INITIALIZATION",
@@ -140,6 +152,25 @@ impl Error {
                 "normalized": normalized,
                 "minimumLength": 1,
                 "maximumLength": 48
+            }),
+            Self::SelfDependency { task_id } => serde_json::json!({
+                "taskId": task_id,
+                "dependsOn": task_id
+            }),
+            Self::DependencyExists {
+                task_id,
+                depends_on,
+            }
+            | Self::DependencyNotFound {
+                task_id,
+                depends_on,
+            }
+            | Self::DependencyCycle {
+                task_id,
+                depends_on,
+            } => serde_json::json!({
+                "taskId": task_id,
+                "dependsOn": depends_on
             }),
             Self::RepositoryNotInitialized { path } => serde_json::json!({
                 "check": "workspace",
@@ -870,6 +901,7 @@ fn apply_pending_migrations(resolved: &mut ResolvedRepository) -> Result<(), Err
     for (version, sql) in [
         (2, include_str!("../migrations/0002_agent_registry.sql")),
         (3, include_str!("../migrations/0003_task_core.sql")),
+        (4, include_str!("../migrations/0004_task_dependencies.sql")),
     ] {
         if version > current {
             transaction
@@ -888,6 +920,19 @@ fn apply_pending_migrations(resolved: &mut ResolvedRepository) -> Result<(), Err
     transaction
         .commit()
         .map_err(|error| sqlite_access_error("database migration", &resolved.database_path, error))
+}
+
+pub(crate) fn require_latest_migration(connection: &Connection, path: &Path) -> Result<(), Error> {
+    let versions = validate_migration_ledger(connection, path)?;
+    if versions.last() != Some(&LATEST_MIGRATION) {
+        return Err(Error::DatabaseUnavailable {
+            check: "schema migration",
+            path: path.to_path_buf(),
+            message: "database has compatible pending migrations; run a mutation command first"
+                .to_owned(),
+        });
+    }
+    Ok(())
 }
 
 pub fn initialize(
@@ -1023,6 +1068,15 @@ fn create_database(
     transaction
         .execute(
             "INSERT INTO schema_migrations (version, applied_at) VALUES (3, ?1)",
+            [created_at],
+        )
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute_batch(include_str!("../migrations/0004_task_dependencies.sql"))
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute(
+            "INSERT INTO schema_migrations (version, applied_at) VALUES (4, ?1)",
             [created_at],
         )
         .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
@@ -1246,11 +1300,15 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::ConflictingArguments
         | Error::NoUpdateFields
         | Error::TaskArchived { .. }
+        | Error::SelfDependency { .. }
+        | Error::DependencyExists { .. }
+        | Error::DependencyCycle { .. }
         | Error::AlreadyInitialized
         | Error::InvalidInitialization => 2,
-        Error::AgentNotFound { .. } | Error::StatusNotFound { .. } | Error::TaskNotFound { .. } => {
-            3
-        }
+        Error::AgentNotFound { .. }
+        | Error::StatusNotFound { .. }
+        | Error::TaskNotFound { .. }
+        | Error::DependencyNotFound { .. } => 3,
         Error::Phase {
             phase: "FORCE_CONFIRMATION_REQUIRED" | "CONFIRMATION_REQUIRED",
             ..
@@ -1632,7 +1690,7 @@ mod tests {
     fn health_rejects_invalid_migration_ledger_without_writing() {
         for statement in [
             "DELETE FROM schema_migrations",
-            "UPDATE schema_migrations SET version = 4 WHERE version = 3",
+            "UPDATE schema_migrations SET version = 5 WHERE version = 4",
         ] {
             let temp = tempdir().unwrap();
             let initialized = initialize(temp.path(), None, false, false, false).unwrap();

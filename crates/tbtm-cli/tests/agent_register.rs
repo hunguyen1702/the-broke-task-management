@@ -110,6 +110,9 @@ fn registration_upgrades_an_older_schema_one_repository() {
         .execute("DELETE FROM schema_migrations WHERE version >= 2", [])
         .unwrap();
     connection
+        .execute("DROP TABLE task_dependencies", [])
+        .unwrap();
+    connection
         .execute("DROP TABLE task_code_references", [])
         .unwrap();
     connection
@@ -140,7 +143,7 @@ fn registration_upgrades_an_older_schema_one_repository() {
         .unwrap()
         .collect::<Result<_, _>>()
         .unwrap();
-    assert_eq!(versions, [1, 2, 3]);
+    assert_eq!(versions, [1, 2, 3, 4]);
 }
 
 #[test]

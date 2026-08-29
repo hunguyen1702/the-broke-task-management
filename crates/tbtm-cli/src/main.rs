@@ -8,9 +8,9 @@ use tbtm_core::{
     AgentRegistration, Error, RepositoryHealth, exit_code, initialize, inspect_repository_health,
     register_agent,
     task::{
-        ArchiveScope, CreateTaskInput, CreatedTask, FullTask, ListTasksInput, PatchValue,
-        TaskListItem, TaskType, UpdateTaskInput, create_task, list_tasks, parse_code_reference,
-        update_task, view_task,
+        ArchiveScope, CreateTaskInput, CreatedTask, DependencyInput, DependencyResult, FullTask,
+        ListTasksInput, PatchValue, TaskListItem, TaskType, UpdateTaskInput, add_dependency,
+        create_task, list_tasks, parse_code_reference, remove_dependency, update_task, view_task,
     },
     uninstall,
 };
@@ -58,6 +58,33 @@ enum TaskCommand {
     List(TaskListArgs),
     #[command(about = "Update a task")]
     Update(TaskUpdateArgs),
+    #[command(about = "Manage task dependencies")]
+    Dependency(DependencyArgs),
+}
+
+#[derive(Args)]
+struct DependencyArgs {
+    #[command(subcommand)]
+    command: DependencyCommand,
+}
+
+#[derive(Subcommand)]
+enum DependencyCommand {
+    #[command(about = "Add a mandatory upstream dependency")]
+    Add(DependencyMutationArgs),
+    #[command(about = "Remove a mandatory upstream dependency")]
+    Remove(DependencyMutationArgs),
+}
+
+#[derive(Args)]
+struct DependencyMutationArgs {
+    task_id: String,
+    #[arg(long)]
+    depends_on: String,
+    #[arg(long)]
+    agent: Option<uuid::Uuid>,
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Args)]
@@ -405,6 +432,32 @@ fn run() -> Result<(), (Error, bool)> {
                 .map_err(|error| (error, args.json))?;
                 render_task_detail(&result, args.json);
             }
+            TaskCommand::Dependency(args) => match args.command {
+                DependencyCommand::Add(args) => {
+                    let result = add_dependency(
+                        &current,
+                        DependencyInput {
+                            task_id: args.task_id,
+                            depends_on: args.depends_on,
+                            agent_id: args.agent,
+                        },
+                    )
+                    .map_err(|error| (error, args.json))?;
+                    render_dependency(&result, true, args.json);
+                }
+                DependencyCommand::Remove(args) => {
+                    let result = remove_dependency(
+                        &current,
+                        DependencyInput {
+                            task_id: args.task_id,
+                            depends_on: args.depends_on,
+                            agent_id: args.agent,
+                        },
+                    )
+                    .map_err(|error| (error, args.json))?;
+                    render_dependency(&result, false, args.json);
+                }
+            },
         },
     }
     Ok(())
@@ -425,7 +478,26 @@ fn command_uses_json(command: &Command) -> bool {
             TaskCommand::View(args) => args.json,
             TaskCommand::List(args) => args.json,
             TaskCommand::Update(args) => args.json,
+            TaskCommand::Dependency(args) => match &args.command {
+                DependencyCommand::Add(args) | DependencyCommand::Remove(args) => args.json,
+            },
         },
+    }
+}
+
+fn render_dependency(result: &DependencyResult, added: bool, json: bool) {
+    if json {
+        render_success(result, true);
+    } else if added {
+        println!(
+            "Added dependency: {} depends on {}",
+            result.task_id, result.depends_on
+        );
+    } else {
+        println!(
+            "Removed dependency: {} no longer depends on {}",
+            result.task_id, result.depends_on
+        );
     }
 }
 

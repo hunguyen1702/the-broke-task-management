@@ -67,9 +67,9 @@ Story tiếp theo:
 - **E1-S4-T1** mới ở trạng thái planned và đang bị block đến khi E2-S1, E3-S1, E4-S2 và E5-S1 cung cấp task/status/claim models có thẩm quyền.
 - **E3-S1-T1** đã hoàn tất tại commit `4d8ebb2`, cung cấp stable status codes và mở khóa task creation.
 - **E2-S1-T1** đã hoàn tất tại commit `ca25528`, cung cấp task creation với explicit actor, atomic aggregate insert, stable task ID, status machine code và structured coding context.
-- **E4-S2-T1** đã planning xong và sẵn sàng implementation trên E2-S1-T1/E2-S2-T1; task này cung cấp authoritative dependency graph cho E5-S1 và E4-S3.
+- **E4-S2-T1** đã được implement và cung cấp authoritative dependency graph cho E5-S1 và E4-S3.
 
-Implementation tiếp theo có thể bắt đầu theo dashboard; **E4-S2-T1** hiện ready và mở critical path tới claiming/availability. **E2-S5-T1** bị block bởi **E4-S3-T1** và **E5-S3-T1**, **E2-S6-T1** bị block bởi **E2-S5-T1** và **E4-S4-T1**, còn **E2-S3-T1** bị block bởi **E4-S1-T1**. Planning tiếp theo là **E5-S1: Claim a specified task atomically**; E3-S2 được defer.
+E4-S2-T1 đã mở critical path tới claiming/availability. **E2-S5-T1** bị block bởi **E4-S3-T1** và **E5-S3-T1**, **E2-S6-T1** bị block bởi **E2-S5-T1** và **E4-S4-T1**, còn **E2-S3-T1** bị block bởi **E4-S1-T1**. Planning tiếp theo là **E5-S1: Claim a specified task atomically**; E3-S2 được defer.
 
 ## Việc đã làm
 

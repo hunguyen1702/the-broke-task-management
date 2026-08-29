@@ -1,6 +1,6 @@
 use crate::{
-    AccessIntent, Error, apply_pending_migrations, resolve_repository, sqlite_access_error, status,
-    utc_now,
+    AccessIntent, Error, apply_pending_migrations, require_latest_migration, resolve_repository,
+    sqlite_access_error, status, utc_now,
 };
 use rusqlite::{
     OptionalExtension, Transaction, TransactionBehavior, params, params_from_iter, types::Value,
@@ -181,6 +181,20 @@ pub struct UpdateTaskInput {
     pub external_urls: PatchValue<Vec<String>>,
     pub code_references: PatchValue<Vec<CodeReference>>,
     pub agent_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DependencyInput {
+    pub task_id: String,
+    pub depends_on: String,
+    pub agent_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DependencyResult {
+    pub task_id: String,
+    pub depends_on: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -471,6 +485,7 @@ fn empty_dependencies() -> TaskDependencies {
 pub fn view_task(current: &Path, id: &str) -> Result<FullTask, Error> {
     let mut resolved = resolve_repository(current, AccessIntent::ReadOnly)?;
     let database_path = resolved.database_path.clone();
+    require_latest_migration(resolved.connection_mut(), &database_path)?;
     let transaction = resolved
         .connection_mut()
         .transaction()
@@ -482,6 +497,185 @@ pub fn view_task(current: &Path, id: &str) -> Result<FullTask, Error> {
         .commit()
         .map_err(|error| sqlite_access_error("task detail snapshot", &database_path, error))?;
     Ok(task)
+}
+
+pub fn add_dependency(current: &Path, input: DependencyInput) -> Result<DependencyResult, Error> {
+    mutate_dependency(current, input, true)
+}
+
+pub fn remove_dependency(
+    current: &Path,
+    input: DependencyInput,
+) -> Result<DependencyResult, Error> {
+    mutate_dependency(current, input, false)
+}
+
+fn mutate_dependency(
+    current: &Path,
+    input: DependencyInput,
+    adding: bool,
+) -> Result<DependencyResult, Error> {
+    let mut resolved = resolve_repository(current, AccessIntent::ReadWrite)?;
+    resolved
+        .connection_mut()
+        .busy_timeout(std::time::Duration::from_secs(5))
+        .map_err(|error| {
+            sqlite_access_error("database busy timeout", &resolved.database_path, error)
+        })?;
+    apply_pending_migrations(&mut resolved)?;
+    let database_path = resolved.database_path.clone();
+    let transaction = resolved
+        .connection_mut()
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|error| sqlite_access_error("dependency mutation", &database_path, error))?;
+    if let Some(agent_id) = input.agent_id {
+        let exists = transaction
+            .query_row(
+                "SELECT 1 FROM agents WHERE id = ?1",
+                [agent_id.to_string()],
+                |_| Ok(()),
+            )
+            .optional()
+            .map_err(|error| sqlite_access_error("dependency actor lookup", &database_path, error))?
+            .is_some();
+        if !exists {
+            return Err(Error::AgentNotFound { id: agent_id });
+        }
+    }
+    let downstream_archived = transaction
+        .query_row(
+            "SELECT archived FROM tasks WHERE id = ?1",
+            [&input.task_id],
+            |row| row.get::<_, bool>(0),
+        )
+        .optional()
+        .map_err(|error| sqlite_access_error("dependency task lookup", &database_path, error))?
+        .ok_or_else(|| Error::TaskNotFound {
+            id: input.task_id.clone(),
+        })?;
+    if downstream_archived {
+        return Err(Error::TaskArchived {
+            id: input.task_id.clone(),
+        });
+    }
+    let upstream_exists = transaction
+        .query_row(
+            "SELECT 1 FROM tasks WHERE id = ?1",
+            [&input.depends_on],
+            |_| Ok(()),
+        )
+        .optional()
+        .map_err(|error| sqlite_access_error("dependency task lookup", &database_path, error))?
+        .is_some();
+    if !upstream_exists {
+        return Err(Error::TaskNotFound {
+            id: input.depends_on.clone(),
+        });
+    }
+    if input.task_id == input.depends_on {
+        return Err(Error::SelfDependency {
+            task_id: input.task_id,
+        });
+    }
+    let edge_exists = transaction
+        .query_row(
+            "SELECT 1 FROM task_dependencies WHERE downstream_task_id = ?1 AND upstream_task_id = ?2",
+            params![input.task_id, input.depends_on],
+            |_| Ok(()),
+        )
+        .optional()
+        .map_err(|error| sqlite_access_error("dependency edge lookup", &database_path, error))?
+        .is_some();
+    if adding && edge_exists {
+        return Err(Error::DependencyExists {
+            task_id: input.task_id,
+            depends_on: input.depends_on,
+        });
+    }
+    if !adding && !edge_exists {
+        return Err(Error::DependencyNotFound {
+            task_id: input.task_id,
+            depends_on: input.depends_on,
+        });
+    }
+    if adding
+        && would_create_cycle(
+            &transaction,
+            &input.task_id,
+            &input.depends_on,
+            &database_path,
+        )?
+    {
+        return Err(Error::DependencyCycle {
+            task_id: input.task_id,
+            depends_on: input.depends_on,
+        });
+    }
+    let (sql, phase) = if adding {
+        (
+            "INSERT INTO task_dependencies (downstream_task_id, upstream_task_id) VALUES (?1, ?2)",
+            "dependency addition",
+        )
+    } else {
+        (
+            "DELETE FROM task_dependencies WHERE downstream_task_id = ?1 AND upstream_task_id = ?2",
+            "dependency removal",
+        )
+    };
+    transaction
+        .execute(sql, params![input.task_id, input.depends_on])
+        .map_err(|error| sqlite_access_error(phase, &database_path, error))?;
+    let actor_type = if input.agent_id.is_some() {
+        "agent"
+    } else {
+        "user"
+    };
+    let actor_id = input.agent_id.map(|value| value.to_string());
+    transaction.execute(
+        "UPDATE tasks SET updated_at = ?1, updated_actor_type = ?2, updated_agent_id = ?3 WHERE id = ?4",
+        params![utc_now(), actor_type, actor_id, input.task_id],
+    ).map_err(|error| sqlite_access_error("dependency metadata update", &database_path, error))?;
+    let result = DependencyResult {
+        task_id: input.task_id,
+        depends_on: input.depends_on,
+    };
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("dependency mutation", &database_path, error))?;
+    Ok(result)
+}
+
+fn would_create_cycle(
+    transaction: &Transaction<'_>,
+    task_id: &str,
+    depends_on: &str,
+    database_path: &Path,
+) -> Result<bool, Error> {
+    transaction.query_row(
+        "WITH RECURSIVE ancestors(id) AS (
+            SELECT upstream_task_id FROM task_dependencies WHERE downstream_task_id = ?1
+            UNION
+            SELECT d.upstream_task_id FROM task_dependencies d JOIN ancestors a ON d.downstream_task_id = a.id
+         ) SELECT EXISTS(SELECT 1 FROM ancestors WHERE id = ?2)",
+        params![depends_on, task_id],
+        |row| row.get(0),
+    ).map_err(|error| sqlite_access_error("dependency cycle validation", database_path, error))
+}
+
+pub fn dependencies_satisfied(
+    connection: &rusqlite::Connection,
+    task_id: &str,
+) -> rusqlite::Result<bool> {
+    connection.query_row(
+        "SELECT NOT EXISTS(
+            SELECT 1 FROM task_dependencies d
+            JOIN tasks upstream ON upstream.id = d.upstream_task_id
+            JOIN statuses s ON s.id = upstream.status_id
+            WHERE d.downstream_task_id = ?1 AND upstream.archived = 0 AND s.completed = 0
+        )",
+        [task_id],
+        |row| row.get(0),
+    )
 }
 
 pub fn update_task(
@@ -780,7 +974,53 @@ fn load_full_context(
         })
         .and_then(Iterator::collect)
         .map_err(|error| sqlite_access_error("task code references", database_path, error))?;
+    task.dependencies.upstream = load_related_dependencies(
+        transaction,
+        "SELECT t.id, t.title, t.task_type, s.code, s.name, s.completed
+         FROM task_dependencies d
+         JOIN tasks t ON t.id = d.upstream_task_id
+         JOIN statuses s ON s.id = t.status_id
+         WHERE d.downstream_task_id = ?1 ORDER BY t.id",
+        &task.id,
+        database_path,
+    )?;
+    task.dependencies.downstream = load_related_dependencies(
+        transaction,
+        "SELECT t.id, t.title, t.task_type, s.code, s.name, s.completed
+         FROM task_dependencies d
+         JOIN tasks t ON t.id = d.downstream_task_id
+         JOIN statuses s ON s.id = t.status_id
+         WHERE d.upstream_task_id = ?1 ORDER BY t.id",
+        &task.id,
+        database_path,
+    )?;
     Ok(())
+}
+
+fn load_related_dependencies(
+    transaction: &Transaction<'_>,
+    sql: &str,
+    id: &str,
+    database_path: &Path,
+) -> Result<Vec<RelatedTask>, Error> {
+    let mut statement = transaction
+        .prepare(sql)
+        .map_err(|error| sqlite_access_error("task dependencies", database_path, error))?;
+    statement
+        .query_map([id], |row| {
+            Ok(RelatedTask {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                task_type: task_type_from_row(row.get::<_, String>(2)?)?,
+                status: RelatedTaskStatus {
+                    code: row.get(3)?,
+                    name: row.get(4)?,
+                    completed: row.get(5)?,
+                },
+            })
+        })
+        .and_then(Iterator::collect)
+        .map_err(|error| sqlite_access_error("task dependencies", database_path, error))
 }
 
 fn load_strings(
