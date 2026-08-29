@@ -5,8 +5,9 @@ use std::{
     process::ExitCode,
 };
 use tbtm_core::{
-    AgentRegistration, Error, RepositoryHealth, exit_code, initialize, inspect_repository_health,
-    register_agent,
+    AgentRegistration, Error, RepositoryHealth,
+    agent::{AgentList, list_agents},
+    exit_code, initialize, inspect_repository_health, register_agent,
     task::{
         ArchiveScope, ClaimTaskInput, CreateTaskInput, CreatedTask, DependencyInput,
         DependencyResult, FullTask, ListTasksInput, PatchValue, TaskListItem, TaskType,
@@ -199,11 +200,19 @@ struct AgentArgs {
 enum AgentCommand {
     #[command(about = "Register a new repository-local agent identity")]
     Register(AgentRegisterArgs),
+    #[command(about = "List registered agents and active claims")]
+    List(AgentListArgs),
 }
 
 #[derive(Args)]
 struct AgentRegisterArgs {
     base_name: String,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct AgentListArgs {
     #[arg(long)]
     json: bool,
 }
@@ -365,6 +374,10 @@ fn run() -> Result<(), (Error, bool)> {
                     .map_err(|error| (error, args.json))?;
                 render_agent_registration(&result, args.json);
             }
+            AgentCommand::List(args) => {
+                let result = list_agents(&current).map_err(|error| (error, args.json))?;
+                render_agent_list(&result, args.json);
+            }
         },
         Command::Task(args) => match args.command {
             TaskCommand::Create(args) => {
@@ -516,9 +529,10 @@ fn command_uses_json(command: &Command) -> bool {
         Command::Repo(RepoArgs {
             command: RepoCommand::Status(args),
         }) => args.json,
-        Command::Agent(AgentArgs {
-            command: AgentCommand::Register(args),
-        }) => args.json,
+        Command::Agent(AgentArgs { command }) => match command {
+            AgentCommand::Register(args) => args.json,
+            AgentCommand::List(args) => args.json,
+        },
         Command::Task(args) => match &args.command {
             TaskCommand::Create(args) => args.json,
             TaskCommand::View(args) => args.json,
@@ -745,6 +759,31 @@ fn render_agent_registration(result: &AgentRegistration, json: bool) {
         println!("Base name: {}", result.base_name);
         println!("Display name: {}", result.display_name);
         println!("Created at: {}", result.created_at);
+    }
+}
+
+fn render_agent_list(result: &AgentList, json: bool) {
+    if json {
+        render_success(result, true);
+    } else if result.agents.is_empty() {
+        println!("No registered agents.");
+    } else {
+        for agent in &result.agents {
+            println!("{} ({})", agent.display_name, agent.id);
+            println!("  Base name: {}", agent.base_name);
+            println!("  Created at: {}", agent.created_at);
+            if agent.claims.is_empty() {
+                println!("  Claims: none");
+            } else {
+                println!("  Claims:");
+                for claim in &agent.claims {
+                    println!(
+                        "    {} | {} | {} | {}",
+                        claim.task_id, claim.title, claim.status, claim.claimed_at
+                    );
+                }
+            }
+        }
     }
 }
 

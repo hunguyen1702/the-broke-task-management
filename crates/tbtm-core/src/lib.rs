@@ -13,6 +13,7 @@ use unicode_normalization::UnicodeNormalization;
 use unicode_script::{Script, UnicodeScript};
 use uuid::Uuid;
 
+pub mod agent;
 pub mod status;
 pub mod task;
 

@@ -24,7 +24,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E5-S3-T1 is implemented with transactional owner-controlled unclaim behavior and shared-worktree claim release.
 - E4-S3 planning is complete; E4-S3-T1 is ready to implement authoritative available-task querying.
 - Plan next on the archive lifecycle path: E4-S4 to define authoritative blocking explanations required by safe unarchive.
-- E1-S4-T1 is ready now that the task, status, dependency, and active-claim models exist.
+- E1-S4-T1 is implemented with deterministic read-only agent and active-claim listing.
 
 ## E1 — Repository foundation and identity
 
@@ -38,8 +38,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E1-S5-T1](tasks/E1-S5-T1-implement-shared-git-worktree-repository-resolution.md) | Task | done | done (`d45f852`) | E1-S2-T1 |
 | [E1-S3](epics/E1-S3-register-an-agent.md) | Epic | done | done | E1-S1, E1-S5 implementation order |
 | [E1-S3-T1](tasks/E1-S3-T1-implement-agent-registration.md) | Task | done | done (`015ffc8`) | E1-S1-T1, E1-S2-T1, E1-S5-T1 |
-| [E1-S4](epics/E1-S4-list-agents-and-claims.md) | Epic | done | ready | E1-S3, E5-S1 |
-| [E1-S4-T1](tasks/E1-S4-T1-implement-agent-and-claim-listing.md) | Task | done | ready | E1-S3-T1, E2-S1-T1, E3-S1-T1, E4-S2-T1, E5-S1-T1 |
+| [E1-S4](epics/E1-S4-list-agents-and-claims.md) | Epic | done | done | E1-S3, E5-S1 |
+| [E1-S4-T1](tasks/E1-S4-T1-implement-agent-and-claim-listing.md) | Task | done | done | E1-S3-T1, E2-S1-T1, E3-S1-T1, E4-S2-T1, E5-S1-T1 |
 
 ## E2 — Task content and lifecycle
 
