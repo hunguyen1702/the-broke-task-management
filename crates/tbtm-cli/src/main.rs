@@ -8,9 +8,10 @@ use tbtm_core::{
     AgentRegistration, Error, RepositoryHealth, exit_code, initialize, inspect_repository_health,
     register_agent,
     task::{
-        ArchiveScope, CreateTaskInput, CreatedTask, DependencyInput, DependencyResult, FullTask,
-        ListTasksInput, PatchValue, TaskListItem, TaskType, UpdateTaskInput, add_dependency,
-        create_task, list_tasks, parse_code_reference, remove_dependency, update_task, view_task,
+        ArchiveScope, ClaimTaskInput, CreateTaskInput, CreatedTask, DependencyInput,
+        DependencyResult, FullTask, ListTasksInput, PatchValue, TaskListItem, TaskType,
+        UpdateTaskInput, add_dependency, claim_task, create_task, list_tasks, parse_code_reference,
+        remove_dependency, update_task, view_task,
     },
     uninstall,
 };
@@ -60,6 +61,17 @@ enum TaskCommand {
     Update(TaskUpdateArgs),
     #[command(about = "Manage task dependencies")]
     Dependency(DependencyArgs),
+    #[command(about = "Atomically claim an available task")]
+    Claim(TaskClaimArgs),
+}
+
+#[derive(Args)]
+struct TaskClaimArgs {
+    task_id: String,
+    #[arg(long)]
+    agent: uuid::Uuid,
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Args)]
@@ -458,6 +470,17 @@ fn run() -> Result<(), (Error, bool)> {
                     render_dependency(&result, false, args.json);
                 }
             },
+            TaskCommand::Claim(args) => {
+                let result = claim_task(
+                    &current,
+                    ClaimTaskInput {
+                        task_id: args.task_id,
+                        agent_id: args.agent,
+                    },
+                )
+                .map_err(|error| (error, args.json))?;
+                render_claim(&result, args.json);
+            }
         },
     }
     Ok(())
@@ -481,7 +504,22 @@ fn command_uses_json(command: &Command) -> bool {
             TaskCommand::Dependency(args) => match &args.command {
                 DependencyCommand::Add(args) | DependencyCommand::Remove(args) => args.json,
             },
+            TaskCommand::Claim(args) => args.json,
         },
+    }
+}
+
+fn render_claim(result: &FullTask, json: bool) {
+    if json {
+        render_success(result, true);
+    } else {
+        let claim = result
+            .claim
+            .as_ref()
+            .expect("successful claim is populated");
+        println!("Claimed task: {}", result.id);
+        println!("Agent: {}", claim.agent.display_name);
+        println!("Claimed at: {}", claim.claimed_at);
     }
 }
 
@@ -560,7 +598,14 @@ fn render_task_detail(result: &FullTask, json: bool) {
     }
     println!("Hierarchy: parent —; children —");
     println!("Dependencies: upstream —; downstream —");
-    println!("Claim: —");
+    if let Some(claim) = &result.claim {
+        println!(
+            "Claim: {} ({}) at {}",
+            claim.agent.display_name, claim.agent.id, claim.claimed_at
+        );
+    } else {
+        println!("Claim: —");
+    }
     println!("Created: {} by {}", result.created_at, result.created_by);
     println!("Updated: {} by {}", result.updated_at, result.updated_by);
 }

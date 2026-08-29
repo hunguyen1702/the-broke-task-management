@@ -2,7 +2,7 @@
 id: E1-S4
 kind: epic
 planning_status: done
-implementation_status: blocked
+implementation_status: ready
 depends_on:
   - E1-S3
   - E5-S1

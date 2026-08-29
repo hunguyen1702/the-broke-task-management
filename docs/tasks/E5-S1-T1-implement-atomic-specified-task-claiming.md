@@ -2,7 +2,7 @@
 id: E5-S1-T1
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - E1-S3-T1
   - E1-S5-T1
@@ -24,7 +24,7 @@ Implement an agent-only specified-task claim command backed by a unique SQLite c
 
 ## Readiness
 
-Planning is complete. Agent identity, shared linked-worktree repository resolution, task/status models, full-task claim placeholders, and authoritative dependency satisfaction are implemented, so this task is ready.
+Implementation is complete. Agent identity, shared linked-worktree repository resolution, task/status models, authoritative dependency satisfaction, atomic active claims, and claim hydration are implemented and verified.
 
 ## Deliverables
 

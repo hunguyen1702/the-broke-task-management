@@ -199,8 +199,9 @@ fn view_rejects_pending_migration_until_mutation_upgrades() {
     let database = temp.path().join(".tbtm/tbtm.db");
     let connection = Connection::open(database).unwrap();
     connection
-        .execute("DELETE FROM schema_migrations WHERE version = 4", [])
+        .execute("DELETE FROM schema_migrations WHERE version >= 4", [])
         .unwrap();
+    connection.execute("DROP TABLE task_claims", []).unwrap();
     connection
         .execute("DROP TABLE task_dependencies", [])
         .unwrap();

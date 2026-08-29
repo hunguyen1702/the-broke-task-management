@@ -190,6 +190,12 @@ pub struct DependencyInput {
     pub agent_id: Option<Uuid>,
 }
 
+#[derive(Debug, Clone)]
+pub struct ClaimTaskInput {
+    pub task_id: String,
+    pub agent_id: Uuid,
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct DependencyResult {
@@ -497,6 +503,105 @@ pub fn view_task(current: &Path, id: &str) -> Result<FullTask, Error> {
         .commit()
         .map_err(|error| sqlite_access_error("task detail snapshot", &database_path, error))?;
     Ok(task)
+}
+
+pub fn claim_task(current: &Path, input: ClaimTaskInput) -> Result<FullTask, Error> {
+    let mut resolved = resolve_repository(current, AccessIntent::ReadWrite)?;
+    resolved
+        .connection_mut()
+        .busy_timeout(std::time::Duration::from_secs(5))
+        .map_err(|error| {
+            sqlite_access_error("database busy timeout", &resolved.database_path, error)
+        })?;
+    apply_pending_migrations(&mut resolved)?;
+    let database_path = resolved.database_path.clone();
+    let transaction = resolved
+        .connection_mut()
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|error| sqlite_access_error("task claim", &database_path, error))?;
+    let agent_id = input.agent_id.to_string();
+    let agent_exists = transaction
+        .query_row(
+            "SELECT 1 FROM agents WHERE id = ?1",
+            [&agent_id],
+            |_| Ok(()),
+        )
+        .optional()
+        .map_err(|error| sqlite_access_error("claim agent lookup", &database_path, error))?
+        .is_some();
+    if !agent_exists {
+        return Err(Error::AgentNotFound { id: input.agent_id });
+    }
+    let (archived, completed) = transaction
+        .query_row(
+            "SELECT t.archived, s.completed FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE t.id = ?1",
+            [&input.task_id],
+            |row| Ok((row.get::<_, bool>(0)?, row.get::<_, bool>(1)?)),
+        )
+        .optional()
+        .map_err(|error| sqlite_access_error("claim task lookup", &database_path, error))?
+        .ok_or_else(|| Error::TaskNotFound { id: input.task_id.clone() })?;
+    if let Some((owner_id, owner_name, claimed_at)) = transaction
+        .query_row(
+            "SELECT a.id, a.display_name, c.claimed_at FROM task_claims c JOIN agents a ON a.id = c.agent_id WHERE c.task_id = ?1",
+            [&input.task_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .optional()
+        .map_err(|error| sqlite_access_error("claim owner lookup", &database_path, error))?
+    {
+        return Err(Error::ClaimConflict {
+            task_id: input.task_id,
+            agent_id: owner_id,
+            agent_display_name: owner_name,
+            claimed_at,
+        });
+    }
+    if archived {
+        return Err(task_not_available(&input.task_id, "archived", vec![]));
+    }
+    if completed {
+        return Err(task_not_available(&input.task_id, "completed", vec![]));
+    }
+    let unresolved = load_strings(
+        &transaction,
+        "SELECT upstream.id FROM task_dependencies d JOIN tasks upstream ON upstream.id = d.upstream_task_id JOIN statuses s ON s.id = upstream.status_id WHERE d.downstream_task_id = ?1 AND upstream.archived = 0 AND s.completed = 0 ORDER BY upstream.id",
+        &input.task_id,
+        &database_path,
+    )?;
+    if !unresolved.is_empty() {
+        return Err(task_not_available(
+            &input.task_id,
+            "dependencies_blocked",
+            unresolved,
+        ));
+    }
+    let claimed_at = utc_now();
+    transaction
+        .execute(
+            "INSERT INTO task_claims (task_id, agent_id, claimed_at) VALUES (?1, ?2, ?3)",
+            params![input.task_id, agent_id, claimed_at],
+        )
+        .map_err(|error| sqlite_access_error("task claim", &database_path, error))?;
+    let mut task =
+        load_full_task(&transaction, &input.task_id, &database_path)?.ok_or_else(|| {
+            Error::TaskNotFound {
+                id: input.task_id.clone(),
+            }
+        })?;
+    load_full_context(&transaction, &mut task, &database_path)?;
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("task claim", &database_path, error))?;
+    Ok(task)
+}
+
+fn task_not_available(task_id: &str, reason: &str, unresolved_upstream_ids: Vec<String>) -> Error {
+    Error::TaskNotAvailable {
+        task_id: task_id.to_owned(),
+        reason: reason.to_owned(),
+        unresolved_upstream_ids,
+    }
 }
 
 pub fn add_dependency(current: &Path, input: DependencyInput) -> Result<DependencyResult, Error> {
@@ -901,8 +1006,12 @@ fn load_full_task(
                 t.task_type, s.id, s.code, s.name, s.completed, t.priority,
                 t.estimate_hours, t.archived, t.created_at, t.updated_at,
                 CASE WHEN t.created_actor_type = 'user' THEN 'user' ELSE t.created_agent_id END,
-                CASE WHEN t.updated_actor_type = 'user' THEN 'user' ELSE t.updated_agent_id END
-         FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE t.id = ?1",
+                CASE WHEN t.updated_actor_type = 'user' THEN 'user' ELSE t.updated_agent_id END,
+                c.agent_id, a.display_name, c.claimed_at
+         FROM tasks t JOIN statuses s ON s.id = t.status_id
+         LEFT JOIN task_claims c ON c.task_id = t.id
+         LEFT JOIN agents a ON a.id = c.agent_id
+         WHERE t.id = ?1",
             [id],
             |row| {
                 Ok(FullTask {
@@ -925,7 +1034,13 @@ fn load_full_task(
                     code_references: vec![],
                     hierarchy: empty_hierarchy(),
                     dependencies: empty_dependencies(),
-                    claim: None,
+                    claim: row.get::<_, Option<String>>(17)?.map(|id| TaskClaim {
+                        agent: ClaimAgent {
+                            id,
+                            display_name: row.get(18).expect("joined claim agent"),
+                        },
+                        claimed_at: row.get(19).expect("joined claim timestamp"),
+                    }),
                     archived: row.get(12)?,
                     created_at: row.get(13)?,
                     updated_at: row.get(14)?,
@@ -1041,6 +1156,7 @@ fn load_strings(
 pub fn list_tasks(current: &Path, input: &ListTasksInput) -> Result<Vec<TaskListItem>, Error> {
     let mut resolved = resolve_repository(current, AccessIntent::ReadOnly)?;
     let database_path = resolved.database_path.clone();
+    require_latest_migration(resolved.connection_mut(), &database_path)?;
     let transaction = resolved
         .connection_mut()
         .transaction()
@@ -1073,7 +1189,13 @@ pub fn list_tasks(current: &Path, input: &ListTasksInput) -> Result<Vec<TaskList
                 estimate: row.get(8)?,
                 tags: vec![],
                 archived: row.get(9)?,
-                claim: None,
+                claim: row.get::<_, Option<String>>(12)?.map(|id| TaskClaim {
+                    agent: ClaimAgent {
+                        id,
+                        display_name: row.get(13).expect("joined claim agent"),
+                    },
+                    claimed_at: row.get(14).expect("joined claim timestamp"),
+                }),
                 created_at: row.get(10)?,
                 updated_at: row.get(11)?,
             })
@@ -1092,7 +1214,7 @@ pub fn list_tasks(current: &Path, input: &ListTasksInput) -> Result<Vec<TaskList
 
 fn list_sql(input: &ListTasksInput) -> (String, Vec<Value>) {
     let mut sql = String::from(
-        "SELECT t.id, t.title, t.task_type, s.id, s.code, s.name, s.completed, t.priority, t.estimate_hours, t.archived, t.created_at, t.updated_at FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE 1=1",
+        "SELECT t.id, t.title, t.task_type, s.id, s.code, s.name, s.completed, t.priority, t.estimate_hours, t.archived, t.created_at, t.updated_at, c.agent_id, a.display_name, c.claimed_at FROM tasks t JOIN statuses s ON s.id = t.status_id LEFT JOIN task_claims c ON c.task_id = t.id LEFT JOIN agents a ON a.id = c.agent_id WHERE 1=1",
     );
     let mut values = Vec::new();
     match input.archive_scope {

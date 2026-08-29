@@ -19,7 +19,7 @@ pub mod task;
 const CONFIG_FILE: &str = "config.json";
 const DATABASE_FILE: &str = "tbtm.db";
 const STEALTH_RULE: &str = "/.tbtm/";
-const LATEST_MIGRATION: i64 = 4;
+const LATEST_MIGRATION: i64 = 5;
 const IDENTITY_RETRY_LIMIT: usize = 8;
 
 #[derive(Debug, Error)]
@@ -50,6 +50,19 @@ pub enum Error {
     TaskNotFound { id: String },
     #[error("task is archived: {id}")]
     TaskArchived { id: String },
+    #[error("task already claimed: {task_id}")]
+    ClaimConflict {
+        task_id: String,
+        agent_id: String,
+        agent_display_name: String,
+        claimed_at: String,
+    },
+    #[error("task is not available: {task_id} ({reason})")]
+    TaskNotAvailable {
+        task_id: String,
+        reason: String,
+        unresolved_upstream_ids: Vec<String>,
+    },
     #[error("at least one update field must be supplied")]
     NoUpdateFields,
     #[error("a task cannot depend on itself: {task_id}")]
@@ -128,6 +141,8 @@ impl Error {
             Self::StatusNotFound { .. } => "STATUS_NOT_FOUND",
             Self::TaskNotFound { .. } => "TASK_NOT_FOUND",
             Self::TaskArchived { .. } => "TASK_ARCHIVED",
+            Self::ClaimConflict { .. } => "CLAIM_CONFLICT",
+            Self::TaskNotAvailable { .. } => "TASK_NOT_AVAILABLE",
             Self::NoUpdateFields => "NO_UPDATE_FIELDS",
             Self::SelfDependency { .. } => "SELF_DEPENDENCY",
             Self::DependencyExists { .. } => "DEPENDENCY_EXISTS",
@@ -171,6 +186,31 @@ impl Error {
             } => serde_json::json!({
                 "taskId": task_id,
                 "dependsOn": depends_on
+            }),
+            Self::ClaimConflict {
+                task_id,
+                agent_id,
+                agent_display_name,
+                claimed_at,
+            } => serde_json::json!({
+                "taskId": task_id,
+                "agent": {"id": agent_id, "displayName": agent_display_name},
+                "claimedAt": claimed_at
+            }),
+            Self::TaskNotAvailable {
+                task_id,
+                reason,
+                unresolved_upstream_ids,
+            } if reason == "dependencies_blocked" => serde_json::json!({
+                "taskId": task_id,
+                "reason": reason,
+                "unresolvedUpstreamIds": unresolved_upstream_ids
+            }),
+            Self::TaskNotAvailable {
+                task_id, reason, ..
+            } => serde_json::json!({
+                "taskId": task_id,
+                "reason": reason
             }),
             Self::RepositoryNotInitialized { path } => serde_json::json!({
                 "check": "workspace",
@@ -902,6 +942,7 @@ fn apply_pending_migrations(resolved: &mut ResolvedRepository) -> Result<(), Err
         (2, include_str!("../migrations/0002_agent_registry.sql")),
         (3, include_str!("../migrations/0003_task_core.sql")),
         (4, include_str!("../migrations/0004_task_dependencies.sql")),
+        (5, include_str!("../migrations/0005_task_claims.sql")),
     ] {
         if version > current {
             transaction
@@ -1077,6 +1118,15 @@ fn create_database(
     transaction
         .execute(
             "INSERT INTO schema_migrations (version, applied_at) VALUES (4, ?1)",
+            [created_at],
+        )
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute_batch(include_str!("../migrations/0005_task_claims.sql"))
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute(
+            "INSERT INTO schema_migrations (version, applied_at) VALUES (5, ?1)",
             [created_at],
         )
         .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
@@ -1300,6 +1350,7 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::ConflictingArguments
         | Error::NoUpdateFields
         | Error::TaskArchived { .. }
+        | Error::TaskNotAvailable { .. }
         | Error::SelfDependency { .. }
         | Error::DependencyExists { .. }
         | Error::DependencyCycle { .. }
@@ -1309,6 +1360,7 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::StatusNotFound { .. }
         | Error::TaskNotFound { .. }
         | Error::DependencyNotFound { .. } => 3,
+        Error::ClaimConflict { .. } => 4,
         Error::Phase {
             phase: "FORCE_CONFIRMATION_REQUIRED" | "CONFIRMATION_REQUIRED",
             ..
@@ -1690,7 +1742,7 @@ mod tests {
     fn health_rejects_invalid_migration_ledger_without_writing() {
         for statement in [
             "DELETE FROM schema_migrations",
-            "UPDATE schema_migrations SET version = 5 WHERE version = 4",
+            "UPDATE schema_migrations SET version = 6 WHERE version = 5",
         ] {
             let temp = tempdir().unwrap();
             let initialized = initialize(temp.path(), None, false, false, false).unwrap();
