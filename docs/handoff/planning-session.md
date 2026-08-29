@@ -49,10 +49,17 @@ Story đã hoàn tất planning:
 - **E3-S1: Use default statuses**
   - [Epic plan](../epics/E3-S1-use-default-statuses.md)
   - [Implementation task](../tasks/E3-S1-T1-implement-default-status-codes.md)
+- **E4-S2: Manage dependencies**
+  - [Epic plan](../epics/E4-S2-manage-dependencies.md)
+  - [Implementation task](../tasks/E4-S2-T1-implement-dependency-management.md)
+
+Story được chủ đích defer:
+
+- **E3-S2: Create and organize custom statuses** — default statuses đã đủ cho workflow MVP cơ bản; custom statuses không nằm trên critical path hiện tại.
 
 Story tiếp theo:
 
-- **E3-S2: Create and organize custom statuses** — chốt command surface, code/name rules, board-order insertion và mutation/output behavior.
+- **E5-S1: Claim a specified task atomically** — chốt availability recheck, actor/agent command surface, SQLite concurrency, claim-conflict và output behavior trên dependency model của E4-S2.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -60,8 +67,9 @@ Story tiếp theo:
 - **E1-S4-T1** mới ở trạng thái planned và đang bị block đến khi E2-S1, E3-S1, E4-S2 và E5-S1 cung cấp task/status/claim models có thẩm quyền.
 - **E3-S1-T1** đã hoàn tất tại commit `4d8ebb2`, cung cấp stable status codes và mở khóa task creation.
 - **E2-S1-T1** đã hoàn tất tại commit `ca25528`, cung cấp task creation với explicit actor, atomic aggregate insert, stable task ID, status machine code và structured coding context.
+- **E4-S2-T1** đã planning xong và sẵn sàng implementation trên E2-S1-T1/E2-S2-T1; task này cung cấp authoritative dependency graph cho E5-S1 và E4-S3.
 
-Implementation tiếp theo có thể bắt đầu theo dashboard; **E2-S5-T1** bị block bởi **E4-S3-T1** và **E5-S3-T1**, **E2-S6-T1** bị block bởi **E2-S5-T1** và **E4-S4-T1**, còn **E2-S3-T1** bị block bởi **E4-S1-T1**. Planning tiếp theo là **E3-S2: Create and organize custom statuses**.
+Implementation tiếp theo có thể bắt đầu theo dashboard; **E4-S2-T1** hiện ready và mở critical path tới claiming/availability. **E2-S5-T1** bị block bởi **E4-S3-T1** và **E5-S3-T1**, **E2-S6-T1** bị block bởi **E2-S5-T1** và **E4-S4-T1**, còn **E2-S3-T1** bị block bởi **E4-S1-T1**. Planning tiếp theo là **E5-S1: Claim a specified task atomically**; E3-S2 được defer.
 
 ## Việc đã làm
 
@@ -117,6 +125,13 @@ Implementation tiếp theo có thể bắt đầu theo dashboard; **E2-S5-T1** b
 - Chốt human/JSON confirmation, cancellation, active-task no-op và transaction recheck để không commit latest impact chưa từng được xác nhận.
 - Chủ đích giữ concurrency MVP đơn giản: sau khi user xác nhận non-empty impact, transaction chấp nhận chi tiết thay đổi và trả latest impact, không dùng snapshot token hay `IMPACT_CHANGED`.
 - Cập nhật PRD và viết epic/task E2-S6; planning review kết luận READY. E2-S6-T1 bị block bởi E2-S5-T1 và E4-S4-T1.
+- Chủ đích defer E3-S2 vì ba default statuses đã đủ cho use case MVP cơ bản; ưu tiên dependency/claiming/availability critical path.
+- Chốt E4-S2 với directed many-to-many mandatory dependencies, command `task dependency add/remove`, explicit downstream qua `<task-id>` và upstream qua `--depends-on`.
+- Chốt chỉ downstream không archived mới được mutation; completed active downstream vẫn được sửa, archived upstream vẫn là target hợp lệ và thỏa edge theo effective completion.
+- Chốt remove cạnh không tồn tại là `DEPENDENCY_NOT_FOUND`; duplicate, self và cycle đều bị từ chối; không expose arbitrary `cyclePath` ở MVP.
+- Chốt mutation output tối giản: human xác nhận cạnh, JSON trả `{taskId, dependsOn}`; `task view` populate direct upstream/downstream summaries và compact list không đổi.
+- Chốt graph validation/mutation/metadata atomic trong immediate transaction, không cache blocking/availability, và cung cấp shared all-upstreams-effective-completed predicate cho E4-S3/E5-S1.
+- Viết epic/task E4-S2; planning review và review tài liệu kết luận READY sau khi bổ sung pending-migration behavior cho read-only task view. E4-S2-T1 sẵn sàng implementation.
 
 ## Quy tắc planning cho mỗi story
 
@@ -210,8 +225,8 @@ Nếu tiếp tục implementation:
 
 Nếu tiếp tục planning:
 
-1. Mở `docs/PRD.md` và tìm `Story E3-S2: Create and organize custom statuses`.
-2. Đọc status/domain rules, E3-S1 contract và các board/output contracts liên quan.
-3. Tóm tắt context E3-S2, rồi hỏi người dùng các quyết định implementation còn thiếu, đặc biệt code/name validation, insertion/reordering behavior, default-status treatment, idempotency và output.
+1. Mở `docs/PRD.md` và tìm `Story E5-S1: Claim a specified task atomically`.
+2. Đọc availability/claim/domain rules, E1-S3 identity, E2 task output, E3-S1 effective completion và E4-S2 dependency contract.
+3. Tóm tắt context E5-S1, rồi hỏi người dùng các quyết định implementation còn thiếu, đặc biệt command/actor surface, exact availability recheck, conflict/concurrency, archived/completed behavior và output.
 4. Sau mỗi câu trả lời, spawn review agent theo 5 tiêu chí.
-5. Khi READY, tạo epic và technical task E3-S2, review file, cập nhật danh sách trong handoff này.
+5. Khi READY, tạo epic và technical task E5-S1, review file, cập nhật danh sách trong handoff này.

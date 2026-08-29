@@ -18,7 +18,9 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E2-S4-T1 is implemented with atomic structured task-context updates.
 - E2-S5 planning is complete; implementation is blocked until E4-S3-T1 and E5-S3-T1 provide authoritative availability and claim-release behavior.
 - E2-S6 planning is complete; implementation is blocked until E2-S5-T1 and E4-S4-T1 provide archive lifecycle and authoritative blocking explanations.
-- Plan next: E3-S2 to define custom status creation and ordering.
+- E3-S2 custom statuses are intentionally deferred because the default statuses cover the core MVP workflow.
+- E4-S2 planning is complete and ready to implement the authoritative dependency graph.
+- Plan next: E5-S1 to define atomic claiming of a specified task on top of E4-S2.
 - E1-S4-T1 remains blocked until the task, status, dependency, and active-claim models exist.
 
 ## E1 — Repository foundation and identity
@@ -68,7 +70,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | Story | Planning | Implementation | Depends on |
 |---|---|---|---|
 | E4-S1 Manage task hierarchy | needed | not_planned | E2-S1 |
-| E4-S2 Manage dependencies | needed | not_planned | E2-S1 |
+| [E4-S2](epics/E4-S2-manage-dependencies.md) | done | ready | E2-S1 |
+| [E4-S2-T1](tasks/E4-S2-T1-implement-dependency-management.md) | done | ready | E2-S1-T1, E2-S2-T1 |
 | E4-S3 Query available tasks | needed | not_planned | E3-S1, E4-S2, E5-S1 |
 | E4-S4 Explain blocking | needed | not_planned | E4-S2, E4-S3 |
 | E4-S5 View relationship maps | needed | not_planned | E4-S1, E4-S2 |
