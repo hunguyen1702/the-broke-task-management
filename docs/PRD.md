@@ -755,7 +755,9 @@ As a user, I want to restore an archived task so that work can return to active 
 Acceptance criteria:
 
 - System evaluates the current status and downstream impact.
-- User is warned when downstream tasks may become blocked.
+- Only the logical user can unarchive a task.
+- User is warned when active, incomplete direct downstream tasks gain the restored task as an unresolved dependency, including any task with an active claim.
+- Human confirmation or explicit non-interactive confirmation is required when impact exists.
 - Confirmed unarchive recalculates availability.
 - Task remains unclaimed after unarchive.
 - The current archive reason is cleared.

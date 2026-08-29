@@ -17,7 +17,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E2-S3 planning is complete; implementation is blocked until E4-S1 is planned and implemented.
 - E2-S4-T1 is implemented with atomic structured task-context updates.
 - E2-S5 planning is complete; implementation is blocked until E4-S3-T1 and E5-S3-T1 provide authoritative availability and claim-release behavior.
-- Plan next: E2-S6 to define safe task unarchive and downstream-impact confirmation.
+- E2-S6 planning is complete; implementation is blocked until E2-S5-T1 and E4-S4-T1 provide archive lifecycle and authoritative blocking explanations.
+- Plan next: E3-S2 to define custom status creation and ordering.
 - E1-S4-T1 remains blocked until the task, status, dependency, and active-claim models exist.
 
 ## E1 — Repository foundation and identity
@@ -49,7 +50,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E2-S4-T1](tasks/E2-S4-T1-implement-structured-task-context-updates.md) | done | done | E2-S1-T1, E2-S2-T1 |
 | [E2-S5](epics/E2-S5-archive-a-task.md) | done | blocked | E2-S1, E4-S3, E5-S3 |
 | [E2-S5-T1](tasks/E2-S5-T1-implement-safe-task-archival.md) | done | blocked | E2-S1-T1, E2-S2-T1, E4-S3-T1, E5-S3-T1 |
-| E2-S6 Unarchive a task safely | needed | not_planned | E2-S5, E4-S4 |
+| [E2-S6](epics/E2-S6-unarchive-a-task-safely.md) | done | blocked | E2-S5, E4-S4 |
+| [E2-S6-T1](tasks/E2-S6-T1-implement-safe-task-unarchive.md) | done | blocked | E2-S5-T1, E4-S4-T1 |
 
 ## E3 — Status workflow
 
