@@ -7,6 +7,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - Planning: `needed` or `done`.
 - Implementation: `not_planned`, `ready`, `blocked`, `in_progress`, or `done`.
 - `ready` means the implementation plan exists and its implementation dependencies are done.
+- `in_progress` is the repository-visible claim for one active implementation session. Claim a `ready` task here and in its task/epic frontmatter before changing source code; other agents or sessions must not work on a task already marked `in_progress`.
 - `done` means implementation and its required verification are complete.
 
 ## Next work

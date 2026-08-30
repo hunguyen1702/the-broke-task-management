@@ -43,6 +43,7 @@ Use temporary directories for filesystem tests. Cover normal, invalid, no-op pat
 ### Implement an approved task
 
 - Read the implementation task in `docs/tasks/`, its parent contract in `docs/epics/`, the referenced PRD sections, and `docs/STATUS.md`; verify dependencies and inspect the current code before changing it.
+- Before changing source code, claim a `ready` task by setting its implementation status to `in_progress` in the task frontmatter, the parent epic when applicable, and `docs/STATUS.md`. Re-read the status after the update; if another session already marked the task `in_progress`, stop and choose different work. Keep the claim visible until implementation and verification finish. This is mandatory when multiple agents or Codex sessions may share a worktree.
 - Treat the approved epic/task as the behavior contract, preserve core/CLI boundaries, implement and test normal, invalid, no-op, migration, and transactional paths relevant to the task.
 - Run format, lint, and tests. After implementation is complete, update the epic/task frontmatter and `docs/STATUS.md` before handoff or commit.
 
