@@ -224,6 +224,44 @@ pub struct ArchiveTaskInput {
     pub observed_claim: Option<ObservedClaim>,
 }
 
+#[derive(Debug, Clone)]
+pub struct UnarchiveTaskInput {
+    pub task_id: String,
+    pub confirmed: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnarchiveImpactItem {
+    pub task_id: String,
+    pub title: String,
+    pub claim: Option<TaskClaim>,
+    pub other_unresolved_upstream_task_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnarchiveImpact {
+    pub claimed: Vec<UnarchiveImpactItem>,
+    pub otherwise_available: Vec<UnarchiveImpactItem>,
+    pub already_blocked_elsewhere: Vec<UnarchiveImpactItem>,
+}
+
+impl UnarchiveImpact {
+    pub fn is_empty(&self) -> bool {
+        self.claimed.is_empty()
+            && self.otherwise_available.is_empty()
+            && self.already_blocked_elsewhere.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnarchiveTaskResult {
+    pub task: FullTask,
+    pub impact: UnarchiveImpact,
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct DependencyResult {
@@ -819,6 +857,123 @@ pub fn archive_task(current: &Path, mut input: ArchiveTaskInput) -> Result<FullT
         .commit()
         .map_err(|error| sqlite_access_error("task archive", &database_path, error))?;
     Ok(task)
+}
+
+pub fn preview_unarchive(current: &Path, task_id: &str) -> Result<UnarchiveTaskResult, Error> {
+    let mut resolved = resolve_repository(current, AccessIntent::ReadWrite)?;
+    let database_path = resolved.database_path.clone();
+    apply_pending_migrations(&mut resolved)?;
+    let transaction = resolved
+        .connection_mut()
+        .transaction()
+        .map_err(|error| sqlite_access_error("task unarchive preview", &database_path, error))?;
+    let mut task = load_full_task(&transaction, task_id, &database_path)?.ok_or_else(|| {
+        Error::TaskNotFound {
+            id: task_id.to_owned(),
+        }
+    })?;
+    load_full_context(&transaction, &mut task, &database_path)?;
+    let impact = select_unarchive_impact(&transaction, &task, &database_path)?;
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("task unarchive preview", &database_path, error))?;
+    Ok(UnarchiveTaskResult { task, impact })
+}
+
+pub fn unarchive_task(
+    current: &Path,
+    input: UnarchiveTaskInput,
+) -> Result<UnarchiveTaskResult, Error> {
+    let mut resolved = resolve_repository(current, AccessIntent::ReadWrite)?;
+    resolved
+        .connection_mut()
+        .busy_timeout(std::time::Duration::from_secs(5))
+        .map_err(|error| {
+            sqlite_access_error("database busy timeout", &resolved.database_path, error)
+        })?;
+    apply_pending_migrations(&mut resolved)?;
+    let database_path = resolved.database_path.clone();
+    let transaction = resolved
+        .connection_mut()
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|error| sqlite_access_error("task unarchive", &database_path, error))?;
+    let mut task =
+        load_full_task(&transaction, &input.task_id, &database_path)?.ok_or_else(|| {
+            Error::TaskNotFound {
+                id: input.task_id.clone(),
+            }
+        })?;
+    load_full_context(&transaction, &mut task, &database_path)?;
+    if !task.archived {
+        transaction
+            .commit()
+            .map_err(|error| sqlite_access_error("task unarchive", &database_path, error))?;
+        return Ok(UnarchiveTaskResult {
+            task,
+            impact: UnarchiveImpact::default(),
+        });
+    }
+    let impact = select_unarchive_impact(&transaction, &task, &database_path)?;
+    if !impact.is_empty() && !input.confirmed {
+        return Err(Error::ConfirmationRequired { impact });
+    }
+    transaction
+        .execute(
+            "UPDATE tasks SET archived = 0, archive_reason = NULL, updated_actor_type = 'user', updated_agent_id = NULL, updated_at = ?1 WHERE id = ?2",
+            params![utc_now(), input.task_id],
+        )
+        .map_err(|error| sqlite_access_error("task unarchive", &database_path, error))?;
+    let mut task = load_full_task(&transaction, &input.task_id, &database_path)?
+        .expect("unarchived task exists");
+    load_full_context(&transaction, &mut task, &database_path)?;
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("task unarchive", &database_path, error))?;
+    Ok(UnarchiveTaskResult { task, impact })
+}
+
+fn select_unarchive_impact(
+    connection: &rusqlite::Connection,
+    task: &FullTask,
+    database_path: &Path,
+) -> Result<UnarchiveImpact, Error> {
+    if !task.archived || task.status.completed {
+        return Ok(UnarchiveImpact::default());
+    }
+    let mut statement = connection
+        .prepare(
+            "SELECT t.id, t.title FROM task_dependencies d JOIN tasks t ON t.id = d.downstream_task_id JOIN statuses s ON s.id = t.status_id WHERE d.upstream_task_id = ?1 AND NOT t.archived AND NOT s.completed ORDER BY t.id",
+        )
+        .map_err(|error| sqlite_access_error("unarchive direct impact", database_path, error))?;
+    let downstream: Vec<(String, String)> = statement
+        .query_map([&task.id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .and_then(Iterator::collect)
+        .map_err(|error| sqlite_access_error("unarchive direct impact", database_path, error))?;
+    drop(statement);
+    let mut impact = UnarchiveImpact::default();
+    for (task_id, title) in downstream {
+        let explanation = select_task_blocking_explanation(connection, &task_id, database_path)?;
+        let item = UnarchiveImpactItem {
+            task_id,
+            title,
+            claim: explanation.claim.clone(),
+            other_unresolved_upstream_task_ids: explanation
+                .unresolved_dependencies
+                .direct
+                .iter()
+                .map(|dependency| dependency.id.clone())
+                .filter(|id| id != &task.id)
+                .collect(),
+        };
+        if item.claim.is_some() {
+            impact.claimed.push(item);
+        } else if explanation.available {
+            impact.otherwise_available.push(item);
+        } else {
+            impact.already_blocked_elsewhere.push(item);
+        }
+    }
+    Ok(impact)
 }
 
 pub(crate) fn release_owned_claim(

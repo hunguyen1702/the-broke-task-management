@@ -11,10 +11,11 @@ use tbtm_core::{
     task::{
         ArchiveScope, ArchiveTaskInput, AvailableTasksInput, ClaimTaskInput, CreateTaskInput,
         CreatedTask, DependencyInput, DependencyResult, FullTask, ListTasksInput, ObservedClaim,
-        PatchValue, TaskBlockingExplanation, TaskListItem, TaskType, UnclaimTaskInput,
-        UnclaimTaskResult, UpdateTaskInput, add_dependency, archive_task, available_tasks,
-        claim_task, create_task, explain_task_blocking, list_tasks, parse_code_reference,
-        remove_dependency, unclaim_task, update_task, view_task,
+        PatchValue, TaskBlockingExplanation, TaskListItem, TaskType, UnarchiveImpact,
+        UnarchiveTaskInput, UnarchiveTaskResult, UnclaimTaskInput, UnclaimTaskResult,
+        UpdateTaskInput, add_dependency, archive_task, available_tasks, claim_task, create_task,
+        explain_task_blocking, list_tasks, parse_code_reference, preview_unarchive,
+        remove_dependency, unarchive_task, unclaim_task, update_task, view_task,
     },
     uninstall,
 };
@@ -74,6 +75,8 @@ enum TaskCommand {
     Unclaim(TaskUnclaimArgs),
     #[command(about = "Archive a task with a durable reason")]
     Archive(TaskArchiveArgs),
+    #[command(about = "Return an archived task to active planning")]
+    Unarchive(TaskUnarchiveArgs),
 }
 
 #[derive(Args)]
@@ -92,6 +95,15 @@ struct TaskArchiveArgs {
     agent: Option<uuid::Uuid>,
     #[arg(long)]
     force: bool,
+    #[arg(long)]
+    yes: bool,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct TaskUnarchiveArgs {
+    id: String,
     #[arg(long)]
     yes: bool,
     #[arg(long)]
@@ -643,6 +655,37 @@ fn run() -> Result<(), (Error, bool)> {
                 .map_err(|error| (error, args.json))?;
                 render_task_detail(&result, args.json);
             }
+            TaskCommand::Unarchive(args) => {
+                let preview =
+                    preview_unarchive(&current, &args.id).map_err(|error| (error, args.json))?;
+                if !preview.task.archived {
+                    render_unarchive(&preview, args.json);
+                    return Ok(());
+                }
+                let mut confirmed = args.yes;
+                if !preview.impact.is_empty()
+                    && !confirmed
+                    && !args.json
+                    && io::stdin().is_terminal()
+                {
+                    render_unarchive_impact(&preview.impact, true);
+                    confirmed = confirm(&format!("Unarchive task {}?", args.id))
+                        .map_err(|error| (Error::phase("CONFIRMATION_FAILED", error), args.json))?;
+                    if !confirmed {
+                        println!("Unarchive cancelled.");
+                        return Ok(());
+                    }
+                }
+                let result = unarchive_task(
+                    &current,
+                    UnarchiveTaskInput {
+                        task_id: args.id,
+                        confirmed,
+                    },
+                )
+                .map_err(|error| (error, args.json))?;
+                render_unarchive(&result, args.json);
+            }
         },
     }
     Ok(())
@@ -672,6 +715,7 @@ fn command_uses_json(command: &Command) -> bool {
             TaskCommand::Claim(args) => args.json,
             TaskCommand::Unclaim(args) => args.json,
             TaskCommand::Archive(args) => args.json,
+            TaskCommand::Unarchive(args) => args.json,
         },
     }
 }
@@ -696,6 +740,67 @@ fn render_unclaim(result: &UnclaimTaskResult, json: bool) {
     } else {
         println!("Unclaimed task: {}", result.task.id);
         println!("Agent: {}", result.released_agent_display_name);
+    }
+}
+
+fn render_unarchive(result: &UnarchiveTaskResult, json: bool) {
+    if json {
+        render_success(result, true);
+        return;
+    }
+    println!("Unarchived task: {}", result.task.id);
+    println!("Title: {}", result.task.title);
+    println!(
+        "Status: {} ({})",
+        result.task.status.name, result.task.status.code
+    );
+    println!("Archived: {}", result.task.archived);
+    println!(
+        "Archive reason: {}",
+        result.task.archive_reason.as_deref().unwrap_or("—")
+    );
+    render_unarchive_impact(&result.impact, false);
+}
+
+fn render_unarchive_impact(impact: &UnarchiveImpact, warning: bool) {
+    if warning {
+        println!("Unarchiving will restore a blocker for direct downstream tasks:");
+    } else if impact.is_empty() {
+        println!("Downstream impact: none");
+        return;
+    } else {
+        println!("Downstream impact:");
+    }
+    for (heading, items) in [
+        ("Claimed", &impact.claimed),
+        ("Otherwise available", &impact.otherwise_available),
+        (
+            "Already blocked elsewhere",
+            &impact.already_blocked_elsewhere,
+        ),
+    ] {
+        println!("{heading}:");
+        if items.is_empty() {
+            println!("  —");
+            continue;
+        }
+        for item in items {
+            let claim = item.claim.as_ref().map_or(String::new(), |claim| {
+                format!(
+                    "; claimed by {} ({}) since {}",
+                    claim.agent.display_name, claim.agent.id, claim.claimed_at
+                )
+            });
+            let blockers = if item.other_unresolved_upstream_task_ids.is_empty() {
+                "none".to_owned()
+            } else {
+                item.other_unresolved_upstream_task_ids.join(", ")
+            };
+            println!(
+                "- {} {}{}; other blockers: {}",
+                item.task_id, item.title, claim, blockers
+            );
+        }
     }
 }
 
@@ -1002,6 +1107,30 @@ fn render_error(error: &Error, json: bool) {
         );
     } else {
         eprintln!("{}: {error}", error.code());
+        if let Error::ConfirmationRequired { impact } = error {
+            eprintln!("Downstream impact:");
+            for (heading, items) in [
+                ("Claimed", &impact.claimed),
+                ("Otherwise available", &impact.otherwise_available),
+                (
+                    "Already blocked elsewhere",
+                    &impact.already_blocked_elsewhere,
+                ),
+            ] {
+                eprintln!("{heading}:");
+                for item in items {
+                    let blockers = if item.other_unresolved_upstream_task_ids.is_empty() {
+                        "none".to_owned()
+                    } else {
+                        item.other_unresolved_upstream_task_ids.join(", ")
+                    };
+                    eprintln!(
+                        "- {} {}; other blockers: {}",
+                        item.task_id, item.title, blockers
+                    );
+                }
+            }
+        }
         if let Some(suggestion) = error.suggestion() {
             eprintln!("Next step: {suggestion}");
         }

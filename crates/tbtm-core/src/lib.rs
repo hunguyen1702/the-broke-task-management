@@ -62,6 +62,8 @@ pub enum Error {
     },
     #[error("only the logical user may force archive a task")]
     ArchivePermissionDenied,
+    #[error("unarchive impact requires confirmation")]
+    ConfirmationRequired { impact: task::UnarchiveImpact },
     #[error("task already claimed: {task_id}")]
     ClaimConflict {
         task_id: String,
@@ -165,6 +167,7 @@ impl Error {
             Self::InvalidArchiveReason => "INVALID_ARCHIVE_REASON",
             Self::TaskClaimed { .. } => "TASK_CLAIMED",
             Self::ArchivePermissionDenied => "PERMISSION_DENIED",
+            Self::ConfirmationRequired { .. } => "CONFIRMATION_REQUIRED",
             Self::ClaimConflict { .. } => "CLAIM_CONFLICT",
             Self::ClaimNotFound { .. } => "CLAIM_NOT_FOUND",
             Self::ClaimNotOwned { .. } => "CLAIM_NOT_OWNED",
@@ -261,6 +264,9 @@ impl Error {
                 "taskId": task_id,
                 "reason": reason
             }),
+            Self::ConfirmationRequired { impact } => {
+                serde_json::to_value(impact).expect("unarchive impact is serializable")
+            }
             Self::RepositoryNotInitialized { path } => serde_json::json!({
                 "check": "workspace",
                 "path": path,
@@ -1413,6 +1419,7 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::NoUpdateFields
         | Error::TaskArchived { .. }
         | Error::InvalidArchiveReason
+        | Error::ConfirmationRequired { .. }
         | Error::TaskNotAvailable { .. }
         | Error::SelfDependency { .. }
         | Error::DependencyExists { .. }

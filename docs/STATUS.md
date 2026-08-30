@@ -18,7 +18,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E2-S3 planning is complete; implementation is blocked until E4-S1 is planned and implemented.
 - E2-S4-T1 is implemented with atomic structured task-context updates.
 - E2-S5-T1 is implemented with durable archive reasons, transactional claim release, force-confirmation claim binding, and effective-completion semantics.
-- E2-S6 planning is complete and ready now that E4-S4-T1 provides authoritative blocking explanations.
+- E2-S6-T1 is implemented with transactional unarchive, deterministic direct-impact reporting, explicit confirmation, and preserved claims.
 - E3-S2 custom statuses are intentionally deferred because the default statuses cover the core MVP workflow.
 - E4-S2-T1 is implemented with transactional dependency management and cycle prevention.
 - E5-S1-T1 is implemented with atomic specified-task claiming, stable conflict and unavailable errors, and claim hydration.
@@ -56,8 +56,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E2-S4-T1](tasks/E2-S4-T1-implement-structured-task-context-updates.md) | done | done | E2-S1-T1, E2-S2-T1 |
 | [E2-S5](epics/E2-S5-archive-a-task.md) | done | done | E2-S1, E4-S3, E5-S3 |
 | [E2-S5-T1](tasks/E2-S5-T1-implement-safe-task-archival.md) | done | done | E2-S1-T1, E2-S2-T1, E4-S3-T1, E5-S3-T1 |
-| [E2-S6](epics/E2-S6-unarchive-a-task-safely.md) | done | ready | E2-S5, E4-S4 |
-| [E2-S6-T1](tasks/E2-S6-T1-implement-safe-task-unarchive.md) | done | ready | E2-S5-T1, E4-S4-T1 |
+| [E2-S6](epics/E2-S6-unarchive-a-task-safely.md) | done | done | E2-S5, E4-S4 |
+| [E2-S6-T1](tasks/E2-S6-T1-implement-safe-task-unarchive.md) | done | done | E2-S5-T1, E4-S4-T1 |
 
 ## E3 — Status workflow
 
