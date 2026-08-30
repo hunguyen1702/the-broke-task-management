@@ -1,6 +1,7 @@
 use clap::{Args, Parser, Subcommand};
 use serde::Serialize;
 use std::{
+    collections::{BTreeMap, BTreeSet},
     io::{self, IsTerminal, Write},
     process::ExitCode,
 };
@@ -12,11 +13,13 @@ use tbtm_core::{
         ArchiveScope, ArchiveTaskInput, AvailableTasksInput, ClaimTaskInput, CreateTaskInput,
         CreatedTask, DependencyInput, DependencyResult, FullTask, HierarchyResult, ListTasksInput,
         ObservedClaim, ParentMutationResult, ParentRemoveInput, ParentSetInput, PatchValue,
+        RelationshipDirection, RelationshipEdge, RelationshipMap, RelationshipNode,
         TaskBlockingExplanation, TaskListItem, TaskType, UnarchiveImpact, UnarchiveTaskInput,
         UnarchiveTaskResult, UnclaimTaskInput, UnclaimTaskResult, UpdateTaskInput, add_dependency,
         archive_task, available_tasks, claim_task, create_task, explain_task_blocking, list_tasks,
         parse_code_reference, preview_unarchive, remove_dependency, remove_parent, set_parent,
-        task_hierarchy, unarchive_task, unclaim_task, update_task, view_task,
+        task_hierarchy, task_relationship_map, unarchive_task, unclaim_task, update_task,
+        view_task,
     },
     uninstall,
 };
@@ -74,6 +77,8 @@ enum TaskCommand {
     Parent(ParentArgs),
     #[command(about = "View task hierarchy")]
     Hierarchy(TaskHierarchyArgs),
+    #[command(about = "View recursive task relationships")]
+    Map(TaskMapArgs),
     #[command(about = "Atomically claim an available task")]
     Claim(TaskClaimArgs),
     #[command(about = "Release an owned task claim")]
@@ -197,6 +202,19 @@ struct TaskHierarchyArgs {
     task_id: String,
     #[arg(long)]
     recursive: bool,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct TaskMapArgs {
+    task_id: String,
+    #[arg(
+        long,
+        default_value = "all",
+        value_parser = ["upstream", "downstream", "parent", "child", "all"]
+    )]
+    direction: String,
     #[arg(long)]
     json: bool,
 }
@@ -676,6 +694,19 @@ fn run() -> Result<(), (Error, bool)> {
                     .map_err(|error| (error, args.json))?;
                 render_hierarchy(&result, args.json);
             }
+            TaskCommand::Map(args) => {
+                let direction = match args.direction.as_str() {
+                    "upstream" => RelationshipDirection::Upstream,
+                    "downstream" => RelationshipDirection::Downstream,
+                    "parent" => RelationshipDirection::Parent,
+                    "child" => RelationshipDirection::Child,
+                    "all" => RelationshipDirection::All,
+                    _ => unreachable!("direction is validated by clap"),
+                };
+                let result = task_relationship_map(&current, &args.task_id, direction)
+                    .map_err(|error| (error, args.json))?;
+                render_relationship_map(&result, args.json);
+            }
             TaskCommand::Claim(args) => {
                 let result = claim_task(
                     &current,
@@ -822,6 +853,7 @@ fn command_uses_json(command: &Command) -> bool {
                 ParentCommand::Remove(args) => args.json,
             },
             TaskCommand::Hierarchy(args) => args.json,
+            TaskCommand::Map(args) => args.json,
             TaskCommand::Claim(args) => args.json,
             TaskCommand::Unclaim(args) => args.json,
             TaskCommand::Archive(args) => args.json,
@@ -976,6 +1008,181 @@ fn render_hierarchy(result: &HierarchyResult, json: bool) {
             }
         }
     }
+}
+
+fn render_relationship_map(result: &RelationshipMap, json: bool) {
+    if json {
+        render_success(result, true);
+        return;
+    }
+    let nodes: BTreeMap<_, _> = result
+        .nodes
+        .iter()
+        .map(|node| (node.task.id.as_str(), node))
+        .collect();
+    let target = nodes[result.root_task_id.as_str()];
+    println!(
+        "Relationship map for {} ({})",
+        result.root_task_id,
+        result.direction.as_str()
+    );
+    println!("Target: {}", relationship_node_text(target));
+    let sections = [
+        (RelationshipDirection::Parent, "Parent hierarchy"),
+        (RelationshipDirection::Child, "Child hierarchy"),
+        (RelationshipDirection::Upstream, "Upstream dependencies"),
+        (RelationshipDirection::Downstream, "Downstream dependencies"),
+    ];
+    let mut rendered = false;
+    for (direction, heading) in sections {
+        if result.direction != RelationshipDirection::All && result.direction != direction {
+            continue;
+        }
+        let section_edges: Vec<_> = result
+            .edges
+            .iter()
+            .filter(|edge| edge.direction == direction)
+            .collect();
+        if section_edges.is_empty() {
+            continue;
+        }
+        rendered = true;
+        println!("\n{heading}:");
+        render_relationship_section(result, direction, &section_edges, &nodes);
+    }
+    if !rendered {
+        if result.direction == RelationshipDirection::All {
+            println!("\nNo relationships found.");
+        } else {
+            println!("\nNo {} relationships found.", result.direction.as_str());
+        }
+    }
+}
+
+#[derive(Debug)]
+struct MapOccurrence<'a> {
+    task_id: &'a str,
+    full: bool,
+}
+
+fn render_relationship_section<'a>(
+    result: &'a RelationshipMap,
+    direction: RelationshipDirection,
+    edges: &[&'a RelationshipEdge],
+    nodes: &BTreeMap<&'a str, &'a RelationshipNode>,
+) {
+    let depths: BTreeMap<_, _> = result
+        .nodes
+        .iter()
+        .filter_map(|node| {
+            node.reached_by
+                .iter()
+                .find(|item| item.direction == direction)
+                .map(|item| (node.task.id.as_str(), item.depth))
+        })
+        .chain([(result.root_task_id.as_str(), 0)])
+        .collect();
+    let endpoints = |edge: &'a RelationshipEdge| match direction {
+        RelationshipDirection::Parent => (edge.to_task_id.as_str(), edge.from_task_id.as_str()),
+        RelationshipDirection::Child => (edge.from_task_id.as_str(), edge.to_task_id.as_str()),
+        RelationshipDirection::Upstream => (edge.to_task_id.as_str(), edge.from_task_id.as_str()),
+        RelationshipDirection::Downstream => (edge.from_task_id.as_str(), edge.to_task_id.as_str()),
+        RelationshipDirection::All => unreachable!("sections have concrete directions"),
+    };
+    let mut chosen: BTreeMap<&str, &str> = BTreeMap::new();
+    for edge in edges {
+        let (predecessor, reached) = endpoints(edge);
+        if depths
+            .get(predecessor)
+            .zip(depths.get(reached))
+            .is_some_and(|(predecessor_depth, reached_depth)| {
+                predecessor_depth.checked_add(1) == Some(*reached_depth)
+            })
+        {
+            chosen
+                .entry(reached)
+                .and_modify(|current| *current = (*current).min(predecessor))
+                .or_insert(predecessor);
+        }
+    }
+    let chosen_edges: BTreeSet<_> = chosen
+        .iter()
+        .map(|(reached, predecessor)| (*predecessor, *reached))
+        .collect();
+    let mut occurrences: BTreeMap<&str, Vec<MapOccurrence<'_>>> = BTreeMap::new();
+    for edge in edges {
+        let (predecessor, reached) = endpoints(edge);
+        occurrences
+            .entry(predecessor)
+            .or_default()
+            .push(MapOccurrence {
+                task_id: reached,
+                full: chosen_edges.contains(&(predecessor, reached)),
+            });
+    }
+    for items in occurrences.values_mut() {
+        items.sort_by(|left, right| {
+            left.task_id
+                .cmp(right.task_id)
+                .then_with(|| right.full.cmp(&left.full))
+        });
+    }
+    render_map_children(result.root_task_id.as_str(), "", &occurrences, nodes);
+}
+
+fn render_map_children(
+    predecessor: &str,
+    prefix: &str,
+    occurrences: &BTreeMap<&str, Vec<MapOccurrence<'_>>>,
+    nodes: &BTreeMap<&str, &RelationshipNode>,
+) {
+    let Some(items) = occurrences.get(predecessor) else {
+        return;
+    };
+    for (index, item) in items.iter().enumerate() {
+        let last = index + 1 == items.len();
+        let connector = if last { "└─ " } else { "├─ " };
+        if item.full {
+            println!(
+                "{prefix}{connector}{}",
+                relationship_node_text(nodes[item.task_id])
+            );
+            let child_prefix = format!("{prefix}{}", if last { "   " } else { "│  " });
+            render_map_children(item.task_id, &child_prefix, occurrences, nodes);
+        } else {
+            println!("{prefix}{connector}↩ {} (already shown)", item.task_id);
+        }
+    }
+}
+
+fn relationship_node_text(node: &RelationshipNode) -> String {
+    let mut badges = String::new();
+    if node.archived {
+        badges.push_str(" [archived]");
+    }
+    if node.task.status.completed {
+        badges.push_str(" [completed]");
+    }
+    if let Some(claim) = &node.claim {
+        badges.push_str(&format!(
+            " [claimed: {} ({})]",
+            claim.agent.display_name, claim.agent.id
+        ));
+    }
+    if node.blocked {
+        badges.push_str(" [blocked]");
+    }
+    if node.ready {
+        badges.push_str(" [ready]");
+    }
+    format!(
+        "{} [{}, {}]{} {}",
+        node.task.id,
+        node.task.task_type.as_str(),
+        node.task.status.code,
+        badges,
+        node.task.title
+    )
 }
 
 fn patch<T>(value: Option<T>, clear: bool) -> PatchValue<T> {

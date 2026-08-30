@@ -6,7 +6,10 @@ use rusqlite::{
     OptionalExtension, Transaction, TransactionBehavior, params, params_from_iter, types::Value,
 };
 use serde::Serialize;
-use std::{collections::HashSet, path::Path};
+use std::{
+    collections::{BTreeMap, BTreeSet, HashSet, VecDeque},
+    path::Path,
+};
 use url::Url;
 use uuid::Uuid;
 
@@ -399,6 +402,83 @@ pub struct TaskBlockingExplanation {
     pub reasons: Vec<AvailabilityReason>,
     pub claim: Option<TaskClaim>,
     pub unresolved_dependencies: UnresolvedDependencies,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RelationshipDirection {
+    Parent,
+    Child,
+    Upstream,
+    Downstream,
+    All,
+}
+
+impl RelationshipDirection {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Parent => "parent",
+            Self::Child => "child",
+            Self::Upstream => "upstream",
+            Self::Downstream => "downstream",
+            Self::All => "all",
+        }
+    }
+
+    fn selected(self) -> &'static [Self] {
+        match self {
+            Self::Parent => &[Self::Parent],
+            Self::Child => &[Self::Child],
+            Self::Upstream => &[Self::Upstream],
+            Self::Downstream => &[Self::Downstream],
+            Self::All => &[Self::Parent, Self::Child, Self::Upstream, Self::Downstream],
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RelationshipType {
+    Hierarchy,
+    Dependency,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelationshipReach {
+    pub direction: RelationshipDirection,
+    pub depth: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelationshipNode {
+    #[serde(flatten)]
+    pub task: RelatedTask,
+    pub archived: bool,
+    pub claim: Option<TaskClaim>,
+    pub blocked: bool,
+    pub ready: bool,
+    pub reached_by: Vec<RelationshipReach>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelationshipEdge {
+    #[serde(rename = "type")]
+    pub relationship_type: RelationshipType,
+    pub direction: RelationshipDirection,
+    pub from_task_id: String,
+    pub to_task_id: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelationshipMap {
+    pub root_task_id: String,
+    pub direction: RelationshipDirection,
+    pub nodes: Vec<RelationshipNode>,
+    pub edges: Vec<RelationshipEdge>,
 }
 
 pub fn parse_code_reference(value: &str) -> Result<CodeReference, Error> {
@@ -2077,6 +2157,253 @@ fn load_strings(
         .query_map([id], |row| row.get(0))
         .and_then(Iterator::collect)
         .map_err(|error| sqlite_access_error("task context", database_path, error))
+}
+
+pub fn task_relationship_map(
+    current: &Path,
+    task_id: &str,
+    direction: RelationshipDirection,
+) -> Result<RelationshipMap, Error> {
+    let mut resolved = resolve_repository(current, AccessIntent::ReadOnly)?;
+    let database_path = resolved.database_path.clone();
+    require_latest_migration(resolved.connection_mut(), &database_path)?;
+    let transaction = resolved
+        .connection_mut()
+        .transaction()
+        .map_err(|error| sqlite_access_error("relationship map snapshot", &database_path, error))?;
+    let result = select_relationship_map(&transaction, task_id, direction, &database_path)?;
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("relationship map snapshot", &database_path, error))?;
+    Ok(result)
+}
+
+#[derive(Debug, Clone)]
+struct MapNodeState {
+    task: RelatedTask,
+    archived: bool,
+    claim: Option<TaskClaim>,
+    blocked: bool,
+    ready: bool,
+}
+
+/// Builds a relationship map inside a caller-owned snapshot.
+pub fn select_relationship_map(
+    connection: &rusqlite::Connection,
+    task_id: &str,
+    direction: RelationshipDirection,
+    database_path: &Path,
+) -> Result<RelationshipMap, Error> {
+    let states = load_map_node_states(connection, database_path)?;
+    if !states.contains_key(task_id) {
+        return Err(Error::TaskNotFound {
+            id: task_id.to_owned(),
+        });
+    }
+    let hierarchy = load_map_pairs(
+        connection,
+        "SELECT parent_task_id, child_task_id FROM task_hierarchy ORDER BY parent_task_id, child_task_id",
+        database_path,
+        "relationship map hierarchy",
+    )?;
+    let dependencies = load_map_pairs(
+        connection,
+        "SELECT upstream_task_id, downstream_task_id FROM task_dependencies ORDER BY upstream_task_id, downstream_task_id",
+        database_path,
+        "relationship map dependencies",
+    )?;
+
+    let mut reached: BTreeMap<String, BTreeMap<RelationshipDirection, u32>> = BTreeMap::new();
+    let mut edges = BTreeSet::new();
+    for selected in direction.selected() {
+        let (relationship_type, pairs, reverse) = match selected {
+            RelationshipDirection::Parent => (RelationshipType::Hierarchy, &hierarchy, true),
+            RelationshipDirection::Child => (RelationshipType::Hierarchy, &hierarchy, false),
+            RelationshipDirection::Upstream => (RelationshipType::Dependency, &dependencies, true),
+            RelationshipDirection::Downstream => {
+                (RelationshipType::Dependency, &dependencies, false)
+            }
+            RelationshipDirection::All => unreachable!("all expands into concrete directions"),
+        };
+        traverse_map_direction(
+            task_id,
+            *selected,
+            relationship_type,
+            pairs,
+            reverse,
+            &mut reached,
+            &mut edges,
+        );
+    }
+
+    let mut nodes: Vec<_> = states
+        .into_iter()
+        .filter_map(|(id, state)| {
+            if id != task_id && !reached.contains_key(&id) {
+                return None;
+            }
+            let reached_by = reached
+                .remove(&id)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|(direction, depth)| RelationshipReach { direction, depth })
+                .collect();
+            Some(RelationshipNode {
+                task: state.task,
+                archived: state.archived,
+                claim: state.claim,
+                blocked: state.blocked,
+                ready: state.ready,
+                reached_by,
+            })
+        })
+        .collect();
+    nodes.sort_by(|left, right| {
+        if left.task.id == task_id {
+            return std::cmp::Ordering::Less;
+        }
+        if right.task.id == task_id {
+            return std::cmp::Ordering::Greater;
+        }
+        let left_depth = left
+            .reached_by
+            .iter()
+            .map(|item| item.depth)
+            .min()
+            .unwrap_or(0);
+        let right_depth = right
+            .reached_by
+            .iter()
+            .map(|item| item.depth)
+            .min()
+            .unwrap_or(0);
+        left_depth
+            .cmp(&right_depth)
+            .then_with(|| left.task.id.cmp(&right.task.id))
+    });
+    Ok(RelationshipMap {
+        root_task_id: task_id.to_owned(),
+        direction,
+        nodes,
+        edges: edges.into_iter().collect(),
+    })
+}
+
+fn traverse_map_direction(
+    root: &str,
+    direction: RelationshipDirection,
+    relationship_type: RelationshipType,
+    pairs: &[(String, String)],
+    reverse: bool,
+    reached: &mut BTreeMap<String, BTreeMap<RelationshipDirection, u32>>,
+    edges: &mut BTreeSet<RelationshipEdge>,
+) {
+    let mut adjacency: BTreeMap<&str, Vec<&(String, String)>> = BTreeMap::new();
+    for pair in pairs {
+        let predecessor = if reverse {
+            pair.1.as_str()
+        } else {
+            pair.0.as_str()
+        };
+        adjacency.entry(predecessor).or_default().push(pair);
+    }
+    let mut distances = BTreeMap::from([(root.to_owned(), 0_u32)]);
+    let mut queue = VecDeque::from([root.to_owned()]);
+    while let Some(predecessor) = queue.pop_front() {
+        let depth = distances[&predecessor];
+        for pair in adjacency.get(predecessor.as_str()).into_iter().flatten() {
+            let next = if reverse { &pair.0 } else { &pair.1 };
+            edges.insert(RelationshipEdge {
+                relationship_type,
+                direction,
+                from_task_id: pair.0.clone(),
+                to_task_id: pair.1.clone(),
+            });
+            if next == root {
+                continue;
+            }
+            let next_depth = depth + 1;
+            if !distances.contains_key(next) {
+                distances.insert(next.clone(), next_depth);
+                queue.push_back(next.clone());
+            }
+            reached
+                .entry(next.clone())
+                .or_default()
+                .entry(direction)
+                .and_modify(|current| *current = (*current).min(next_depth))
+                .or_insert(next_depth);
+        }
+    }
+}
+
+fn load_map_pairs(
+    connection: &rusqlite::Connection,
+    sql: &str,
+    database_path: &Path,
+    phase: &'static str,
+) -> Result<Vec<(String, String)>, Error> {
+    let mut statement = connection
+        .prepare(sql)
+        .map_err(|error| sqlite_access_error(phase, database_path, error))?;
+    statement
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .and_then(Iterator::collect)
+        .map_err(|error| sqlite_access_error(phase, database_path, error))
+}
+
+fn load_map_node_states(
+    connection: &rusqlite::Connection,
+    database_path: &Path,
+) -> Result<BTreeMap<String, MapNodeState>, Error> {
+    let mut statement = connection
+        .prepare(
+            "SELECT t.id, t.title, t.task_type, s.code, s.name, s.completed, t.archived,
+         c.agent_id, a.display_name, c.claimed_at,
+         EXISTS (SELECT 1 FROM task_dependencies d JOIN tasks u ON u.id = d.upstream_task_id
+           JOIN statuses us ON us.id = u.status_id WHERE d.downstream_task_id = t.id
+           AND NOT u.archived AND NOT us.completed),
+         NOT t.archived AND NOT s.completed AND c.task_id IS NULL AND NOT EXISTS (
+           SELECT 1 FROM task_dependencies d JOIN tasks u ON u.id = d.upstream_task_id
+           JOIN statuses us ON us.id = u.status_id WHERE d.downstream_task_id = t.id
+           AND NOT u.archived AND NOT us.completed)
+         FROM tasks t JOIN statuses s ON s.id = t.status_id
+         LEFT JOIN task_claims c ON c.task_id = t.id LEFT JOIN agents a ON a.id = c.agent_id
+         ORDER BY t.id",
+        )
+        .map_err(|error| sqlite_access_error("relationship map nodes", database_path, error))?;
+    let rows = statement
+        .query_map([], |row| {
+            let id: String = row.get(0)?;
+            Ok((
+                id.clone(),
+                MapNodeState {
+                    task: RelatedTask {
+                        id,
+                        title: row.get(1)?,
+                        task_type: task_type_from_row(row.get::<_, String>(2)?)?,
+                        status: RelatedTaskStatus {
+                            code: row.get(3)?,
+                            name: row.get(4)?,
+                            completed: row.get(5)?,
+                        },
+                    },
+                    archived: row.get(6)?,
+                    claim: row.get::<_, Option<String>>(7)?.map(|id| TaskClaim {
+                        agent: ClaimAgent {
+                            id,
+                            display_name: row.get(8).expect("joined claim agent"),
+                        },
+                        claimed_at: row.get(9).expect("joined claim timestamp"),
+                    }),
+                    blocked: row.get(10)?,
+                    ready: row.get(11)?,
+                },
+            ))
+        })
+        .map_err(|error| sqlite_access_error("relationship map nodes", database_path, error))?;
+    rows.collect::<rusqlite::Result<_>>()
+        .map_err(|error| sqlite_access_error("relationship map nodes", database_path, error))
 }
 
 pub fn list_tasks(current: &Path, input: &ListTasksInput) -> Result<Vec<TaskListItem>, Error> {
