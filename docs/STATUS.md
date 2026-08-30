@@ -17,13 +17,13 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E2-S3 planning is complete; implementation is blocked until E4-S1 is planned and implemented.
 - E2-S4-T1 is implemented with atomic structured task-context updates.
 - E2-S5-T1 is implemented with durable archive reasons, transactional claim release, force-confirmation claim binding, and effective-completion semantics.
-- E2-S6 planning is complete; implementation is blocked until E4-S4-T1 provides authoritative blocking explanations.
+- E2-S6 planning is complete and ready now that E4-S4-T1 provides authoritative blocking explanations.
 - E3-S2 custom statuses are intentionally deferred because the default statuses cover the core MVP workflow.
 - E4-S2-T1 is implemented with transactional dependency management and cycle prevention.
 - E5-S1-T1 is implemented with atomic specified-task claiming, stable conflict and unavailable errors, and claim hydration.
 - E5-S3-T1 is implemented with transactional owner-controlled unclaim behavior and shared-worktree claim release.
 - E4-S3-T1 is implemented with authoritative read-only available-task querying and a reusable caller-owned selector.
-- E4-S4 planning is complete; E4-S4-T1 is ready to implement authoritative blocking explanations required by safe unarchive.
+- E4-S4-T1 is implemented and verified with deterministic multi-reason explanations, bounded unresolved-graph traversal, snapshot consistency, read-only behavior, and linked-worktree coverage.
 - E1-S4-T1 is implemented with deterministic read-only agent and active-claim listing.
 
 ## E1 — Repository foundation and identity
@@ -55,8 +55,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E2-S4-T1](tasks/E2-S4-T1-implement-structured-task-context-updates.md) | done | done | E2-S1-T1, E2-S2-T1 |
 | [E2-S5](epics/E2-S5-archive-a-task.md) | done | done | E2-S1, E4-S3, E5-S3 |
 | [E2-S5-T1](tasks/E2-S5-T1-implement-safe-task-archival.md) | done | done | E2-S1-T1, E2-S2-T1, E4-S3-T1, E5-S3-T1 |
-| [E2-S6](epics/E2-S6-unarchive-a-task-safely.md) | done | blocked | E2-S5, E4-S4 |
-| [E2-S6-T1](tasks/E2-S6-T1-implement-safe-task-unarchive.md) | done | blocked | E2-S5-T1, E4-S4-T1 |
+| [E2-S6](epics/E2-S6-unarchive-a-task-safely.md) | done | ready | E2-S5, E4-S4 |
+| [E2-S6-T1](tasks/E2-S6-T1-implement-safe-task-unarchive.md) | done | ready | E2-S5-T1, E4-S4-T1 |
 
 ## E3 — Status workflow
 
@@ -77,8 +77,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E4-S2-T1](tasks/E4-S2-T1-implement-dependency-management.md) | done | done | E2-S1-T1, E2-S2-T1 |
 | [E4-S3](epics/E4-S3-query-available-tasks.md) | done | done | E3-S1, E4-S2, E5-S1 |
 | [E4-S3-T1](tasks/E4-S3-T1-implement-available-task-querying.md) | done | done | E3-S1-T1, E4-S2-T1, E5-S1-T1 |
-| [E4-S4](epics/E4-S4-explain-blocking.md) | done | ready | E4-S2, E4-S3 |
-| [E4-S4-T1](tasks/E4-S4-T1-implement-blocking-explanations.md) | done | ready | E4-S2-T1, E4-S3-T1 |
+| [E4-S4](epics/E4-S4-explain-blocking.md) | done | done | E4-S2, E4-S3 |
+| [E4-S4-T1](tasks/E4-S4-T1-implement-blocking-explanations.md) | done | done | E4-S2-T1, E4-S3-T1 |
 | E4-S5 View relationship maps | needed | not_planned | E4-S1, E4-S2 |
 
 ## E5 — Multi-agent claiming

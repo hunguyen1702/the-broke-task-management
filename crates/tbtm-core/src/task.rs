@@ -270,6 +270,54 @@ pub struct TaskListItem {
     pub updated_at: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AvailabilityReason {
+    Archived,
+    Completed,
+    Claimed,
+    DependenciesBlocked,
+}
+
+impl AvailabilityReason {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Archived => "archived",
+            Self::Completed => "completed",
+            Self::Claimed => "claimed",
+            Self::DependenciesBlocked => "dependencies_blocked",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DependencyExplanationItem {
+    pub id: String,
+    pub title: String,
+    #[serde(rename = "type")]
+    pub task_type: TaskType,
+    pub status: RelatedTaskStatus,
+    pub blocked_by_task_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnresolvedDependencies {
+    pub direct: Vec<DependencyExplanationItem>,
+    pub recursive: Vec<DependencyExplanationItem>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskBlockingExplanation {
+    pub task_id: String,
+    pub available: bool,
+    pub reasons: Vec<AvailabilityReason>,
+    pub claim: Option<TaskClaim>,
+    pub unresolved_dependencies: UnresolvedDependencies,
+}
+
 pub fn parse_code_reference(value: &str) -> Result<CodeReference, Error> {
     let (location, description) = match value.split_once("::") {
         Some((location, description)) if !description.is_empty() && !description.contains("::") => {
@@ -1470,6 +1518,176 @@ pub fn available_tasks(
         .commit()
         .map_err(|error| sqlite_access_error("available task snapshot", &database_path, error))?;
     Ok(tasks)
+}
+
+pub fn explain_task_blocking(
+    current: &Path,
+    task_id: &str,
+) -> Result<TaskBlockingExplanation, Error> {
+    let mut resolved = resolve_repository(current, AccessIntent::ReadOnly)?;
+    let database_path = resolved.database_path.clone();
+    require_latest_migration(resolved.connection_mut(), &database_path)?;
+    let transaction = resolved.connection_mut().transaction().map_err(|error| {
+        sqlite_access_error("blocking explanation snapshot", &database_path, error)
+    })?;
+    let explanation = select_task_blocking_explanation(&transaction, task_id, &database_path)?;
+    transaction.commit().map_err(|error| {
+        sqlite_access_error("blocking explanation snapshot", &database_path, error)
+    })?;
+    Ok(explanation)
+}
+
+/// Explains availability using a caller-owned connection or transaction.
+pub fn select_task_blocking_explanation(
+    connection: &rusqlite::Connection,
+    task_id: &str,
+    database_path: &Path,
+) -> Result<TaskBlockingExplanation, Error> {
+    let root = connection
+        .query_row(
+            "SELECT t.archived, s.completed, c.agent_id, a.display_name, c.claimed_at,
+         NOT t.archived AND NOT s.completed AND c.task_id IS NULL AND NOT EXISTS (
+           SELECT 1 FROM task_dependencies d JOIN tasks u ON u.id = d.upstream_task_id
+           JOIN statuses us ON us.id = u.status_id WHERE d.downstream_task_id = t.id
+           AND NOT u.archived AND NOT us.completed)
+         FROM tasks t JOIN statuses s ON s.id = t.status_id
+         LEFT JOIN task_claims c ON c.task_id = t.id LEFT JOIN agents a ON a.id = c.agent_id
+         WHERE t.id = ?1",
+            [task_id],
+            |row| {
+                Ok((
+                    row.get::<_, bool>(0)?,
+                    row.get::<_, bool>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                    row.get::<_, Option<String>>(3)?,
+                    row.get::<_, Option<String>>(4)?,
+                    row.get::<_, bool>(5)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(|error| sqlite_access_error("blocking explanation root", database_path, error))?
+        .ok_or_else(|| Error::TaskNotFound {
+            id: task_id.to_owned(),
+        })?;
+    let (archived, completed, agent_id, display_name, claimed_at, available) = root;
+    let claim = agent_id.map(|id| TaskClaim {
+        agent: ClaimAgent {
+            id,
+            display_name: display_name.expect("joined claim agent"),
+        },
+        claimed_at: claimed_at.expect("joined claim timestamp"),
+    });
+    let items = load_unresolved_dependency_explanations(connection, task_id, database_path)?;
+    let (direct, recursive): (Vec<_>, Vec<_>) = items.into_iter().partition(|(direct, _)| *direct);
+    let direct: Vec<_> = direct.into_iter().map(|(_, item)| item).collect();
+    let recursive: Vec<_> = recursive.into_iter().map(|(_, item)| item).collect();
+    let mut reasons = Vec::new();
+    if archived {
+        reasons.push(AvailabilityReason::Archived);
+    }
+    if completed {
+        reasons.push(AvailabilityReason::Completed);
+    }
+    if claim.is_some() {
+        reasons.push(AvailabilityReason::Claimed);
+    }
+    if !direct.is_empty() {
+        reasons.push(AvailabilityReason::DependenciesBlocked);
+    }
+    debug_assert_eq!(available, reasons.is_empty());
+    Ok(TaskBlockingExplanation {
+        task_id: task_id.to_owned(),
+        available,
+        reasons,
+        claim,
+        unresolved_dependencies: UnresolvedDependencies { direct, recursive },
+    })
+}
+
+pub fn unresolved_upstream_task_ids(
+    connection: &rusqlite::Connection,
+    task_id: &str,
+    database_path: &Path,
+) -> Result<Vec<String>, Error> {
+    let mut statement = connection
+        .prepare(
+            "SELECT u.id FROM task_dependencies d JOIN tasks u ON u.id = d.upstream_task_id
+         JOIN statuses s ON s.id = u.status_id WHERE d.downstream_task_id = ?1
+         AND NOT u.archived AND NOT s.completed ORDER BY u.id",
+        )
+        .map_err(|error| sqlite_access_error("unresolved upstream tasks", database_path, error))?;
+    statement
+        .query_map([task_id], |row| row.get(0))
+        .and_then(Iterator::collect)
+        .map_err(|error| sqlite_access_error("unresolved upstream tasks", database_path, error))
+}
+
+fn load_unresolved_dependency_explanations(
+    connection: &rusqlite::Connection,
+    task_id: &str,
+    database_path: &Path,
+) -> Result<Vec<(bool, DependencyExplanationItem)>, Error> {
+    let sql = "WITH RECURSIVE reachable(id) AS (
+      SELECT u.id FROM task_dependencies d JOIN tasks u ON u.id = d.upstream_task_id
+      JOIN statuses s ON s.id = u.status_id WHERE d.downstream_task_id = ?1 AND NOT u.archived AND NOT s.completed
+      UNION
+      SELECT u.id FROM reachable r JOIN task_dependencies d ON d.downstream_task_id = r.id
+      JOIN tasks u ON u.id = d.upstream_task_id JOIN statuses s ON s.id = u.status_id
+      WHERE NOT u.archived AND NOT s.completed
+    )
+    SELECT EXISTS (SELECT 1 FROM task_dependencies direct WHERE direct.downstream_task_id = ?1 AND direct.upstream_task_id = t.id),
+      t.id, t.title, t.task_type, s.code, s.name, s.completed, blocked.id
+    FROM reachable n JOIN tasks t ON t.id = n.id JOIN statuses s ON s.id = t.status_id
+    LEFT JOIN task_dependencies d ON d.downstream_task_id = t.id
+    LEFT JOIN tasks blocked ON blocked.id = d.upstream_task_id AND NOT blocked.archived
+      AND NOT (SELECT completed FROM statuses WHERE id = blocked.status_id)
+      AND EXISTS (SELECT 1 FROM reachable included WHERE included.id = blocked.id)
+    ORDER BY t.id, blocked.id";
+    let mut statement = connection
+        .prepare(sql)
+        .map_err(|error| sqlite_access_error("blocking dependency graph", database_path, error))?;
+    let rows = statement
+        .query_map([task_id], |row| {
+            Ok((
+                row.get::<_, bool>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                task_type_from_row(row.get::<_, String>(3)?)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, String>(5)?,
+                row.get::<_, bool>(6)?,
+                row.get::<_, Option<String>>(7)?,
+            ))
+        })
+        .map_err(|error| sqlite_access_error("blocking dependency graph", database_path, error))?;
+    let rows: Vec<_> = rows
+        .collect::<rusqlite::Result<_>>()
+        .map_err(|error| sqlite_access_error("blocking dependency graph", database_path, error))?;
+    let mut result: Vec<(bool, DependencyExplanationItem)> = Vec::new();
+    for (direct, id, title, task_type, code, name, completed, blocked) in rows {
+        if let Some((_, item)) = result.iter_mut().find(|(_, item)| item.id == id) {
+            if let Some(blocked) = blocked {
+                item.blocked_by_task_ids.push(blocked);
+            }
+        } else {
+            result.push((
+                direct,
+                DependencyExplanationItem {
+                    id,
+                    title,
+                    task_type,
+                    status: RelatedTaskStatus {
+                        code,
+                        name,
+                        completed,
+                    },
+                    blocked_by_task_ids: blocked.into_iter().collect(),
+                },
+            ));
+        }
+    }
+    Ok(result)
 }
 
 /// Selects available tasks using a caller-owned connection or transaction.

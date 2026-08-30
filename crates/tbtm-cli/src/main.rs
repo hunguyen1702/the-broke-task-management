@@ -11,9 +11,10 @@ use tbtm_core::{
     task::{
         ArchiveScope, ArchiveTaskInput, AvailableTasksInput, ClaimTaskInput, CreateTaskInput,
         CreatedTask, DependencyInput, DependencyResult, FullTask, ListTasksInput, ObservedClaim,
-        PatchValue, TaskListItem, TaskType, UnclaimTaskInput, UnclaimTaskResult, UpdateTaskInput,
-        add_dependency, archive_task, available_tasks, claim_task, create_task, list_tasks,
-        parse_code_reference, remove_dependency, unclaim_task, update_task, view_task,
+        PatchValue, TaskBlockingExplanation, TaskListItem, TaskType, UnclaimTaskInput,
+        UnclaimTaskResult, UpdateTaskInput, add_dependency, archive_task, available_tasks,
+        claim_task, create_task, explain_task_blocking, list_tasks, parse_code_reference,
+        remove_dependency, unclaim_task, update_task, view_task,
     },
     uninstall,
 };
@@ -61,6 +62,8 @@ enum TaskCommand {
     List(TaskListArgs),
     #[command(about = "List currently available tasks")]
     Available(TaskAvailableArgs),
+    #[command(about = "Explain why a task is unavailable")]
+    Blockers(TaskBlockersArgs),
     #[command(about = "Update a task")]
     Update(TaskUpdateArgs),
     #[command(about = "Manage task dependencies")]
@@ -71,6 +74,13 @@ enum TaskCommand {
     Unclaim(TaskUnclaimArgs),
     #[command(about = "Archive a task with a durable reason")]
     Archive(TaskArchiveArgs),
+}
+
+#[derive(Args)]
+struct TaskBlockersArgs {
+    task_id: String,
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Args)]
@@ -490,6 +500,11 @@ fn run() -> Result<(), (Error, bool)> {
                 .map_err(|error| (error, args.json))?;
                 render_available_tasks(&result, args.json);
             }
+            TaskCommand::Blockers(args) => {
+                let result = explain_task_blocking(&current, &args.task_id)
+                    .map_err(|error| (error, args.json))?;
+                render_task_blockers(&result, args.json);
+            }
             TaskCommand::Update(args) => {
                 if (args.estimate.is_some() && args.clear_estimate)
                     || (!args.tags.is_empty() && args.clear_tags)
@@ -649,6 +664,7 @@ fn command_uses_json(command: &Command) -> bool {
             TaskCommand::View(args) => args.json,
             TaskCommand::List(args) => args.json,
             TaskCommand::Available(args) => args.json,
+            TaskCommand::Blockers(args) => args.json,
             TaskCommand::Update(args) => args.json,
             TaskCommand::Dependency(args) => match &args.command {
                 DependencyCommand::Add(args) | DependencyCommand::Remove(args) => args.json,
@@ -812,6 +828,63 @@ fn render_available_tasks(result: &[TaskListItem], json: bool) {
         println!("No available tasks found.");
     } else {
         render_task_list(result, json);
+    }
+}
+
+fn render_task_blockers(result: &TaskBlockingExplanation, json: bool) {
+    if json {
+        render_success(result, true);
+        return;
+    }
+    if result.available {
+        println!("{} is available.", result.task_id);
+        return;
+    }
+    println!("{} is unavailable.", result.task_id);
+    println!(
+        "Reasons: {}",
+        result
+            .reasons
+            .iter()
+            .map(|reason| reason.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    if let Some(claim) = &result.claim {
+        println!(
+            "Claim: {} ({}) since {}",
+            claim.agent.display_name, claim.agent.id, claim.claimed_at
+        );
+    }
+    for (heading, dependencies) in [
+        (
+            "Direct unresolved dependencies:",
+            &result.unresolved_dependencies.direct,
+        ),
+        (
+            "Recursive unresolved dependencies:",
+            &result.unresolved_dependencies.recursive,
+        ),
+    ] {
+        if dependencies.is_empty() {
+            continue;
+        }
+        println!("{heading}");
+        for dependency in dependencies {
+            let blocked_by = if dependency.blocked_by_task_ids.is_empty() {
+                "none".to_owned()
+            } else {
+                dependency.blocked_by_task_ids.join(", ")
+            };
+            println!(
+                "- {} [{}, {}] {}; blocked by: {}",
+                dependency.id,
+                dependency.task_type.as_str(),
+                dependency.status.code,
+                dependency.title,
+                blocked_by
+            );
+        }
     }
 }
 
