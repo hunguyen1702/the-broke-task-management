@@ -61,6 +61,9 @@ Story đã hoàn tất planning:
 - **E4-S4: Explain blocking**
   - [Epic plan](../epics/E4-S4-explain-blocking.md)
   - [Implementation task](../tasks/E4-S4-T1-implement-blocking-explanations.md)
+- **E4-S5: View relationship maps**
+  - [Epic plan](../epics/E4-S5-view-relationship-maps.md)
+  - [Implementation task](../tasks/E4-S5-T1-implement-relationship-maps.md)
 - **E5-S1: Claim a specified task atomically**
   - [Epic plan](../epics/E5-S1-claim-a-specified-task-atomically.md)
   - [Implementation task](../tasks/E5-S1-T1-implement-atomic-specified-task-claiming.md)
@@ -74,7 +77,7 @@ Story được chủ đích defer:
 
 Story tiếp theo nếu tiếp tục planning:
 
-- **E4-S5: View relationship maps** — kết hợp hierarchy E4-S1 và dependency E4-S2 thành các recursive map direction ổn định cho CLI và UI về sau.
+- **E5-S2: Claim the next available task atomically** — tái sử dụng authoritative availability selector E4-S3 và atomic claim model E5-S1 để chọn và claim một task trong cùng transaction.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -87,7 +90,7 @@ Story tiếp theo nếu tiếp tục planning:
 - **E5-S1-T1** đã implementation xong, cung cấp authoritative active-claim model, atomic specified-task claim và claim hydration cho các story phụ thuộc.
 - **E5-S3-T1** đã implementation xong với transactional owner-controlled unclaim behavior.
 
-E2-S5-T1, E4-S4-T1, E5-S3-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. **E2-S6-T1** và **E4-S1-T1** hiện `ready`. **E2-S3-T1** vẫn bị block cho đến khi E4-S1-T1 hoàn tất. E3-S2 tiếp tục được defer.
+E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E5-S3-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. **E4-S5-T1** hiện `ready`. E3-S2 tiếp tục được defer.
 
 ## Việc đã làm
 
@@ -173,6 +176,10 @@ E2-S5-T1, E4-S4-T1, E5-S3-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. **
 - Chốt same-parent set là valid no-op, missing-parent remove là `PARENT_NOT_FOUND`, child-only mutation metadata và stable validation/error precedence.
 - Chốt `task hierarchy <task-id> [--recursive]` cho observable parent/direct-child/recursive-descendant reads; descendants sort theo depth rồi task ID, còn E4-S5 sở hữu combined relationship maps.
 - Viết epic/task E4-S1; decision review và direct document review đều kết luận READY. E4-S1-T1 sẵn sàng implementation trên E2-S1-T1 và E2-S2-T1, sau đó mở khóa E2-S3-T1.
+- Chốt E4-S5 với `task map <task-id> --direction`, mặc định `all`, và năm recursive mode upstream/downstream/parent/child/all.
+- Chốt JSON canonical nodes + explicit edges, per-direction shortest-depth `reachedBy`, authoritative edge orientation, deterministic ordering, và cycle-safe bounded-query traversal không truncate.
+- Chốt human output theo sectioned deterministic tree, exact UTF-8 connectors, shared-node references và badge ngắn `archived`, `completed`, `claimed`, `blocked`, `ready` với semantics độc lập.
+- Viết epic/task E4-S5; decision review và direct document review đều kết luận READY. E4-S5-T1 sẵn sàng implementation trên E4-S1-T1, E4-S2-T1, E4-S3-T1 và E5-S1-T1.
 
 ## Quy tắc planning cho mỗi story
 
@@ -259,14 +266,13 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. Implement [E4-S1-T1: Implement task hierarchy management](../tasks/E4-S1-T1-implement-task-hierarchy-management.md) để cung cấp authoritative hierarchy model và mở khóa E2-S3-T1.
-2. [E2-S6-T1: Implement safe task unarchive](../tasks/E2-S6-T1-implement-safe-task-unarchive.md) cũng đang `ready` vì E2-S5-T1 và E4-S4-T1 đã hoàn tất.
-3. [E2-S3-T1: Implement task-content updates](../tasks/E2-S3-T1-implement-task-content-updates.md) chưa thể bắt đầu cho đến khi E4-S1-T1 hoàn tất.
+1. Implement [E4-S5-T1: Implement relationship maps](../tasks/E4-S5-T1-implement-relationship-maps.md) trên authoritative hierarchy, dependency, availability và claim models.
+2. Xem [status dashboard](../STATUS.md) trước khi claim task khác vì nhiều implementation session có thể đang dùng chung worktree.
 
 Nếu tiếp tục planning:
 
-1. Mở `docs/PRD.md` và tìm `Story E4-S5: View relationship maps`.
-2. Đọc FR-10, hierarchy contract E4-S1, dependency contract E4-S2, blocking explanation E4-S4 và các output contracts E2-S2.
-3. Tóm tắt context E4-S5, rồi hỏi người dùng các quyết định implementation còn thiếu về command shape, direction semantics, node/edge projection, ordering và graph-size boundaries.
+1. Mở `docs/PRD.md` và tìm `Story E5-S2: Claim the next available task atomically`.
+2. Đọc FR-7, FR-8, availability contract E4-S3, specified-claim contract E5-S1 và output contracts E2-S2.
+3. Tóm tắt context E5-S2, rồi hỏi người dùng các quyết định implementation còn thiếu về filters, empty result, race behavior, returned task projection và transaction boundaries.
 4. Sau mỗi câu trả lời, spawn review agent theo 5 tiêu chí.
-5. Khi READY, tạo epic và technical task E4-S5, review file, cập nhật danh sách trong handoff này.
+5. Khi READY, tạo epic và technical task E5-S2, review file, cập nhật danh sách trong handoff này.

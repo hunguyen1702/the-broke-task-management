@@ -26,6 +26,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E4-S3-T1 is implemented with authoritative read-only available-task querying and a reusable caller-owned selector.
 - E4-S4-T1 is implemented and verified with deterministic multi-reason explanations, bounded unresolved-graph traversal, snapshot consistency, read-only behavior, and linked-worktree coverage.
 - E4-S1-T1 is implemented with transactional single-parent mutations, type/cycle validation, direct hydration, and deterministic recursive reads.
+- E4-S5 planning is complete; E4-S5-T1 is ready to implement deterministic recursive hierarchy/dependency maps.
 - E1-S4-T1 is implemented with deterministic read-only agent and active-claim listing.
 
 ## E1 — Repository foundation and identity
@@ -82,7 +83,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E4-S3-T1](tasks/E4-S3-T1-implement-available-task-querying.md) | done | done | E3-S1-T1, E4-S2-T1, E5-S1-T1 |
 | [E4-S4](epics/E4-S4-explain-blocking.md) | done | done | E4-S2, E4-S3 |
 | [E4-S4-T1](tasks/E4-S4-T1-implement-blocking-explanations.md) | done | done | E4-S2-T1, E4-S3-T1 |
-| E4-S5 View relationship maps | needed | not_planned | E4-S1, E4-S2 |
+| [E4-S5](epics/E4-S5-view-relationship-maps.md) | done | ready | E4-S1, E4-S2 |
+| [E4-S5-T1](tasks/E4-S5-T1-implement-relationship-maps.md) | done | ready | E4-S1-T1, E4-S2-T1, E4-S3-T1, E5-S1-T1 |
 
 ## E5 — Multi-agent claiming
 
