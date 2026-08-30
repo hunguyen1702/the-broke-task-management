@@ -70,6 +70,9 @@ Story đã hoàn tất planning:
 - **E5-S3: Unclaim owned work**
   - [Epic plan](../epics/E5-S3-unclaim-owned-work.md)
   - [Implementation task](../tasks/E5-S3-T1-implement-owner-controlled-task-unclaim.md)
+- **E5-S2: Claim the next available task atomically**
+  - [Epic plan](../epics/E5-S2-claim-the-next-available-task-atomically.md)
+  - [Implementation task](../tasks/E5-S2-T1-implement-atomic-next-available-task-claiming.md)
 
 Story được chủ đích defer:
 
@@ -77,7 +80,7 @@ Story được chủ đích defer:
 
 Story tiếp theo nếu tiếp tục planning:
 
-- **E5-S2: Claim the next available task atomically** — tái sử dụng authoritative availability selector E4-S3 và atomic claim model E5-S1 để chọn và claim một task trong cùng transaction.
+- **E5-S4: Force-unclaim stale work** — xây dựng user-controlled stale-claim recovery trên authoritative claim model E5-S1.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -89,8 +92,9 @@ Story tiếp theo nếu tiếp tục planning:
 - **E4-S3-T1** đã implementation xong với authoritative available-task query.
 - **E5-S1-T1** đã implementation xong, cung cấp authoritative active-claim model, atomic specified-task claim và claim hydration cho các story phụ thuộc.
 - **E5-S3-T1** đã implementation xong với transactional owner-controlled unclaim behavior.
+- **E5-S2-T1** đã planning xong và sẵn sàng implementation trên E4-S3-T1 và E5-S1-T1.
 
-E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E5-S3-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. **E4-S5-T1** hiện `ready`. E3-S2 tiếp tục được defer.
+E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S3-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. **E5-S2-T1** hiện `ready`. E3-S2 tiếp tục được defer.
 
 ## Việc đã làm
 
@@ -180,6 +184,11 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E5-S3-T1, E4-S3-T1 và E1-S4-T1 đã imp
 - Chốt JSON canonical nodes + explicit edges, per-direction shortest-depth `reachedBy`, authoritative edge orientation, deterministic ordering, và cycle-safe bounded-query traversal không truncate.
 - Chốt human output theo sectioned deterministic tree, exact UTF-8 connectors, shared-node references và badge ngắn `archived`, `completed`, `claimed`, `blocked`, `ready` với semantics độc lập.
 - Viết epic/task E4-S5; decision review và direct document review đều kết luận READY. E4-S5-T1 sẵn sàng implementation trên E4-S1-T1, E4-S2-T1, E4-S3-T1 và E5-S1-T1.
+- Chốt E5-S2 với agent-only `task claim-next`, filters và ordering tái sử dụng nguyên E4-S3, selection và E5-S1 claim insertion trong cùng immediate transaction.
+- Chốt empty result là success (`data: null` / `No available task to claim.`), non-empty output tái sử dụng full-task và exact human renderer của E5-S1, không trả `CLAIM_CONFLICT`.
+- Chốt writer concurrency được serialize trên canonical database: nhiều candidate cho distinct ordered claims, một candidate cho one claim plus one empty success; busy timeout là operational error.
+- Chốt giữ SQLite `journal_mode = DELETE` cho MVP, không prompt hoặc external work trong locked section, không thêm retry/fallback hay thay đổi task metadata.
+- Viết epic/task E5-S2; decision review kết luận READY. E5-S2-T1 sẵn sàng implementation trên E4-S3-T1 và E5-S1-T1.
 
 ## Quy tắc planning cho mỗi story
 
@@ -266,13 +275,13 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. Implement [E4-S5-T1: Implement relationship maps](../tasks/E4-S5-T1-implement-relationship-maps.md) trên authoritative hierarchy, dependency, availability và claim models.
+1. Implement [E5-S2-T1: Implement atomic next-available-task claiming](../tasks/E5-S2-T1-implement-atomic-next-available-task-claiming.md) trên authoritative availability selector và claim model.
 2. Xem [status dashboard](../STATUS.md) trước khi claim task khác vì nhiều implementation session có thể đang dùng chung worktree.
 
 Nếu tiếp tục planning:
 
-1. Mở `docs/PRD.md` và tìm `Story E5-S2: Claim the next available task atomically`.
-2. Đọc FR-7, FR-8, availability contract E4-S3, specified-claim contract E5-S1 và output contracts E2-S2.
-3. Tóm tắt context E5-S2, rồi hỏi người dùng các quyết định implementation còn thiếu về filters, empty result, race behavior, returned task projection và transaction boundaries.
+1. Mở `docs/PRD.md` và tìm `Story E5-S4: Force-unclaim stale work`.
+2. Đọc FR-8, claim contract E5-S1, owner-unclaim contract E5-S3, archive force-confirmation contract E2-S5 và output contracts E2-S2.
+3. Tóm tắt context E5-S4, rồi hỏi người dùng các quyết định implementation còn thiếu về user actor, confirmation, stale claim observation, race behavior và returned task projection.
 4. Sau mỗi câu trả lời, spawn review agent theo 5 tiêu chí.
-5. Khi READY, tạo epic và technical task E5-S2, review file, cập nhật danh sách trong handoff này.
+5. Khi READY, tạo epic và technical task E5-S4, review file, cập nhật danh sách trong handoff này.
