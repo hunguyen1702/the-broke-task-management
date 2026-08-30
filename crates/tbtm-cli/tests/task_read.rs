@@ -60,7 +60,10 @@ fn detail_returns_full_normalized_contract_for_archived_task() {
     let id = created["id"].as_str().unwrap();
     Connection::open(temp.path().join(".tbtm/tbtm.db"))
         .unwrap()
-        .execute("UPDATE tasks SET archived = 1 WHERE id = ?1", [id])
+        .execute(
+            "UPDATE tasks SET archived = 1, archive_reason = 'test archive' WHERE id = ?1",
+            [id],
+        )
         .unwrap();
 
     let output = tbtm(temp.path(), &["task", "view", id, "--json"]);
@@ -137,7 +140,7 @@ fn list_filters_and_orders_with_compact_projection() {
         .unwrap();
     connection
         .execute(
-            "UPDATE tasks SET archived = 1 WHERE id = ?1",
+            "UPDATE tasks SET archived = 1, archive_reason = 'test archive' WHERE id = ?1",
             [low["id"].as_str().unwrap()],
         )
         .unwrap();

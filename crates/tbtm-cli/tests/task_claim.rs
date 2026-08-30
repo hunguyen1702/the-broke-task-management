@@ -125,7 +125,10 @@ fn claim_validation_has_stable_precedence_reasons_and_details() {
     let database = temp.path().join(".tbtm/tbtm.db");
     let connection = Connection::open(database).unwrap();
     connection
-        .execute("UPDATE tasks SET archived = 1 WHERE id = ?1", [&archived])
+        .execute(
+            "UPDATE tasks SET archived = 1, archive_reason = 'test archive' WHERE id = ?1",
+            [&archived],
+        )
         .unwrap();
     connection.execute("UPDATE tasks SET status_id = (SELECT id FROM statuses WHERE code = 'done') WHERE id = ?1", [&completed]).unwrap();
     for upstream in [&upstream_b, &upstream_a] {
@@ -176,7 +179,10 @@ fn archived_and_completed_upstreams_satisfy_claim_dependencies() {
     let connection = Connection::open(temp.path().join(".tbtm/tbtm.db")).unwrap();
     connection.execute("UPDATE tasks SET status_id = (SELECT id FROM statuses WHERE code = 'done') WHERE id = ?1", [&done]).unwrap();
     connection
-        .execute("UPDATE tasks SET archived = 1 WHERE id = ?1", [&archived])
+        .execute(
+            "UPDATE tasks SET archived = 1, archive_reason = 'test archive' WHERE id = ?1",
+            [&archived],
+        )
         .unwrap();
     for upstream in [&done, &archived] {
         connection.execute("INSERT INTO task_dependencies (downstream_task_id, upstream_task_id) VALUES (?1, ?2)", [&downstream, upstream]).unwrap();
@@ -192,9 +198,12 @@ fn read_commands_reject_pending_claim_migration_until_a_write_upgrades() {
     let database = temp.path().join(".tbtm/tbtm.db");
     let connection = Connection::open(&database).unwrap();
     connection
-        .execute("DELETE FROM schema_migrations WHERE version = 5", [])
+        .execute("DELETE FROM schema_migrations WHERE version >= 5", [])
         .unwrap();
     connection.execute("DROP TABLE task_claims", []).unwrap();
+    connection
+        .execute("ALTER TABLE tasks DROP COLUMN archive_reason", [])
+        .unwrap();
     drop(connection);
     for args in [
         vec!["task", "view", &task, "--json"],

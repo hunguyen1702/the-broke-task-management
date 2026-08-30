@@ -144,7 +144,7 @@ fn registration_upgrades_an_older_schema_one_repository() {
         .unwrap()
         .collect::<Result<_, _>>()
         .unwrap();
-    assert_eq!(versions, [1, 2, 3, 4, 5]);
+    assert_eq!(versions, [1, 2, 3, 4, 5, 6]);
 }
 
 #[test]

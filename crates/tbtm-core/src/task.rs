@@ -159,6 +159,7 @@ pub struct FullTask {
     pub dependencies: TaskDependencies,
     pub claim: Option<TaskClaim>,
     pub archived: bool,
+    pub archive_reason: Option<String>,
     pub created_at: String,
     pub updated_at: String,
     pub created_by: String,
@@ -206,6 +207,21 @@ pub struct UnclaimTaskInput {
 pub struct UnclaimTaskResult {
     pub task: FullTask,
     pub released_agent_display_name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObservedClaim {
+    pub agent_id: String,
+    pub claimed_at: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArchiveTaskInput {
+    pub task_id: String,
+    pub reason: String,
+    pub agent_id: Option<Uuid>,
+    pub force: bool,
+    pub observed_claim: Option<ObservedClaim>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -486,6 +502,7 @@ fn insert_task(
         dependencies: empty_dependencies(),
         claim: None,
         archived: false,
+        archive_reason: None,
         created_at: timestamp.clone(),
         updated_at: timestamp,
         created_by: actor.clone(),
@@ -645,6 +662,115 @@ pub fn unclaim_task(current: &Path, input: UnclaimTaskInput) -> Result<UnclaimTa
         task,
         released_agent_display_name: agent_name,
     })
+}
+
+pub fn archive_task(current: &Path, mut input: ArchiveTaskInput) -> Result<FullTask, Error> {
+    input.reason = input.reason.trim().to_owned();
+    if input.reason.is_empty() {
+        return Err(Error::InvalidArchiveReason);
+    }
+    if input.force && input.agent_id.is_some() {
+        return Err(Error::ArchivePermissionDenied);
+    }
+    let mut resolved = resolve_repository(current, AccessIntent::ReadWrite)?;
+    resolved
+        .connection_mut()
+        .busy_timeout(std::time::Duration::from_secs(5))
+        .map_err(|error| {
+            sqlite_access_error("database busy timeout", &resolved.database_path, error)
+        })?;
+    apply_pending_migrations(&mut resolved)?;
+    let database_path = resolved.database_path.clone();
+    let transaction = resolved
+        .connection_mut()
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|error| sqlite_access_error("task archive", &database_path, error))?;
+    if let Some(agent_id) = input.agent_id {
+        let exists = transaction
+            .query_row(
+                "SELECT 1 FROM agents WHERE id = ?1",
+                [agent_id.to_string()],
+                |_| Ok(()),
+            )
+            .optional()
+            .map_err(|error| sqlite_access_error("archive actor lookup", &database_path, error))?
+            .is_some();
+        if !exists {
+            return Err(Error::AgentNotFound { id: agent_id });
+        }
+    }
+    let (archived, existing_reason) = transaction
+        .query_row(
+            "SELECT archived, archive_reason FROM tasks WHERE id = ?1",
+            [&input.task_id],
+            |row| Ok((row.get::<_, bool>(0)?, row.get::<_, Option<String>>(1)?)),
+        )
+        .optional()
+        .map_err(|error| sqlite_access_error("archive task lookup", &database_path, error))?
+        .ok_or_else(|| Error::TaskNotFound {
+            id: input.task_id.clone(),
+        })?;
+    if archived {
+        if existing_reason.as_deref() != Some(&input.reason) {
+            return Err(Error::TaskArchived { id: input.task_id });
+        }
+        let mut task =
+            load_full_task(&transaction, &input.task_id, &database_path)?.expect("task exists");
+        load_full_context(&transaction, &mut task, &database_path)?;
+        transaction
+            .commit()
+            .map_err(|error| sqlite_access_error("task archive", &database_path, error))?;
+        return Ok(task);
+    }
+    let claim = transaction
+        .query_row(
+            "SELECT a.id, a.display_name, c.claimed_at FROM task_claims c JOIN agents a ON a.id = c.agent_id WHERE c.task_id = ?1",
+            [&input.task_id],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?)),
+        )
+        .optional()
+        .map_err(|error| sqlite_access_error("archive claim lookup", &database_path, error))?;
+    if let Some((owner_id, owner_name, claimed_at)) = &claim {
+        let own_claim = input.agent_id.is_some_and(|id| id.to_string() == *owner_id);
+        let approved = input.force
+            && input.agent_id.is_none()
+            && input.observed_claim.as_ref().is_some_and(|observed| {
+                observed.agent_id == *owner_id && observed.claimed_at == *claimed_at
+            });
+        if !own_claim && !approved {
+            return Err(Error::TaskClaimed {
+                task_id: input.task_id,
+                agent_id: owner_id.clone(),
+                agent_display_name: owner_name.clone(),
+                claimed_at: claimed_at.clone(),
+            });
+        }
+    }
+    if claim.is_some() {
+        transaction
+            .execute(
+                "DELETE FROM task_claims WHERE task_id = ?1",
+                [&input.task_id],
+            )
+            .map_err(|error| sqlite_access_error("archive claim release", &database_path, error))?;
+    }
+    let actor_type = if input.agent_id.is_some() {
+        "agent"
+    } else {
+        "user"
+    };
+    let actor_id = input.agent_id.map(|id| id.to_string());
+    transaction.execute(
+        "UPDATE tasks SET archived = 1, archive_reason = ?1, updated_actor_type = ?2, updated_agent_id = ?3, updated_at = ?4 WHERE id = ?5",
+        params![input.reason, actor_type, actor_id, utc_now(), input.task_id],
+    ).map_err(|error| sqlite_access_error("task archive", &database_path, error))?;
+    let mut task =
+        load_full_task(&transaction, &input.task_id, &database_path)?.expect("task exists");
+    load_full_context(&transaction, &mut task, &database_path)?;
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("task archive", &database_path, error))?;
+    Ok(task)
 }
 
 pub(crate) fn release_owned_claim(
@@ -1119,7 +1245,7 @@ fn load_full_task(
         .query_row(
             "SELECT t.id, t.title, t.description, t.goal, t.acceptance_criteria,
                 t.task_type, s.id, s.code, s.name, s.completed, t.priority,
-                t.estimate_hours, t.archived, t.created_at, t.updated_at,
+                t.estimate_hours, t.archived, t.archive_reason, t.created_at, t.updated_at,
                 CASE WHEN t.created_actor_type = 'user' THEN 'user' ELSE t.created_agent_id END,
                 CASE WHEN t.updated_actor_type = 'user' THEN 'user' ELSE t.updated_agent_id END,
                 c.agent_id, a.display_name, c.claimed_at
@@ -1149,18 +1275,19 @@ fn load_full_task(
                     code_references: vec![],
                     hierarchy: empty_hierarchy(),
                     dependencies: empty_dependencies(),
-                    claim: row.get::<_, Option<String>>(17)?.map(|id| TaskClaim {
+                    claim: row.get::<_, Option<String>>(18)?.map(|id| TaskClaim {
                         agent: ClaimAgent {
                             id,
-                            display_name: row.get(18).expect("joined claim agent"),
+                            display_name: row.get(19).expect("joined claim agent"),
                         },
-                        claimed_at: row.get(19).expect("joined claim timestamp"),
+                        claimed_at: row.get(20).expect("joined claim timestamp"),
                     }),
                     archived: row.get(12)?,
-                    created_at: row.get(13)?,
-                    updated_at: row.get(14)?,
-                    created_by: row.get(15)?,
-                    updated_by: row.get(16)?,
+                    archive_reason: row.get(13)?,
+                    created_at: row.get(14)?,
+                    updated_at: row.get(15)?,
+                    created_by: row.get(16)?,
+                    updated_by: row.get(17)?,
                 })
             },
         )

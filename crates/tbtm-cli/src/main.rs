@@ -9,11 +9,11 @@ use tbtm_core::{
     agent::{AgentList, list_agents},
     exit_code, initialize, inspect_repository_health, register_agent,
     task::{
-        ArchiveScope, AvailableTasksInput, ClaimTaskInput, CreateTaskInput, CreatedTask,
-        DependencyInput, DependencyResult, FullTask, ListTasksInput, PatchValue, TaskListItem,
-        TaskType, UnclaimTaskInput, UnclaimTaskResult, UpdateTaskInput, add_dependency,
-        available_tasks, claim_task, create_task, list_tasks, parse_code_reference,
-        remove_dependency, unclaim_task, update_task, view_task,
+        ArchiveScope, ArchiveTaskInput, AvailableTasksInput, ClaimTaskInput, CreateTaskInput,
+        CreatedTask, DependencyInput, DependencyResult, FullTask, ListTasksInput, ObservedClaim,
+        PatchValue, TaskListItem, TaskType, UnclaimTaskInput, UnclaimTaskResult, UpdateTaskInput,
+        add_dependency, archive_task, available_tasks, claim_task, create_task, list_tasks,
+        parse_code_reference, remove_dependency, unclaim_task, update_task, view_task,
     },
     uninstall,
 };
@@ -69,6 +69,23 @@ enum TaskCommand {
     Claim(TaskClaimArgs),
     #[command(about = "Release an owned task claim")]
     Unclaim(TaskUnclaimArgs),
+    #[command(about = "Archive a task with a durable reason")]
+    Archive(TaskArchiveArgs),
+}
+
+#[derive(Args)]
+struct TaskArchiveArgs {
+    id: String,
+    #[arg(long)]
+    reason: String,
+    #[arg(long)]
+    agent: Option<uuid::Uuid>,
+    #[arg(long)]
+    force: bool,
+    #[arg(long)]
+    yes: bool,
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Args)]
@@ -549,6 +566,68 @@ fn run() -> Result<(), (Error, bool)> {
                 .map_err(|error| (error, args.json))?;
                 render_unclaim(&result, args.json);
             }
+            TaskCommand::Archive(args) => {
+                if args.yes && !args.force {
+                    return Err((Error::ConflictingArguments, args.json));
+                }
+                if args.reason.trim().is_empty() {
+                    return Err((Error::InvalidArchiveReason, args.json));
+                }
+                if args.force && args.agent.is_some() {
+                    return Err((Error::ArchivePermissionDenied, args.json));
+                }
+                if args.force && !args.yes && (args.json || !io::stdin().is_terminal()) {
+                    return Err((
+                        Error::phase(
+                            "CONFIRMATION_REQUIRED",
+                            io::Error::other("pass --yes for non-interactive force archive"),
+                        ),
+                        args.json,
+                    ));
+                }
+                let observed_task = if args.force {
+                    Some(view_task(&current, &args.id).map_err(|error| (error, args.json))?)
+                } else {
+                    None
+                };
+                let observed_claim = observed_task.as_ref().and_then(|task| {
+                    task.claim.as_ref().map(|claim| ObservedClaim {
+                        agent_id: claim.agent.id.clone(),
+                        claimed_at: claim.claimed_at.clone(),
+                    })
+                });
+                if args.force
+                    && !args.yes
+                    && let Some(claim) = observed_task.and_then(|task| task.claim)
+                {
+                    let prompt = format!(
+                        "Force archive task {} claimed by {} ({}) at {}?\nReason: {}",
+                        args.id,
+                        claim.agent.display_name,
+                        claim.agent.id,
+                        claim.claimed_at,
+                        args.reason
+                    );
+                    if !confirm(&prompt)
+                        .map_err(|error| (Error::phase("CONFIRMATION_FAILED", error), args.json))?
+                    {
+                        println!("Archive cancelled.");
+                        return Ok(());
+                    }
+                }
+                let result = archive_task(
+                    &current,
+                    ArchiveTaskInput {
+                        task_id: args.id,
+                        reason: args.reason,
+                        agent_id: args.agent,
+                        force: args.force,
+                        observed_claim,
+                    },
+                )
+                .map_err(|error| (error, args.json))?;
+                render_task_detail(&result, args.json);
+            }
         },
     }
     Ok(())
@@ -576,6 +655,7 @@ fn command_uses_json(command: &Command) -> bool {
             },
             TaskCommand::Claim(args) => args.json,
             TaskCommand::Unclaim(args) => args.json,
+            TaskCommand::Archive(args) => args.json,
         },
     }
 }
@@ -654,6 +734,10 @@ fn render_task_detail(result: &FullTask, json: bool) {
             .map_or_else(|| "—".to_owned(), |value| value.to_string())
     );
     println!("Archived: {}", result.archived);
+    println!(
+        "Archive reason: {}",
+        result.archive_reason.as_deref().unwrap_or("—")
+    );
     println!("Description:\n{}", result.description);
     println!("Goal:\n{}", result.goal);
     println!("Acceptance criteria:\n{}", result.acceptance_criteria);

@@ -20,7 +20,7 @@ pub mod task;
 const CONFIG_FILE: &str = "config.json";
 const DATABASE_FILE: &str = "tbtm.db";
 const STEALTH_RULE: &str = "/.tbtm/";
-const LATEST_MIGRATION: i64 = 5;
+const LATEST_MIGRATION: i64 = 6;
 const IDENTITY_RETRY_LIMIT: usize = 8;
 
 #[derive(Debug, Error)]
@@ -51,6 +51,17 @@ pub enum Error {
     TaskNotFound { id: String },
     #[error("task is archived: {id}")]
     TaskArchived { id: String },
+    #[error("archive reason must not be blank")]
+    InvalidArchiveReason,
+    #[error("task is claimed by another agent: {task_id}")]
+    TaskClaimed {
+        task_id: String,
+        agent_id: String,
+        agent_display_name: String,
+        claimed_at: String,
+    },
+    #[error("only the logical user may force archive a task")]
+    ArchivePermissionDenied,
     #[error("task already claimed: {task_id}")]
     ClaimConflict {
         task_id: String,
@@ -151,6 +162,9 @@ impl Error {
             Self::StatusNotFound { .. } => "STATUS_NOT_FOUND",
             Self::TaskNotFound { .. } => "TASK_NOT_FOUND",
             Self::TaskArchived { .. } => "TASK_ARCHIVED",
+            Self::InvalidArchiveReason => "INVALID_ARCHIVE_REASON",
+            Self::TaskClaimed { .. } => "TASK_CLAIMED",
+            Self::ArchivePermissionDenied => "PERMISSION_DENIED",
             Self::ClaimConflict { .. } => "CLAIM_CONFLICT",
             Self::ClaimNotFound { .. } => "CLAIM_NOT_FOUND",
             Self::ClaimNotOwned { .. } => "CLAIM_NOT_OWNED",
@@ -200,6 +214,16 @@ impl Error {
                 "dependsOn": depends_on
             }),
             Self::ClaimConflict {
+                task_id,
+                agent_id,
+                agent_display_name,
+                claimed_at,
+            } => serde_json::json!({
+                "taskId": task_id,
+                "agent": {"id": agent_id, "displayName": agent_display_name},
+                "claimedAt": claimed_at
+            }),
+            Self::TaskClaimed {
                 task_id,
                 agent_id,
                 agent_display_name,
@@ -968,6 +992,10 @@ fn apply_pending_migrations(resolved: &mut ResolvedRepository) -> Result<(), Err
         (3, include_str!("../migrations/0003_task_core.sql")),
         (4, include_str!("../migrations/0004_task_dependencies.sql")),
         (5, include_str!("../migrations/0005_task_claims.sql")),
+        (
+            6,
+            include_str!("../migrations/0006_task_archive_reason.sql"),
+        ),
     ] {
         if version > current {
             transaction
@@ -1152,6 +1180,15 @@ fn create_database(
     transaction
         .execute(
             "INSERT INTO schema_migrations (version, applied_at) VALUES (5, ?1)",
+            [created_at],
+        )
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute_batch(include_str!("../migrations/0006_task_archive_reason.sql"))
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute(
+            "INSERT INTO schema_migrations (version, applied_at) VALUES (6, ?1)",
             [created_at],
         )
         .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
@@ -1375,6 +1412,7 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::ConflictingArguments
         | Error::NoUpdateFields
         | Error::TaskArchived { .. }
+        | Error::InvalidArchiveReason
         | Error::TaskNotAvailable { .. }
         | Error::SelfDependency { .. }
         | Error::DependencyExists { .. }
@@ -1386,8 +1424,8 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::TaskNotFound { .. }
         | Error::ClaimNotFound { .. }
         | Error::DependencyNotFound { .. } => 3,
-        Error::ClaimConflict { .. } => 4,
-        Error::ClaimNotOwned { .. } => 5,
+        Error::ClaimConflict { .. } | Error::TaskClaimed { .. } => 4,
+        Error::ClaimNotOwned { .. } | Error::ArchivePermissionDenied => 5,
         Error::Phase {
             phase: "FORCE_CONFIRMATION_REQUIRED" | "CONFIRMATION_REQUIRED",
             ..
@@ -1769,7 +1807,7 @@ mod tests {
     fn health_rejects_invalid_migration_ledger_without_writing() {
         for statement in [
             "DELETE FROM schema_migrations",
-            "UPDATE schema_migrations SET version = 6 WHERE version = 5",
+            "UPDATE schema_migrations SET version = 7 WHERE version = 6",
         ] {
             let temp = tempdir().unwrap();
             let initialized = initialize(temp.path(), None, false, false, false).unwrap();

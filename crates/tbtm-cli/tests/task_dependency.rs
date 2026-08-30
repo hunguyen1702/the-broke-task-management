@@ -173,7 +173,10 @@ fn archived_downstream_rejects_but_archived_upstream_is_allowed() {
     let database = temp.path().join(".tbtm/tbtm.db");
     let connection = Connection::open(database).unwrap();
     connection
-        .execute("UPDATE tasks SET archived = 1 WHERE id = ?1", [&upstream])
+        .execute(
+            "UPDATE tasks SET archived = 1, archive_reason = 'test archive' WHERE id = ?1",
+            [&upstream],
+        )
         .unwrap();
     assert!(
         dependency(temp.path(), "add", &downstream, &upstream)
@@ -181,7 +184,10 @@ fn archived_downstream_rejects_but_archived_upstream_is_allowed() {
             .success()
     );
     connection
-        .execute("UPDATE tasks SET archived = 1 WHERE id = ?1", [&downstream])
+        .execute(
+            "UPDATE tasks SET archived = 1, archive_reason = 'test archive' WHERE id = ?1",
+            [&downstream],
+        )
         .unwrap();
     let output = dependency(temp.path(), "remove", &downstream, &upstream);
     assert_eq!(output.status.code(), Some(2));
@@ -204,6 +210,9 @@ fn view_rejects_pending_migration_until_mutation_upgrades() {
     connection.execute("DROP TABLE task_claims", []).unwrap();
     connection
         .execute("DROP TABLE task_dependencies", [])
+        .unwrap();
+    connection
+        .execute("ALTER TABLE tasks DROP COLUMN archive_reason", [])
         .unwrap();
     drop(connection);
     let view = tbtm(temp.path(), &["task", "view", &id, "--json"]);
@@ -276,7 +285,10 @@ fn satisfaction_requires_every_upstream_completed_or_archived() {
     connection.execute("UPDATE tasks SET status_id = (SELECT id FROM statuses WHERE code = 'done') WHERE id = ?1", [&first]).unwrap();
     assert!(!tbtm_core::task::dependencies_satisfied(&connection, &downstream).unwrap());
     connection
-        .execute("UPDATE tasks SET archived = 1 WHERE id = ?1", [&second])
+        .execute(
+            "UPDATE tasks SET archived = 1, archive_reason = 'test archive' WHERE id = ?1",
+            [&second],
+        )
         .unwrap();
     assert!(tbtm_core::task::dependencies_satisfied(&connection, &downstream).unwrap());
 }

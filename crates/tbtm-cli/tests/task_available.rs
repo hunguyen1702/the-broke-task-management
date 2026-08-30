@@ -60,7 +60,7 @@ fn available_applies_every_predicate_and_effective_upstream_completion() {
     let connection = Connection::open(&database).unwrap();
     connection
         .execute(
-            "UPDATE tasks SET archived = 1 WHERE id IN (?1, ?2)",
+            "UPDATE tasks SET archived = 1, archive_reason = 'test archive' WHERE id IN (?1, ?2)",
             params![
                 archived["id"].as_str().unwrap(),
                 archived_upstream["id"].as_str().unwrap()
