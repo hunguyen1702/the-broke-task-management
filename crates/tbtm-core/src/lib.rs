@@ -20,7 +20,7 @@ pub mod task;
 const CONFIG_FILE: &str = "config.json";
 const DATABASE_FILE: &str = "tbtm.db";
 const STEALTH_RULE: &str = "/.tbtm/";
-const LATEST_MIGRATION: i64 = 6;
+const LATEST_MIGRATION: i64 = 7;
 const IDENTITY_RETRY_LIMIT: usize = 8;
 
 #[derive(Debug, Error)]
@@ -96,6 +96,16 @@ pub enum Error {
     DependencyNotFound { task_id: String, depends_on: String },
     #[error("dependency would create a cycle: {task_id} depends on {depends_on}")]
     DependencyCycle { task_id: String, depends_on: String },
+    #[error("a task cannot be its own parent: {task_id}")]
+    SelfParent { task_id: String },
+    #[error("invalid hierarchy: {task_id} cannot have parent {parent_id}")]
+    InvalidTaskHierarchy { task_id: String, parent_id: String },
+    #[error("hierarchy would create a cycle: {task_id} parent {parent_id}")]
+    HierarchyCycle { task_id: String, parent_id: String },
+    #[error("parent is archived: {parent_id}")]
+    ParentArchived { task_id: String, parent_id: String },
+    #[error("parent not found for task: {task_id}")]
+    ParentNotFound { task_id: String },
     #[error("--archived and --all cannot be used together")]
     ConflictingArguments,
     #[error("ALREADY_INITIALIZED: valid TBTM workspace already exists")]
@@ -177,6 +187,11 @@ impl Error {
             Self::DependencyExists { .. } => "DEPENDENCY_EXISTS",
             Self::DependencyNotFound { .. } => "DEPENDENCY_NOT_FOUND",
             Self::DependencyCycle { .. } => "DEPENDENCY_CYCLE",
+            Self::SelfParent { .. } => "SELF_PARENT",
+            Self::InvalidTaskHierarchy { .. } => "INVALID_TASK_HIERARCHY",
+            Self::HierarchyCycle { .. } => "HIERARCHY_CYCLE",
+            Self::ParentArchived { .. } => "PARENT_ARCHIVED",
+            Self::ParentNotFound { .. } => "PARENT_NOT_FOUND",
             Self::ConflictingArguments => "CONFLICTING_ARGUMENTS",
             Self::AlreadyInitialized => "ALREADY_INITIALIZED",
             Self::InvalidInitialization => "INVALID_INITIALIZATION",
@@ -216,6 +231,17 @@ impl Error {
                 "taskId": task_id,
                 "dependsOn": depends_on
             }),
+            Self::SelfParent { task_id } => serde_json::json!({
+                "taskId": task_id,
+                "parentId": task_id
+            }),
+            Self::InvalidTaskHierarchy { task_id, parent_id }
+            | Self::HierarchyCycle { task_id, parent_id }
+            | Self::ParentArchived { task_id, parent_id } => serde_json::json!({
+                "taskId": task_id,
+                "parentId": parent_id
+            }),
+            Self::ParentNotFound { task_id } => serde_json::json!({"taskId": task_id}),
             Self::ClaimConflict {
                 task_id,
                 agent_id,
@@ -1002,6 +1028,7 @@ fn apply_pending_migrations(resolved: &mut ResolvedRepository) -> Result<(), Err
             6,
             include_str!("../migrations/0006_task_archive_reason.sql"),
         ),
+        (7, include_str!("../migrations/0007_task_hierarchy.sql")),
     ] {
         if version > current {
             transaction
@@ -1195,6 +1222,15 @@ fn create_database(
     transaction
         .execute(
             "INSERT INTO schema_migrations (version, applied_at) VALUES (6, ?1)",
+            [created_at],
+        )
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute_batch(include_str!("../migrations/0007_task_hierarchy.sql"))
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute(
+            "INSERT INTO schema_migrations (version, applied_at) VALUES (7, ?1)",
             [created_at],
         )
         .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
@@ -1424,6 +1460,10 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::SelfDependency { .. }
         | Error::DependencyExists { .. }
         | Error::DependencyCycle { .. }
+        | Error::SelfParent { .. }
+        | Error::InvalidTaskHierarchy { .. }
+        | Error::HierarchyCycle { .. }
+        | Error::ParentArchived { .. }
         | Error::AlreadyInitialized
         | Error::InvalidInitialization => 2,
         Error::AgentNotFound { .. }
@@ -1431,6 +1471,7 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::TaskNotFound { .. }
         | Error::ClaimNotFound { .. }
         | Error::DependencyNotFound { .. } => 3,
+        Error::ParentNotFound { .. } => 3,
         Error::ClaimConflict { .. } | Error::TaskClaimed { .. } => 4,
         Error::ClaimNotOwned { .. } | Error::ArchivePermissionDenied => 5,
         Error::Phase {
@@ -1814,7 +1855,7 @@ mod tests {
     fn health_rejects_invalid_migration_ledger_without_writing() {
         for statement in [
             "DELETE FROM schema_migrations",
-            "UPDATE schema_migrations SET version = 7 WHERE version = 6",
+            "UPDATE schema_migrations SET version = 8 WHERE version = 7",
         ] {
             let temp = tempdir().unwrap();
             let initialized = initialize(temp.path(), None, false, false, false).unwrap();

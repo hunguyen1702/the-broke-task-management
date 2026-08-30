@@ -192,6 +192,44 @@ pub struct DependencyInput {
 }
 
 #[derive(Debug, Clone)]
+pub struct ParentSetInput {
+    pub task_id: String,
+    pub parent_id: String,
+    pub agent_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ParentRemoveInput {
+    pub task_id: String,
+    pub agent_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ParentMutationResult {
+    pub task_id: String,
+    pub parent_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HierarchyDescendant {
+    #[serde(flatten)]
+    pub task: RelatedTask,
+    pub depth: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HierarchyResult {
+    pub task: RelatedTask,
+    pub parent: Option<RelatedTask>,
+    pub children: Vec<RelatedTask>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub descendants: Option<Vec<HierarchyDescendant>>,
+}
+
+#[derive(Debug, Clone)]
 pub struct ClaimTaskInput {
     pub task_id: String,
     pub agent_id: Uuid,
@@ -608,6 +646,207 @@ fn empty_dependencies() -> TaskDependencies {
         upstream: vec![],
         downstream: vec![],
     }
+}
+
+pub fn set_parent(current: &Path, input: ParentSetInput) -> Result<ParentMutationResult, Error> {
+    let mut resolved = resolve_repository(current, AccessIntent::ReadWrite)?;
+    resolved
+        .connection_mut()
+        .busy_timeout(std::time::Duration::from_secs(5))
+        .map_err(|error| {
+            sqlite_access_error("database busy timeout", &resolved.database_path, error)
+        })?;
+    apply_pending_migrations(&mut resolved)?;
+    let database_path = resolved.database_path.clone();
+    let transaction = resolved
+        .connection_mut()
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|error| sqlite_access_error("parent mutation", &database_path, error))?;
+    validate_actor(&transaction, input.agent_id, &database_path)?;
+    let (child_type, child_archived) =
+        load_type_and_archive(&transaction, &input.task_id, &database_path)?.ok_or_else(|| {
+            Error::TaskNotFound {
+                id: input.task_id.clone(),
+            }
+        })?;
+    if child_archived {
+        return Err(Error::TaskArchived { id: input.task_id });
+    }
+    let (parent_type, parent_archived) =
+        load_type_and_archive(&transaction, &input.parent_id, &database_path)?.ok_or_else(
+            || Error::TaskNotFound {
+                id: input.parent_id.clone(),
+            },
+        )?;
+    if parent_archived {
+        return Err(Error::ParentArchived {
+            task_id: input.task_id,
+            parent_id: input.parent_id,
+        });
+    }
+    if input.task_id == input.parent_id {
+        return Err(Error::SelfParent {
+            task_id: input.task_id,
+        });
+    }
+    if !hierarchy_type_allowed(child_type, Some(parent_type)) {
+        return Err(Error::InvalidTaskHierarchy {
+            task_id: input.task_id,
+            parent_id: input.parent_id,
+        });
+    }
+    if hierarchy_would_cycle(
+        &transaction,
+        &input.task_id,
+        &input.parent_id,
+        &database_path,
+    )? {
+        return Err(Error::HierarchyCycle {
+            task_id: input.task_id,
+            parent_id: input.parent_id,
+        });
+    }
+    let current_parent = select_parent_id(&transaction, &input.task_id)
+        .map_err(|error| sqlite_access_error("parent lookup", &database_path, error))?;
+    if current_parent.as_deref() != Some(&input.parent_id) {
+        transaction.execute(
+            "INSERT INTO task_hierarchy (child_task_id, parent_task_id) VALUES (?1, ?2) ON CONFLICT(child_task_id) DO UPDATE SET parent_task_id = excluded.parent_task_id",
+            params![input.task_id, input.parent_id],
+        ).map_err(|error| sqlite_access_error("parent mutation", &database_path, error))?;
+        update_child_actor(&transaction, &input.task_id, input.agent_id, &database_path)?;
+    }
+    let result = ParentMutationResult {
+        task_id: input.task_id,
+        parent_id: Some(input.parent_id),
+    };
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("parent mutation", &database_path, error))?;
+    Ok(result)
+}
+
+pub fn remove_parent(
+    current: &Path,
+    input: ParentRemoveInput,
+) -> Result<ParentMutationResult, Error> {
+    let mut resolved = resolve_repository(current, AccessIntent::ReadWrite)?;
+    resolved
+        .connection_mut()
+        .busy_timeout(std::time::Duration::from_secs(5))
+        .map_err(|error| {
+            sqlite_access_error("database busy timeout", &resolved.database_path, error)
+        })?;
+    apply_pending_migrations(&mut resolved)?;
+    let database_path = resolved.database_path.clone();
+    let transaction = resolved
+        .connection_mut()
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|error| sqlite_access_error("parent mutation", &database_path, error))?;
+    validate_actor(&transaction, input.agent_id, &database_path)?;
+    let (_, archived) = load_type_and_archive(&transaction, &input.task_id, &database_path)?
+        .ok_or_else(|| Error::TaskNotFound {
+            id: input.task_id.clone(),
+        })?;
+    if archived {
+        return Err(Error::TaskArchived { id: input.task_id });
+    }
+    let parent_id = select_parent_id(&transaction, &input.task_id)
+        .map_err(|error| sqlite_access_error("parent lookup", &database_path, error))?
+        .ok_or_else(|| Error::ParentNotFound {
+            task_id: input.task_id.clone(),
+        })?;
+    let (_, parent_archived) = load_type_and_archive(&transaction, &parent_id, &database_path)?
+        .expect("hierarchy foreign key references a task");
+    if parent_archived {
+        return Err(Error::ParentArchived {
+            task_id: input.task_id,
+            parent_id,
+        });
+    }
+    transaction
+        .execute(
+            "DELETE FROM task_hierarchy WHERE child_task_id = ?1",
+            [&input.task_id],
+        )
+        .map_err(|error| sqlite_access_error("parent removal", &database_path, error))?;
+    update_child_actor(&transaction, &input.task_id, input.agent_id, &database_path)?;
+    let result = ParentMutationResult {
+        task_id: input.task_id,
+        parent_id: None,
+    };
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("parent mutation", &database_path, error))?;
+    Ok(result)
+}
+
+pub fn task_hierarchy(
+    current: &Path,
+    task_id: &str,
+    recursive: bool,
+) -> Result<HierarchyResult, Error> {
+    let mut resolved = resolve_repository(current, AccessIntent::ReadOnly)?;
+    let database_path = resolved.database_path.clone();
+    require_latest_migration(resolved.connection_mut(), &database_path)?;
+    let transaction = resolved
+        .connection_mut()
+        .transaction()
+        .map_err(|error| sqlite_access_error("hierarchy snapshot", &database_path, error))?;
+    let task = select_related_task(&transaction, task_id, &database_path)?.ok_or_else(|| {
+        Error::TaskNotFound {
+            id: task_id.to_owned(),
+        }
+    })?;
+    let parent = select_direct_parent(&transaction, task_id, &database_path)?;
+    let children = select_direct_children(&transaction, task_id, &database_path)?;
+    let descendants = recursive
+        .then(|| select_descendants(&transaction, task_id, &database_path))
+        .transpose()?;
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("hierarchy snapshot", &database_path, error))?;
+    Ok(HierarchyResult {
+        task,
+        parent,
+        children,
+        descendants,
+    })
+}
+
+pub fn hierarchy_type_allowed(child: TaskType, parent: Option<TaskType>) -> bool {
+    match (child, parent) {
+        (_, None) => true,
+        (TaskType::Epic, Some(_)) => false,
+        (TaskType::Story, Some(TaskType::Epic)) => true,
+        (TaskType::Story, Some(_)) => false,
+        (_, Some(TaskType::Epic | TaskType::Story)) => true,
+        _ => false,
+    }
+}
+
+pub fn validate_hierarchy_edges(
+    connection: &rusqlite::Connection,
+    task_id: &str,
+    task_type: TaskType,
+    database_path: &Path,
+) -> Result<(), Error> {
+    if let Some(parent) = select_direct_parent(connection, task_id, database_path)?
+        && !hierarchy_type_allowed(task_type, Some(parent.task_type))
+    {
+        return Err(Error::InvalidTaskHierarchy {
+            task_id: task_id.to_owned(),
+            parent_id: parent.id,
+        });
+    }
+    for child in select_direct_children(connection, task_id, database_path)? {
+        if !hierarchy_type_allowed(child.task_type, Some(task_type)) {
+            return Err(Error::InvalidTaskHierarchy {
+                task_id: child.id,
+                parent_id: task_id.to_owned(),
+            });
+        }
+    }
+    Ok(())
 }
 
 pub fn view_task(current: &Path, id: &str) -> Result<FullTask, Error> {
@@ -1534,6 +1773,8 @@ fn load_full_context(
         })
         .and_then(Iterator::collect)
         .map_err(|error| sqlite_access_error("task code references", database_path, error))?;
+    task.hierarchy.parent = select_direct_parent(transaction, &task.id, database_path)?;
+    task.hierarchy.children = select_direct_children(transaction, &task.id, database_path)?;
     task.dependencies.upstream = load_related_dependencies(
         transaction,
         "SELECT t.id, t.title, t.task_type, s.code, s.name, s.completed
@@ -1555,6 +1796,180 @@ fn load_full_context(
         database_path,
     )?;
     Ok(())
+}
+
+fn validate_actor(
+    connection: &rusqlite::Connection,
+    agent_id: Option<Uuid>,
+    database_path: &Path,
+) -> Result<(), Error> {
+    if let Some(agent_id) = agent_id {
+        let exists = connection
+            .query_row(
+                "SELECT 1 FROM agents WHERE id = ?1",
+                [agent_id.to_string()],
+                |_| Ok(()),
+            )
+            .optional()
+            .map_err(|error| sqlite_access_error("parent actor lookup", database_path, error))?
+            .is_some();
+        if !exists {
+            return Err(Error::AgentNotFound { id: agent_id });
+        }
+    }
+    Ok(())
+}
+
+fn load_type_and_archive(
+    connection: &rusqlite::Connection,
+    task_id: &str,
+    database_path: &Path,
+) -> Result<Option<(TaskType, bool)>, Error> {
+    connection
+        .query_row(
+            "SELECT task_type, archived FROM tasks WHERE id = ?1",
+            [task_id],
+            |row| Ok((task_type_from_row(row.get::<_, String>(0)?)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(|error| sqlite_access_error("hierarchy task lookup", database_path, error))
+}
+
+fn update_child_actor(
+    connection: &rusqlite::Connection,
+    task_id: &str,
+    agent_id: Option<Uuid>,
+    database_path: &Path,
+) -> Result<(), Error> {
+    let actor_type = if agent_id.is_some() { "agent" } else { "user" };
+    connection.execute(
+        "UPDATE tasks SET updated_at = ?1, updated_actor_type = ?2, updated_agent_id = ?3 WHERE id = ?4",
+        params![utc_now(), actor_type, agent_id.map(|id| id.to_string()), task_id],
+    ).map_err(|error| sqlite_access_error("parent metadata update", database_path, error))?;
+    Ok(())
+}
+
+fn select_parent_id(
+    connection: &rusqlite::Connection,
+    task_id: &str,
+) -> rusqlite::Result<Option<String>> {
+    connection
+        .query_row(
+            "SELECT parent_task_id FROM task_hierarchy WHERE child_task_id = ?1",
+            [task_id],
+            |row| row.get(0),
+        )
+        .optional()
+}
+
+pub fn select_direct_parent(
+    connection: &rusqlite::Connection,
+    task_id: &str,
+    database_path: &Path,
+) -> Result<Option<RelatedTask>, Error> {
+    select_related_tasks(connection,
+        "SELECT t.id, t.title, t.task_type, s.code, s.name, s.completed FROM task_hierarchy h JOIN tasks t ON t.id = h.parent_task_id JOIN statuses s ON s.id = t.status_id WHERE h.child_task_id = ?1",
+        task_id, database_path, "task parent").map(|mut tasks| tasks.pop())
+}
+
+pub fn select_direct_children(
+    connection: &rusqlite::Connection,
+    task_id: &str,
+    database_path: &Path,
+) -> Result<Vec<RelatedTask>, Error> {
+    select_related_tasks(
+        connection,
+        "SELECT t.id, t.title, t.task_type, s.code, s.name, s.completed FROM task_hierarchy h JOIN tasks t ON t.id = h.child_task_id JOIN statuses s ON s.id = t.status_id WHERE h.parent_task_id = ?1 ORDER BY t.id",
+        task_id,
+        database_path,
+        "task children",
+    )
+}
+
+fn select_related_task(
+    connection: &rusqlite::Connection,
+    task_id: &str,
+    database_path: &Path,
+) -> Result<Option<RelatedTask>, Error> {
+    select_related_tasks(connection,
+        "SELECT t.id, t.title, t.task_type, s.code, s.name, s.completed FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE t.id = ?1",
+        task_id, database_path, "hierarchy task").map(|mut tasks| tasks.pop())
+}
+
+fn select_related_tasks(
+    connection: &rusqlite::Connection,
+    sql: &str,
+    task_id: &str,
+    database_path: &Path,
+    phase: &'static str,
+) -> Result<Vec<RelatedTask>, Error> {
+    let mut statement = connection
+        .prepare(sql)
+        .map_err(|error| sqlite_access_error(phase, database_path, error))?;
+    statement
+        .query_map([task_id], |row| {
+            Ok(RelatedTask {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                task_type: task_type_from_row(row.get::<_, String>(2)?)?,
+                status: RelatedTaskStatus {
+                    code: row.get(3)?,
+                    name: row.get(4)?,
+                    completed: row.get(5)?,
+                },
+            })
+        })
+        .and_then(Iterator::collect)
+        .map_err(|error| sqlite_access_error(phase, database_path, error))
+}
+
+pub fn select_descendants(
+    connection: &rusqlite::Connection,
+    task_id: &str,
+    database_path: &Path,
+) -> Result<Vec<HierarchyDescendant>, Error> {
+    let mut statement = connection.prepare(
+        "WITH RECURSIVE descendants(id, depth) AS (
+           SELECT child_task_id, 1 FROM task_hierarchy WHERE parent_task_id = ?1
+           UNION
+           SELECT h.child_task_id, d.depth + 1 FROM task_hierarchy h JOIN descendants d ON h.parent_task_id = d.id
+         ) SELECT t.id, t.title, t.task_type, s.code, s.name, s.completed, MIN(d.depth)
+         FROM descendants d JOIN tasks t ON t.id = d.id JOIN statuses s ON s.id = t.status_id
+         GROUP BY t.id, t.title, t.task_type, s.code, s.name, s.completed ORDER BY MIN(d.depth), t.id"
+    ).map_err(|error| sqlite_access_error("hierarchy descendants", database_path, error))?;
+    statement
+        .query_map([task_id], |row| {
+            Ok(HierarchyDescendant {
+                task: RelatedTask {
+                    id: row.get(0)?,
+                    title: row.get(1)?,
+                    task_type: task_type_from_row(row.get::<_, String>(2)?)?,
+                    status: RelatedTaskStatus {
+                        code: row.get(3)?,
+                        name: row.get(4)?,
+                        completed: row.get(5)?,
+                    },
+                },
+                depth: row.get(6)?,
+            })
+        })
+        .and_then(Iterator::collect)
+        .map_err(|error| sqlite_access_error("hierarchy descendants", database_path, error))
+}
+
+pub fn hierarchy_would_cycle(
+    connection: &rusqlite::Connection,
+    task_id: &str,
+    parent_id: &str,
+    database_path: &Path,
+) -> Result<bool, Error> {
+    connection.query_row(
+        "WITH RECURSIVE descendants(id) AS (
+           SELECT child_task_id FROM task_hierarchy WHERE parent_task_id = ?1
+           UNION SELECT h.child_task_id FROM task_hierarchy h JOIN descendants d ON h.parent_task_id = d.id
+         ) SELECT EXISTS(SELECT 1 FROM descendants WHERE id = ?2)",
+        params![task_id, parent_id], |row| row.get(0)
+    ).map_err(|error| sqlite_access_error("hierarchy cycle validation", database_path, error))
 }
 
 fn load_related_dependencies(

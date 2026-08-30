@@ -453,7 +453,7 @@ fn pending_migrations_are_not_applied_and_linked_worktrees_share_explanations() 
     let database = temp.path().join(".tbtm/tbtm.db");
     let connection = Connection::open(&database).unwrap();
     connection
-        .execute("DELETE FROM schema_migrations WHERE version = 6", [])
+        .execute("DELETE FROM schema_migrations WHERE version >= 6", [])
         .unwrap();
     drop(connection);
     let output = tbtm(temp.path(), &["task", "blockers", &task, "--json"]);

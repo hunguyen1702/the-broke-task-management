@@ -10,12 +10,13 @@ use tbtm_core::{
     exit_code, initialize, inspect_repository_health, register_agent,
     task::{
         ArchiveScope, ArchiveTaskInput, AvailableTasksInput, ClaimTaskInput, CreateTaskInput,
-        CreatedTask, DependencyInput, DependencyResult, FullTask, ListTasksInput, ObservedClaim,
-        PatchValue, TaskBlockingExplanation, TaskListItem, TaskType, UnarchiveImpact,
-        UnarchiveTaskInput, UnarchiveTaskResult, UnclaimTaskInput, UnclaimTaskResult,
-        UpdateTaskInput, add_dependency, archive_task, available_tasks, claim_task, create_task,
-        explain_task_blocking, list_tasks, parse_code_reference, preview_unarchive,
-        remove_dependency, unarchive_task, unclaim_task, update_task, view_task,
+        CreatedTask, DependencyInput, DependencyResult, FullTask, HierarchyResult, ListTasksInput,
+        ObservedClaim, ParentMutationResult, ParentRemoveInput, ParentSetInput, PatchValue,
+        TaskBlockingExplanation, TaskListItem, TaskType, UnarchiveImpact, UnarchiveTaskInput,
+        UnarchiveTaskResult, UnclaimTaskInput, UnclaimTaskResult, UpdateTaskInput, add_dependency,
+        archive_task, available_tasks, claim_task, create_task, explain_task_blocking, list_tasks,
+        parse_code_reference, preview_unarchive, remove_dependency, remove_parent, set_parent,
+        task_hierarchy, unarchive_task, unclaim_task, update_task, view_task,
     },
     uninstall,
 };
@@ -69,6 +70,10 @@ enum TaskCommand {
     Update(TaskUpdateArgs),
     #[command(about = "Manage task dependencies")]
     Dependency(DependencyArgs),
+    #[command(about = "Manage a task's parent")]
+    Parent(ParentArgs),
+    #[command(about = "View task hierarchy")]
+    Hierarchy(TaskHierarchyArgs),
     #[command(about = "Atomically claim an available task")]
     Claim(TaskClaimArgs),
     #[command(about = "Release an owned task claim")]
@@ -149,6 +154,49 @@ struct DependencyMutationArgs {
     depends_on: String,
     #[arg(long)]
     agent: Option<uuid::Uuid>,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct ParentArgs {
+    #[command(subcommand)]
+    command: ParentCommand,
+}
+
+#[derive(Subcommand)]
+enum ParentCommand {
+    #[command(about = "Set or replace a task's parent")]
+    Set(ParentSetArgs),
+    #[command(about = "Remove a task's parent")]
+    Remove(ParentRemoveArgs),
+}
+
+#[derive(Args)]
+struct ParentSetArgs {
+    task_id: String,
+    #[arg(long)]
+    parent: String,
+    #[arg(long)]
+    agent: Option<uuid::Uuid>,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct ParentRemoveArgs {
+    task_id: String,
+    #[arg(long)]
+    agent: Option<uuid::Uuid>,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct TaskHierarchyArgs {
+    task_id: String,
+    #[arg(long)]
+    recursive: bool,
     #[arg(long)]
     json: bool,
 }
@@ -571,6 +619,36 @@ fn run() -> Result<(), (Error, bool)> {
                     render_dependency(&result, false, args.json);
                 }
             },
+            TaskCommand::Parent(args) => match args.command {
+                ParentCommand::Set(args) => {
+                    let result = set_parent(
+                        &current,
+                        ParentSetInput {
+                            task_id: args.task_id,
+                            parent_id: args.parent,
+                            agent_id: args.agent,
+                        },
+                    )
+                    .map_err(|error| (error, args.json))?;
+                    render_parent_mutation(&result, true, args.json);
+                }
+                ParentCommand::Remove(args) => {
+                    let result = remove_parent(
+                        &current,
+                        ParentRemoveInput {
+                            task_id: args.task_id,
+                            agent_id: args.agent,
+                        },
+                    )
+                    .map_err(|error| (error, args.json))?;
+                    render_parent_mutation(&result, false, args.json);
+                }
+            },
+            TaskCommand::Hierarchy(args) => {
+                let result = task_hierarchy(&current, &args.task_id, args.recursive)
+                    .map_err(|error| (error, args.json))?;
+                render_hierarchy(&result, args.json);
+            }
             TaskCommand::Claim(args) => {
                 let result = claim_task(
                     &current,
@@ -712,6 +790,11 @@ fn command_uses_json(command: &Command) -> bool {
             TaskCommand::Dependency(args) => match &args.command {
                 DependencyCommand::Add(args) | DependencyCommand::Remove(args) => args.json,
             },
+            TaskCommand::Parent(args) => match &args.command {
+                ParentCommand::Set(args) => args.json,
+                ParentCommand::Remove(args) => args.json,
+            },
+            TaskCommand::Hierarchy(args) => args.json,
             TaskCommand::Claim(args) => args.json,
             TaskCommand::Unclaim(args) => args.json,
             TaskCommand::Archive(args) => args.json,
@@ -820,6 +903,54 @@ fn render_dependency(result: &DependencyResult, added: bool, json: bool) {
     }
 }
 
+fn render_parent_mutation(result: &ParentMutationResult, set: bool, json: bool) {
+    if json {
+        render_success(result, true);
+    } else if set {
+        println!(
+            "Set parent: {} -> {}",
+            result.task_id,
+            result.parent_id.as_deref().expect("set has parent")
+        );
+    } else {
+        println!("Removed parent: {}", result.task_id);
+    }
+}
+
+fn render_hierarchy(result: &HierarchyResult, json: bool) {
+    if json {
+        render_success(result, true);
+        return;
+    }
+    println!("Task: {} {}", result.task.id, result.task.title);
+    println!("Parent:");
+    match &result.parent {
+        Some(task) => println!("- {} {}", task.id, task.title),
+        None => println!("  —"),
+    }
+    println!("Direct children:");
+    if result.children.is_empty() {
+        println!("  —");
+    } else {
+        for task in &result.children {
+            println!("- {} {}", task.id, task.title);
+        }
+    }
+    if let Some(descendants) = &result.descendants {
+        println!("Descendants:");
+        if descendants.is_empty() {
+            println!("  —");
+        } else {
+            for item in descendants {
+                println!(
+                    "- depth {}: {} {}",
+                    item.depth, item.task.id, item.task.title
+                );
+            }
+        }
+    }
+}
+
 fn patch<T>(value: Option<T>, clear: bool) -> PatchValue<T> {
     if clear {
         PatchValue::Clear
@@ -881,7 +1012,29 @@ fn render_task_detail(result: &FullTask, json: bool) {
             println!("  {}{}{}", reference.path, lines, description);
         }
     }
-    println!("Hierarchy: parent —; children —");
+    println!("Hierarchy:");
+    println!(
+        "  Parent: {}",
+        result
+            .hierarchy
+            .parent
+            .as_ref()
+            .map_or("—", |task| task.id.as_str())
+    );
+    println!(
+        "  Children: {}",
+        if result.hierarchy.children.is_empty() {
+            "—".to_owned()
+        } else {
+            result
+                .hierarchy
+                .children
+                .iter()
+                .map(|task| task.id.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        }
+    );
     println!("Dependencies: upstream —; downstream —");
     if let Some(claim) = &result.claim {
         println!(

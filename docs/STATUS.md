@@ -15,7 +15,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E2-S1-T1 is implemented.
 - E3-S1-T1 is complete and provides the status-code contract required by task creation.
 - E2-S2-T1 is implemented and verified.
-- E2-S3 planning is complete; implementation is blocked until E4-S1 is planned and implemented.
+- E2-S3-T1 is ready now that E4-S1-T1 provides authoritative hierarchy validation.
 - E2-S4-T1 is implemented with atomic structured task-context updates.
 - E2-S5-T1 is implemented with durable archive reasons, transactional claim release, force-confirmation claim binding, and effective-completion semantics.
 - E2-S6-T1 is implemented with transactional unarchive, deterministic direct-impact reporting, explicit confirmation, and preserved claims.
@@ -25,7 +25,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E5-S3-T1 is implemented with transactional owner-controlled unclaim behavior and shared-worktree claim release.
 - E4-S3-T1 is implemented with authoritative read-only available-task querying and a reusable caller-owned selector.
 - E4-S4-T1 is implemented and verified with deterministic multi-reason explanations, bounded unresolved-graph traversal, snapshot consistency, read-only behavior, and linked-worktree coverage.
-- E4-S1 planning is complete; E4-S1-T1 is ready to implement the authoritative hierarchy model and unblock E2-S3-T1.
+- E4-S1-T1 is implemented with transactional single-parent mutations, type/cycle validation, direct hydration, and deterministic recursive reads.
 - E1-S4-T1 is implemented with deterministic read-only agent and active-claim listing.
 
 ## E1 — Repository foundation and identity
@@ -51,8 +51,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E2-S1-T1](tasks/E2-S1-T1-implement-task-creation.md) | done | done | E1-S1-T1, E1-S3-T1, E3-S1-T1 |
 | [E2-S2](epics/E2-S2-view-and-list-tasks.md) | done | done | E2-S1 |
 | [E2-S2-T1](tasks/E2-S2-T1-implement-task-detail-and-listing.md) | done | done | E2-S1-T1 |
-| [E2-S3](epics/E2-S3-update-task-content.md) | done | blocked | E2-S1, E4-S1 |
-| [E2-S3-T1](tasks/E2-S3-T1-implement-task-content-updates.md) | done | blocked | E2-S1-T1, E2-S2-T1, E4-S1-T1 |
+| [E2-S3](epics/E2-S3-update-task-content.md) | done | ready | E2-S1, E4-S1 |
+| [E2-S3-T1](tasks/E2-S3-T1-implement-task-content-updates.md) | done | ready | E2-S1-T1, E2-S2-T1, E4-S1-T1 |
 | [E2-S4](epics/E2-S4-manage-structured-task-context.md) | done | done | E2-S1 |
 | [E2-S4-T1](tasks/E2-S4-T1-implement-structured-task-context-updates.md) | done | done | E2-S1-T1, E2-S2-T1 |
 | [E2-S5](epics/E2-S5-archive-a-task.md) | done | done | E2-S1, E4-S3, E5-S3 |
@@ -74,8 +74,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 | Story | Planning | Implementation | Depends on |
 |---|---|---|---|
-| [E4-S1](epics/E4-S1-manage-task-hierarchy.md) | done | ready | E2-S1 |
-| [E4-S1-T1](tasks/E4-S1-T1-implement-task-hierarchy-management.md) | done | ready | E2-S1-T1, E2-S2-T1 |
+| [E4-S1](epics/E4-S1-manage-task-hierarchy.md) | done | done | E2-S1 |
+| [E4-S1-T1](tasks/E4-S1-T1-implement-task-hierarchy-management.md) | done | done | E2-S1-T1, E2-S2-T1 |
 | [E4-S2](epics/E4-S2-manage-dependencies.md) | done | done | E2-S1 |
 | [E4-S2-T1](tasks/E4-S2-T1-implement-dependency-management.md) | done | done | E2-S1-T1, E2-S2-T1 |
 | [E4-S3](epics/E4-S3-query-available-tasks.md) | done | done | E3-S1, E4-S2, E5-S1 |

@@ -207,6 +207,7 @@ fn view_rejects_pending_migration_until_mutation_upgrades() {
     connection
         .execute("DELETE FROM schema_migrations WHERE version >= 4", [])
         .unwrap();
+    connection.execute("DROP TABLE task_hierarchy", []).unwrap();
     connection.execute("DROP TABLE task_claims", []).unwrap();
     connection
         .execute("DROP TABLE task_dependencies", [])
