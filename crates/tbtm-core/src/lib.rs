@@ -35,6 +35,8 @@ pub enum Error {
     InvalidTaskType { value: String },
     #[error("priority must be between 0 and 1000000")]
     InvalidPriority,
+    #[error("task priority must be between 0 and 1000000")]
+    InvalidTaskUpdatePriority,
     #[error("estimate must be a finite non-negative number of hours")]
     InvalidEstimate,
     #[error("invalid external URL: {value}")]
@@ -166,6 +168,7 @@ impl Error {
             Self::InvalidTaskTitle => "INVALID_TASK_TITLE",
             Self::InvalidTaskType { .. } => "INVALID_TASK_TYPE",
             Self::InvalidPriority => "INVALID_PRIORITY",
+            Self::InvalidTaskUpdatePriority => "INVALID_TASK_PRIORITY",
             Self::InvalidEstimate => "INVALID_ESTIMATE",
             Self::InvalidExternalUrl { .. } => "INVALID_EXTERNAL_URL",
             Self::InvalidCodeReference { .. } => "INVALID_CODE_REFERENCE",
@@ -1447,6 +1450,7 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::InvalidTaskTitle
         | Error::InvalidTaskType { .. }
         | Error::InvalidPriority
+        | Error::InvalidTaskUpdatePriority
         | Error::InvalidEstimate
         | Error::InvalidExternalUrl { .. }
         | Error::InvalidCodeReference { .. }

@@ -205,6 +205,20 @@ struct TaskHierarchyArgs {
 struct TaskUpdateArgs {
     id: String,
     #[arg(long)]
+    title: Option<String>,
+    #[arg(long)]
+    description: Option<String>,
+    #[arg(long)]
+    goal: Option<String>,
+    #[arg(long)]
+    acceptance_criteria: Option<String>,
+    #[arg(long = "type")]
+    task_type: Option<String>,
+    #[arg(long = "status")]
+    status_code: Option<String>,
+    #[arg(long)]
+    priority: Option<i64>,
+    #[arg(long)]
     estimate: Option<f64>,
     #[arg(long)]
     clear_estimate: bool,
@@ -579,10 +593,23 @@ fn run() -> Result<(), (Error, bool)> {
                     .map(|value| parse_code_reference(value))
                     .collect::<Result<Vec<_>, _>>()
                     .map_err(|error| (error, args.json))?;
+                let task_type = args
+                    .task_type
+                    .as_deref()
+                    .map(TaskType::parse)
+                    .transpose()
+                    .map_err(|error| (error, args.json))?;
                 let result = update_task(
                     &current,
                     &args.id,
                     UpdateTaskInput {
+                        title: args.title,
+                        description: args.description,
+                        goal: args.goal,
+                        acceptance_criteria: args.acceptance_criteria,
+                        task_type,
+                        status_code: args.status_code,
+                        priority: args.priority,
                         estimate: patch(args.estimate, args.clear_estimate),
                         tags: collection_patch(args.tags, args.clear_tags),
                         external_urls: collection_patch(args.urls, args.clear_urls),

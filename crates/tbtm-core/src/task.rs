@@ -177,6 +177,13 @@ pub enum PatchValue<T> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct UpdateTaskInput {
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub goal: Option<String>,
+    pub acceptance_criteria: Option<String>,
+    pub task_type: Option<TaskType>,
+    pub status_code: Option<String>,
+    pub priority: Option<i64>,
     pub estimate: PatchValue<f64>,
     pub tags: PatchValue<Vec<String>>,
     pub external_urls: PatchValue<Vec<String>>,
@@ -1472,6 +1479,13 @@ pub fn update_task(
     mut input: UpdateTaskInput,
 ) -> Result<FullTask, Error> {
     if matches!(input.estimate, PatchValue::Omitted)
+        && input.title.is_none()
+        && input.description.is_none()
+        && input.goal.is_none()
+        && input.acceptance_criteria.is_none()
+        && input.task_type.is_none()
+        && input.status_code.is_none()
+        && input.priority.is_none()
         && matches!(input.tags, PatchValue::Omitted)
         && matches!(input.external_urls, PatchValue::Omitted)
         && matches!(input.code_references, PatchValue::Omitted)
@@ -1508,15 +1522,47 @@ pub fn update_task(
         }
     }
     normalize_update_input(&mut input)?;
+    let status = input
+        .status_code
+        .as_ref()
+        .map(|code| {
+            status::find_by_code(&transaction, code)
+                .map_err(|error| sqlite_access_error("task status lookup", &database_path, error))?
+                .ok_or_else(|| Error::StatusNotFound { code: code.clone() })
+        })
+        .transpose()?;
     if task.archived {
         return Err(Error::TaskArchived { id: id.to_owned() });
     }
     load_full_context(&transaction, &mut task, &database_path)?;
+    let title = input.title.as_ref().unwrap_or(&task.title);
+    let description = input.description.as_ref().unwrap_or(&task.description);
+    let goal = input.goal.as_ref().unwrap_or(&task.goal);
+    let acceptance_criteria = input
+        .acceptance_criteria
+        .as_ref()
+        .unwrap_or(&task.acceptance_criteria);
+    let task_type = input.task_type.unwrap_or(task.task_type);
+    let status_id = status
+        .as_ref()
+        .map_or(task.status.id.as_str(), |value| value.id.as_str());
+    let priority = input.priority.unwrap_or(task.priority);
+    if input.task_type.is_some() && task_type != task.task_type {
+        validate_hierarchy_edges(&transaction, id, task_type, &database_path)?;
+    }
     let estimate = patch_target(&input.estimate, task.estimate);
     let tags = collection_target(&input.tags);
     let urls = collection_target(&input.external_urls);
     let references = collection_target(&input.code_references);
-    let changed = estimate != task.estimate
+    let scalar_changed = title != &task.title
+        || description != &task.description
+        || goal != &task.goal
+        || acceptance_criteria != &task.acceptance_criteria
+        || task_type != task.task_type
+        || status_id != task.status.id
+        || priority != task.priority;
+    let changed = scalar_changed
+        || estimate != task.estimate
         || tags.as_ref().is_some_and(|value| value != &task.tags)
         || urls
             .as_ref()
@@ -1525,6 +1571,14 @@ pub fn update_task(
             .as_ref()
             .is_some_and(|value| value != &task.code_references);
     if changed {
+        if scalar_changed {
+            transaction
+                .execute(
+                    "UPDATE tasks SET title = ?1, description = ?2, goal = ?3, acceptance_criteria = ?4, task_type = ?5, status_id = ?6, priority = ?7 WHERE id = ?8",
+                    params![title, description, goal, acceptance_criteria, task_type.as_str(), status_id, priority, id],
+                )
+                .map_err(|error| sqlite_access_error("task scalar update", &database_path, error))?;
+        }
         if estimate != task.estimate {
             transaction
                 .execute(
@@ -1621,6 +1675,18 @@ fn replace_strings(
 }
 
 fn normalize_update_input(input: &mut UpdateTaskInput) -> Result<(), Error> {
+    if let Some(title) = &mut input.title {
+        *title = title.trim().to_owned();
+        if title.is_empty() {
+            return Err(Error::InvalidTaskTitle);
+        }
+    }
+    if input
+        .priority
+        .is_some_and(|priority| !(0..=1_000_000).contains(&priority))
+    {
+        return Err(Error::InvalidTaskUpdatePriority);
+    }
     if let PatchValue::Set(value) = input.estimate
         && (!value.is_finite() || value < 0.0)
     {
@@ -2465,6 +2531,23 @@ fn is_task_id_collision(error: &Error) -> bool {
 mod tests {
     use super::*;
 
+    fn empty_update() -> UpdateTaskInput {
+        UpdateTaskInput {
+            title: None,
+            description: None,
+            goal: None,
+            acceptance_criteria: None,
+            task_type: None,
+            status_code: None,
+            priority: None,
+            estimate: PatchValue::Omitted,
+            tags: PatchValue::Omitted,
+            external_urls: PatchValue::Omitted,
+            code_references: PatchValue::Omitted,
+            agent_id: None,
+        }
+    }
+
     #[test]
     fn parses_types_and_code_references() {
         assert_eq!(TaskType::parse("poc").unwrap(), TaskType::Poc);
@@ -2484,5 +2567,27 @@ mod tests {
         );
         assert!(parse_code_reference("../secret:1").is_err());
         assert!(parse_code_reference("src/lib.rs:0").is_err());
+    }
+
+    #[test]
+    fn scalar_update_normalization_trims_title_and_checks_priority() {
+        let mut input = empty_update();
+        input.title = Some("  New title  ".to_owned());
+        input.priority = Some(1_000_000);
+        normalize_update_input(&mut input).unwrap();
+        assert_eq!(input.title.as_deref(), Some("New title"));
+
+        input.title = Some("   ".to_owned());
+        assert!(matches!(
+            normalize_update_input(&mut input),
+            Err(Error::InvalidTaskTitle)
+        ));
+
+        let mut input = empty_update();
+        input.priority = Some(-1);
+        assert!(matches!(
+            normalize_update_input(&mut input),
+            Err(Error::InvalidTaskUpdatePriority)
+        ));
     }
 }
