@@ -9,11 +9,11 @@ use tbtm_core::{
     agent::{AgentList, list_agents},
     exit_code, initialize, inspect_repository_health, register_agent,
     task::{
-        ArchiveScope, ClaimTaskInput, CreateTaskInput, CreatedTask, DependencyInput,
-        DependencyResult, FullTask, ListTasksInput, PatchValue, TaskListItem, TaskType,
-        UnclaimTaskInput, UnclaimTaskResult, UpdateTaskInput, add_dependency, claim_task,
-        create_task, list_tasks, parse_code_reference, remove_dependency, unclaim_task,
-        update_task, view_task,
+        ArchiveScope, AvailableTasksInput, ClaimTaskInput, CreateTaskInput, CreatedTask,
+        DependencyInput, DependencyResult, FullTask, ListTasksInput, PatchValue, TaskListItem,
+        TaskType, UnclaimTaskInput, UnclaimTaskResult, UpdateTaskInput, add_dependency,
+        available_tasks, claim_task, create_task, list_tasks, parse_code_reference,
+        remove_dependency, unclaim_task, update_task, view_task,
     },
     uninstall,
 };
@@ -59,6 +59,8 @@ enum TaskCommand {
     View(TaskViewArgs),
     #[command(about = "List tasks")]
     List(TaskListArgs),
+    #[command(about = "List currently available tasks")]
+    Available(TaskAvailableArgs),
     #[command(about = "Update a task")]
     Update(TaskUpdateArgs),
     #[command(about = "Manage task dependencies")]
@@ -150,6 +152,18 @@ struct TaskListArgs {
     archived: bool,
     #[arg(long)]
     all: bool,
+    #[arg(long = "status")]
+    statuses: Vec<String>,
+    #[arg(long = "type")]
+    task_types: Vec<String>,
+    #[arg(long = "tag")]
+    tags: Vec<String>,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct TaskAvailableArgs {
     #[arg(long = "status")]
     statuses: Vec<String>,
     #[arg(long = "type")]
@@ -441,6 +455,24 @@ fn run() -> Result<(), (Error, bool)> {
                 .map_err(|error| (error, args.json))?;
                 render_task_list(&result, args.json);
             }
+            TaskCommand::Available(args) => {
+                let task_types = args
+                    .task_types
+                    .iter()
+                    .map(|value| TaskType::parse(value))
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|error| (error, args.json))?;
+                let result = available_tasks(
+                    &current,
+                    &AvailableTasksInput {
+                        status_codes: args.statuses,
+                        task_types,
+                        tags: args.tags,
+                    },
+                )
+                .map_err(|error| (error, args.json))?;
+                render_available_tasks(&result, args.json);
+            }
             TaskCommand::Update(args) => {
                 if (args.estimate.is_some() && args.clear_estimate)
                     || (!args.tags.is_empty() && args.clear_tags)
@@ -537,6 +569,7 @@ fn command_uses_json(command: &Command) -> bool {
             TaskCommand::Create(args) => args.json,
             TaskCommand::View(args) => args.json,
             TaskCommand::List(args) => args.json,
+            TaskCommand::Available(args) => args.json,
             TaskCommand::Update(args) => args.json,
             TaskCommand::Dependency(args) => match &args.command {
                 DependencyCommand::Add(args) | DependencyCommand::Remove(args) => args.json,
@@ -687,6 +720,14 @@ fn render_task_list(result: &[TaskListItem], json: bool) {
             task.priority,
             task.title
         );
+    }
+}
+
+fn render_available_tasks(result: &[TaskListItem], json: bool) {
+    if result.is_empty() && !json {
+        println!("No available tasks found.");
+    } else {
+        render_task_list(result, json);
     }
 }
 

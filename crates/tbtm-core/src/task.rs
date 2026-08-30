@@ -230,6 +230,13 @@ pub struct ListTasksInput {
     pub tags: Vec<String>,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct AvailableTasksInput {
+    pub status_codes: Vec<String>,
+    pub task_types: Vec<TaskType>,
+    pub tags: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskListItem {
@@ -1320,6 +1327,124 @@ pub fn list_tasks(current: &Path, input: &ListTasksInput) -> Result<Vec<TaskList
     Ok(tasks)
 }
 
+pub fn available_tasks(
+    current: &Path,
+    input: &AvailableTasksInput,
+) -> Result<Vec<TaskListItem>, Error> {
+    let mut resolved = resolve_repository(current, AccessIntent::ReadOnly)?;
+    let database_path = resolved.database_path.clone();
+    require_latest_migration(resolved.connection_mut(), &database_path)?;
+    let transaction = resolved
+        .connection_mut()
+        .transaction()
+        .map_err(|error| sqlite_access_error("available task snapshot", &database_path, error))?;
+    let tasks = select_available_tasks(&transaction, input, &database_path)?;
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("available task snapshot", &database_path, error))?;
+    Ok(tasks)
+}
+
+/// Selects available tasks using a caller-owned connection or transaction.
+///
+/// The caller controls the snapshot and transaction behavior, allowing the same
+/// predicate and ordering to be reused by a future atomic select-and-claim flow.
+pub fn select_available_tasks(
+    connection: &rusqlite::Connection,
+    input: &AvailableTasksInput,
+    database_path: &Path,
+) -> Result<Vec<TaskListItem>, Error> {
+    validate_status_filters(connection, &input.status_codes, database_path)?;
+    let (sql, values) = available_sql(input);
+    let mut statement = connection
+        .prepare(&sql)
+        .map_err(|error| sqlite_access_error("available task query", database_path, error))?;
+    let rows = statement
+        .query_map(params_from_iter(values), task_list_item_from_row)
+        .map_err(|error| sqlite_access_error("available task query", database_path, error))?;
+    let mut tasks: Vec<_> = rows
+        .collect::<rusqlite::Result<_>>()
+        .map_err(|error| sqlite_access_error("available task query", database_path, error))?;
+    drop(statement);
+    load_list_tags(connection, &mut tasks, database_path)?;
+    Ok(tasks)
+}
+
+fn validate_status_filters(
+    connection: &rusqlite::Connection,
+    status_codes: &[String],
+    database_path: &Path,
+) -> Result<(), Error> {
+    for code in status_codes.iter().collect::<HashSet<_>>() {
+        if status::find_by_code(connection, code)
+            .map_err(|error| sqlite_access_error("task status filter", database_path, error))?
+            .is_none()
+        {
+            return Err(Error::StatusNotFound { code: code.clone() });
+        }
+    }
+    Ok(())
+}
+
+fn available_sql(input: &AvailableTasksInput) -> (String, Vec<Value>) {
+    let mut sql = String::from(
+        "SELECT DISTINCT t.id, t.title, t.task_type, s.id, s.code, s.name, s.completed, t.priority, t.estimate_hours, t.archived, t.created_at, t.updated_at, NULL, NULL, NULL FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE t.archived = 0 AND s.completed = 0 AND NOT EXISTS (SELECT 1 FROM task_claims c WHERE c.task_id = t.id) AND NOT EXISTS (SELECT 1 FROM task_dependencies d JOIN tasks upstream ON upstream.id = d.upstream_task_id JOIN statuses upstream_status ON upstream_status.id = upstream.status_id WHERE d.downstream_task_id = t.id AND upstream.archived = 0 AND upstream_status.completed = 0)",
+    );
+    let mut values = Vec::new();
+    push_in_filter(
+        &mut sql,
+        &mut values,
+        "s.code",
+        input.status_codes.iter().cloned(),
+    );
+    push_in_filter(
+        &mut sql,
+        &mut values,
+        "t.task_type",
+        input
+            .task_types
+            .iter()
+            .map(|value| value.as_str().to_owned()),
+    );
+    if !input.tags.is_empty() {
+        sql.push_str(
+            " AND EXISTS (SELECT 1 FROM task_tags tf WHERE tf.task_id = t.id AND tf.value IN (",
+        );
+        push_placeholders(&mut sql, input.tags.len());
+        sql.push_str("))");
+        values.extend(input.tags.iter().cloned().map(Value::Text));
+    }
+    sql.push_str(" ORDER BY t.priority DESC, t.created_at ASC, t.id ASC");
+    (sql, values)
+}
+
+fn task_list_item_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TaskListItem> {
+    Ok(TaskListItem {
+        id: row.get(0)?,
+        title: row.get(1)?,
+        task_type: task_type_from_row(row.get::<_, String>(2)?)?,
+        status: TaskStatus {
+            id: row.get(3)?,
+            code: row.get(4)?,
+            name: row.get(5)?,
+            completed: row.get(6)?,
+        },
+        priority: row.get(7)?,
+        estimate: row.get(8)?,
+        tags: vec![],
+        archived: row.get(9)?,
+        claim: row.get::<_, Option<String>>(12)?.map(|id| TaskClaim {
+            agent: ClaimAgent {
+                id,
+                display_name: row.get(13).expect("joined claim agent"),
+            },
+            claimed_at: row.get(14).expect("joined claim timestamp"),
+        }),
+        created_at: row.get(10)?,
+        updated_at: row.get(11)?,
+    })
+}
+
 fn list_sql(input: &ListTasksInput) -> (String, Vec<Value>) {
     let mut sql = String::from(
         "SELECT t.id, t.title, t.task_type, s.id, s.code, s.name, s.completed, t.priority, t.estimate_hours, t.archived, t.created_at, t.updated_at, c.agent_id, a.display_name, c.claimed_at FROM tasks t JOIN statuses s ON s.id = t.status_id LEFT JOIN task_claims c ON c.task_id = t.id LEFT JOIN agents a ON a.id = c.agent_id WHERE 1=1",
@@ -1384,7 +1509,7 @@ fn push_placeholders(sql: &mut String, count: usize) {
 }
 
 fn load_list_tags(
-    transaction: &Transaction<'_>,
+    transaction: &rusqlite::Connection,
     tasks: &mut [TaskListItem],
     database_path: &Path,
 ) -> Result<(), Error> {

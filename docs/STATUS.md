@@ -22,7 +22,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E4-S2-T1 is implemented with transactional dependency management and cycle prevention.
 - E5-S1-T1 is implemented with atomic specified-task claiming, stable conflict and unavailable errors, and claim hydration.
 - E5-S3-T1 is implemented with transactional owner-controlled unclaim behavior and shared-worktree claim release.
-- E4-S3 planning is complete; E4-S3-T1 is ready to implement authoritative available-task querying.
+- E4-S3-T1 is implemented with authoritative read-only available-task querying and a reusable caller-owned selector.
 - Plan next on the archive lifecycle path: E4-S4 to define authoritative blocking explanations required by safe unarchive.
 - E1-S4-T1 is implemented with deterministic read-only agent and active-claim listing.
 
@@ -75,8 +75,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | E4-S1 Manage task hierarchy | needed | not_planned | E2-S1 |
 | [E4-S2](epics/E4-S2-manage-dependencies.md) | done | done | E2-S1 |
 | [E4-S2-T1](tasks/E4-S2-T1-implement-dependency-management.md) | done | done | E2-S1-T1, E2-S2-T1 |
-| [E4-S3](epics/E4-S3-query-available-tasks.md) | done | ready | E3-S1, E4-S2, E5-S1 |
-| [E4-S3-T1](tasks/E4-S3-T1-implement-available-task-querying.md) | done | ready | E3-S1-T1, E4-S2-T1, E5-S1-T1 |
+| [E4-S3](epics/E4-S3-query-available-tasks.md) | done | done | E3-S1, E4-S2, E5-S1 |
+| [E4-S3-T1](tasks/E4-S3-T1-implement-available-task-querying.md) | done | done | E3-S1-T1, E4-S2-T1, E5-S1-T1 |
 | E4-S4 Explain blocking | needed | not_planned | E4-S2, E4-S3 |
 | E4-S5 View relationship maps | needed | not_planned | E4-S1, E4-S2 |
 
