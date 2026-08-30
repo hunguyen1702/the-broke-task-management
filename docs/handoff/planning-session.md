@@ -49,6 +49,9 @@ Story đã hoàn tất planning:
 - **E3-S1: Use default statuses**
   - [Epic plan](../epics/E3-S1-use-default-statuses.md)
   - [Implementation task](../tasks/E3-S1-T1-implement-default-status-codes.md)
+- **E4-S1: Manage task hierarchy**
+  - [Epic plan](../epics/E4-S1-manage-task-hierarchy.md)
+  - [Implementation task](../tasks/E4-S1-T1-implement-task-hierarchy-management.md)
 - **E4-S2: Manage dependencies**
   - [Epic plan](../epics/E4-S2-manage-dependencies.md)
   - [Implementation task](../tasks/E4-S2-T1-implement-dependency-management.md)
@@ -71,7 +74,7 @@ Story được chủ đích defer:
 
 Story tiếp theo nếu tiếp tục planning:
 
-- **E4-S1: Manage task hierarchy** — chốt parent mutation, hierarchy validation và recursive hierarchy reads để mở khóa E2-S3 và tiến tới E4-S5.
+- **E4-S5: View relationship maps** — kết hợp hierarchy E4-S1 và dependency E4-S2 thành các recursive map direction ổn định cho CLI và UI về sau.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -84,7 +87,7 @@ Story tiếp theo nếu tiếp tục planning:
 - **E5-S1-T1** đã implementation xong, cung cấp authoritative active-claim model, atomic specified-task claim và claim hydration cho các story phụ thuộc.
 - **E5-S3-T1** đã implementation xong với transactional owner-controlled unclaim behavior.
 
-E5-S3-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. **E2-S5-T1** và **E4-S4-T1** hiện `ready`; **E2-S6-T1** vẫn bị block cho đến khi cả hai task đó hoàn tất. **E2-S3-T1** vẫn bị block bởi E4-S1-T1. E3-S2 tiếp tục được defer.
+E2-S5-T1, E4-S4-T1, E5-S3-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. **E2-S6-T1** và **E4-S1-T1** hiện `ready`. **E2-S3-T1** vẫn bị block cho đến khi E4-S1-T1 hoàn tất. E3-S2 tiếp tục được defer.
 
 ## Việc đã làm
 
@@ -165,6 +168,11 @@ E5-S3-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. **E2-S5-T1** và **E4-
 - Chốt unresolved dependency explanation thành direct và recursive collections: chỉ đi qua unresolved edges, dừng tại effective completion, direct thắng khi một node reachable ở nhiều depth, deduplicate/sort theo task ID và không traverse hierarchy.
 - Chốt shared nested claim summary, deterministic human/JSON output, one-snapshot no-migration reads và caller-owned core query để E2-S6 tái sử dụng trong transaction.
 - Viết epic/task E4-S4; decision review và document review đều kết luận READY.
+- Chốt E4-S1 với child-oriented `task parent set/remove`; không tạo command add/remove child đối xứng cho cùng một cạnh.
+- Chốt single-parent type matrix, complete-graph cycle validation và immediate transaction; cả child và parent phải active khi thay đổi cạnh, còn archive giữ nguyên hierarchy để bảo toàn lịch sử.
+- Chốt same-parent set là valid no-op, missing-parent remove là `PARENT_NOT_FOUND`, child-only mutation metadata và stable validation/error precedence.
+- Chốt `task hierarchy <task-id> [--recursive]` cho observable parent/direct-child/recursive-descendant reads; descendants sort theo depth rồi task ID, còn E4-S5 sở hữu combined relationship maps.
+- Viết epic/task E4-S1; decision review và direct document review đều kết luận READY. E4-S1-T1 sẵn sàng implementation trên E2-S1-T1 và E2-S2-T1, sau đó mở khóa E2-S3-T1.
 
 ## Quy tắc planning cho mỗi story
 
@@ -251,15 +259,14 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. Implement [E2-S5-T1: Implement safe task archival](../tasks/E2-S5-T1-implement-safe-task-archival.md); authoritative availability và claim-release dependencies đã hoàn tất.
-2. Implement [E4-S4-T1: Implement blocking explanations](../tasks/E4-S4-T1-implement-blocking-explanations.md) để cung cấp authoritative explanation model cho safe unarchive.
-3. [E2-S6-T1: Implement safe task unarchive](../tasks/E2-S6-T1-implement-safe-task-unarchive.md) chưa thể bắt đầu cho đến khi E2-S5-T1 và E4-S4-T1 hoàn tất.
-4. [E2-S3-T1: Implement task-content updates](../tasks/E2-S3-T1-implement-task-content-updates.md) chưa thể bắt đầu cho đến khi E4-S1 được planned và E4-S1-T1 cung cấp authoritative hierarchy model.
+1. Implement [E4-S1-T1: Implement task hierarchy management](../tasks/E4-S1-T1-implement-task-hierarchy-management.md) để cung cấp authoritative hierarchy model và mở khóa E2-S3-T1.
+2. [E2-S6-T1: Implement safe task unarchive](../tasks/E2-S6-T1-implement-safe-task-unarchive.md) cũng đang `ready` vì E2-S5-T1 và E4-S4-T1 đã hoàn tất.
+3. [E2-S3-T1: Implement task-content updates](../tasks/E2-S3-T1-implement-task-content-updates.md) chưa thể bắt đầu cho đến khi E4-S1-T1 hoàn tất.
 
 Nếu tiếp tục planning:
 
-1. Mở `docs/PRD.md` và tìm `Story E4-S1: Manage task hierarchy`.
-2. Đọc hierarchy/domain rules, E2-S1 task-type contract, E2-S3 type-update contract, E2-S2 relationship output và E4-S5 map requirement.
-3. Tóm tắt context E4-S1, rồi hỏi người dùng các quyết định implementation còn thiếu, đặc biệt command scope, parent validation, cycle checks, archived-task behavior và recursive read boundaries.
+1. Mở `docs/PRD.md` và tìm `Story E4-S5: View relationship maps`.
+2. Đọc FR-10, hierarchy contract E4-S1, dependency contract E4-S2, blocking explanation E4-S4 và các output contracts E2-S2.
+3. Tóm tắt context E4-S5, rồi hỏi người dùng các quyết định implementation còn thiếu về command shape, direction semantics, node/edge projection, ordering và graph-size boundaries.
 4. Sau mỗi câu trả lời, spawn review agent theo 5 tiêu chí.
-5. Khi READY, tạo epic và technical task E4-S1, review file, cập nhật danh sách trong handoff này.
+5. Khi READY, tạo epic và technical task E4-S5, review file, cập nhật danh sách trong handoff này.

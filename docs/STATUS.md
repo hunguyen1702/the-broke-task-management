@@ -25,6 +25,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E5-S3-T1 is implemented with transactional owner-controlled unclaim behavior and shared-worktree claim release.
 - E4-S3-T1 is implemented with authoritative read-only available-task querying and a reusable caller-owned selector.
 - E4-S4-T1 is implemented and verified with deterministic multi-reason explanations, bounded unresolved-graph traversal, snapshot consistency, read-only behavior, and linked-worktree coverage.
+- E4-S1 planning is complete; E4-S1-T1 is ready to implement the authoritative hierarchy model and unblock E2-S3-T1.
 - E1-S4-T1 is implemented with deterministic read-only agent and active-claim listing.
 
 ## E1 — Repository foundation and identity
@@ -73,7 +74,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 | Story | Planning | Implementation | Depends on |
 |---|---|---|---|
-| E4-S1 Manage task hierarchy | needed | not_planned | E2-S1 |
+| [E4-S1](epics/E4-S1-manage-task-hierarchy.md) | done | ready | E2-S1 |
+| [E4-S1-T1](tasks/E4-S1-T1-implement-task-hierarchy-management.md) | done | ready | E2-S1-T1, E2-S2-T1 |
 | [E4-S2](epics/E4-S2-manage-dependencies.md) | done | done | E2-S1 |
 | [E4-S2-T1](tasks/E4-S2-T1-implement-dependency-management.md) | done | done | E2-S1-T1, E2-S2-T1 |
 | [E4-S3](epics/E4-S3-query-available-tasks.md) | done | done | E3-S1, E4-S2, E5-S1 |
