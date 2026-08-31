@@ -2,7 +2,7 @@
 id: E5-S2-T1
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - E4-S3-T1
   - E5-S1-T1

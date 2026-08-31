@@ -245,6 +245,14 @@ pub struct ClaimTaskInput {
     pub agent_id: Uuid,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct ClaimNextTaskInput {
+    pub agent_id: Uuid,
+    pub status_codes: Vec<String>,
+    pub task_types: Vec<TaskType>,
+    pub tags: Vec<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct UnclaimTaskInput {
     pub task_id: String,
@@ -967,19 +975,7 @@ pub fn claim_task(current: &Path, input: ClaimTaskInput) -> Result<FullTask, Err
         .connection_mut()
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(|error| sqlite_access_error("task claim", &database_path, error))?;
-    let agent_id = input.agent_id.to_string();
-    let agent_exists = transaction
-        .query_row(
-            "SELECT 1 FROM agents WHERE id = ?1",
-            [&agent_id],
-            |_| Ok(()),
-        )
-        .optional()
-        .map_err(|error| sqlite_access_error("claim agent lookup", &database_path, error))?
-        .is_some();
-    if !agent_exists {
-        return Err(Error::AgentNotFound { id: input.agent_id });
-    }
+    let agent_id = validate_claim_agent(&transaction, input.agent_id, &database_path)?;
     let (archived, completed) = transaction
         .query_row(
             "SELECT t.archived, s.completed FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE t.id = ?1",
@@ -1024,13 +1020,7 @@ pub fn claim_task(current: &Path, input: ClaimTaskInput) -> Result<FullTask, Err
             unresolved,
         ));
     }
-    let claimed_at = utc_now();
-    transaction
-        .execute(
-            "INSERT INTO task_claims (task_id, agent_id, claimed_at) VALUES (?1, ?2, ?3)",
-            params![input.task_id, agent_id, claimed_at],
-        )
-        .map_err(|error| sqlite_access_error("task claim", &database_path, error))?;
+    insert_task_claim(&transaction, &input.task_id, &agent_id, &database_path)?;
     let mut task =
         load_full_task(&transaction, &input.task_id, &database_path)?.ok_or_else(|| {
             Error::TaskNotFound {
@@ -1042,6 +1032,87 @@ pub fn claim_task(current: &Path, input: ClaimTaskInput) -> Result<FullTask, Err
         .commit()
         .map_err(|error| sqlite_access_error("task claim", &database_path, error))?;
     Ok(task)
+}
+
+/// Selects and claims the first currently available task in one immediate transaction.
+pub fn claim_next_task(
+    current: &Path,
+    input: ClaimNextTaskInput,
+) -> Result<Option<FullTask>, Error> {
+    let mut resolved = resolve_repository(current, AccessIntent::ReadWrite)?;
+    resolved
+        .connection_mut()
+        .busy_timeout(std::time::Duration::from_secs(5))
+        .map_err(|error| {
+            sqlite_access_error("database busy timeout", &resolved.database_path, error)
+        })?;
+    apply_pending_migrations(&mut resolved)?;
+    let database_path = resolved.database_path.clone();
+    let transaction = resolved
+        .connection_mut()
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|error| sqlite_access_error("task claim-next", &database_path, error))?;
+    let agent_id = validate_claim_agent(&transaction, input.agent_id, &database_path)?;
+    let filters = AvailableTasksInput {
+        status_codes: input.status_codes,
+        task_types: input.task_types,
+        tags: input.tags,
+    };
+    let Some(candidate) = select_first_available_task(&transaction, &filters, &database_path)?
+    else {
+        transaction
+            .commit()
+            .map_err(|error| sqlite_access_error("task claim-next", &database_path, error))?;
+        return Ok(None);
+    };
+    insert_task_claim(&transaction, &candidate.id, &agent_id, &database_path)?;
+    let mut task =
+        load_full_task(&transaction, &candidate.id, &database_path)?.ok_or_else(|| {
+            Error::TaskNotFound {
+                id: candidate.id.clone(),
+            }
+        })?;
+    load_full_context(&transaction, &mut task, &database_path)?;
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("task claim-next", &database_path, error))?;
+    Ok(Some(task))
+}
+
+fn validate_claim_agent(
+    connection: &rusqlite::Connection,
+    agent_id: Uuid,
+    database_path: &Path,
+) -> Result<String, Error> {
+    let agent_id_string = agent_id.to_string();
+    let exists = connection
+        .query_row(
+            "SELECT 1 FROM agents WHERE id = ?1",
+            [&agent_id_string],
+            |_| Ok(()),
+        )
+        .optional()
+        .map_err(|error| sqlite_access_error("claim agent lookup", database_path, error))?
+        .is_some();
+    if !exists {
+        return Err(Error::AgentNotFound { id: agent_id });
+    }
+    Ok(agent_id_string)
+}
+
+fn insert_task_claim(
+    connection: &rusqlite::Connection,
+    task_id: &str,
+    agent_id: &str,
+    database_path: &Path,
+) -> Result<(), Error> {
+    connection
+        .execute(
+            "INSERT INTO task_claims (task_id, agent_id, claimed_at) VALUES (?1, ?2, ?3)",
+            params![task_id, agent_id, utc_now()],
+        )
+        .map_err(|error| sqlite_access_error("task claim", database_path, error))?;
+    Ok(())
 }
 
 pub fn unclaim_task(current: &Path, input: UnclaimTaskInput) -> Result<UnclaimTaskResult, Error> {
@@ -2662,8 +2733,32 @@ pub fn select_available_tasks(
     input: &AvailableTasksInput,
     database_path: &Path,
 ) -> Result<Vec<TaskListItem>, Error> {
+    select_available_tasks_limited(connection, input, database_path, None)
+}
+
+fn select_first_available_task(
+    connection: &rusqlite::Connection,
+    input: &AvailableTasksInput,
+    database_path: &Path,
+) -> Result<Option<TaskListItem>, Error> {
+    Ok(
+        select_available_tasks_limited(connection, input, database_path, Some(1))?
+            .into_iter()
+            .next(),
+    )
+}
+
+fn select_available_tasks_limited(
+    connection: &rusqlite::Connection,
+    input: &AvailableTasksInput,
+    database_path: &Path,
+    limit: Option<usize>,
+) -> Result<Vec<TaskListItem>, Error> {
     validate_status_filters(connection, &input.status_codes, database_path)?;
-    let (sql, values) = available_sql(input);
+    let (mut sql, values) = available_sql(input);
+    if let Some(limit) = limit {
+        sql.push_str(&format!(" LIMIT {limit}"));
+    }
     let mut statement = connection
         .prepare(&sql)
         .map_err(|error| sqlite_access_error("available task query", database_path, error))?;

@@ -10,16 +10,16 @@ use tbtm_core::{
     agent::{AgentList, list_agents},
     exit_code, initialize, inspect_repository_health, register_agent,
     task::{
-        ArchiveScope, ArchiveTaskInput, AvailableTasksInput, ClaimTaskInput, CreateTaskInput,
-        CreatedTask, DependencyInput, DependencyResult, FullTask, HierarchyResult, ListTasksInput,
-        ObservedClaim, ParentMutationResult, ParentRemoveInput, ParentSetInput, PatchValue,
-        RelationshipDirection, RelationshipEdge, RelationshipMap, RelationshipNode,
+        ArchiveScope, ArchiveTaskInput, AvailableTasksInput, ClaimNextTaskInput, ClaimTaskInput,
+        CreateTaskInput, CreatedTask, DependencyInput, DependencyResult, FullTask, HierarchyResult,
+        ListTasksInput, ObservedClaim, ParentMutationResult, ParentRemoveInput, ParentSetInput,
+        PatchValue, RelationshipDirection, RelationshipEdge, RelationshipMap, RelationshipNode,
         TaskBlockingExplanation, TaskListItem, TaskType, UnarchiveImpact, UnarchiveTaskInput,
         UnarchiveTaskResult, UnclaimTaskInput, UnclaimTaskResult, UpdateTaskInput, add_dependency,
-        archive_task, available_tasks, claim_task, create_task, explain_task_blocking, list_tasks,
-        parse_code_reference, preview_unarchive, remove_dependency, remove_parent, set_parent,
-        task_hierarchy, task_relationship_map, unarchive_task, unclaim_task, update_task,
-        view_task,
+        archive_task, available_tasks, claim_next_task, claim_task, create_task,
+        explain_task_blocking, list_tasks, parse_code_reference, preview_unarchive,
+        remove_dependency, remove_parent, set_parent, task_hierarchy, task_relationship_map,
+        unarchive_task, unclaim_task, update_task, view_task,
     },
     uninstall,
 };
@@ -81,6 +81,8 @@ enum TaskCommand {
     Map(TaskMapArgs),
     #[command(about = "Atomically claim an available task")]
     Claim(TaskClaimArgs),
+    #[command(about = "Atomically claim the next available task")]
+    ClaimNext(TaskClaimNextArgs),
     #[command(about = "Release an owned task claim")]
     Unclaim(TaskUnclaimArgs),
     #[command(about = "Archive a task with a durable reason")]
@@ -125,6 +127,20 @@ struct TaskClaimArgs {
     task_id: String,
     #[arg(long)]
     agent: uuid::Uuid,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct TaskClaimNextArgs {
+    #[arg(long)]
+    agent: uuid::Uuid,
+    #[arg(long = "status")]
+    statuses: Vec<String>,
+    #[arg(long = "type")]
+    task_types: Vec<String>,
+    #[arg(long = "tag")]
+    tags: Vec<String>,
     #[arg(long)]
     json: bool,
 }
@@ -718,6 +734,25 @@ fn run() -> Result<(), (Error, bool)> {
                 .map_err(|error| (error, args.json))?;
                 render_claim(&result, args.json);
             }
+            TaskCommand::ClaimNext(args) => {
+                let task_types = args
+                    .task_types
+                    .iter()
+                    .map(|value| TaskType::parse(value))
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|error| (error, args.json))?;
+                let result = claim_next_task(
+                    &current,
+                    ClaimNextTaskInput {
+                        agent_id: args.agent,
+                        status_codes: args.statuses,
+                        task_types,
+                        tags: args.tags,
+                    },
+                )
+                .map_err(|error| (error, args.json))?;
+                render_claim_next(result.as_ref(), args.json);
+            }
             TaskCommand::Unclaim(args) => {
                 let result = unclaim_task(
                     &current,
@@ -855,6 +890,7 @@ fn command_uses_json(command: &Command) -> bool {
             TaskCommand::Hierarchy(args) => args.json,
             TaskCommand::Map(args) => args.json,
             TaskCommand::Claim(args) => args.json,
+            TaskCommand::ClaimNext(args) => args.json,
             TaskCommand::Unclaim(args) => args.json,
             TaskCommand::Archive(args) => args.json,
             TaskCommand::Unarchive(args) => args.json,
@@ -873,6 +909,29 @@ fn render_claim(result: &FullTask, json: bool) {
         println!("Claimed task: {}", result.id);
         println!("Agent: {}", claim.agent.display_name);
         println!("Claimed at: {}", claim.claimed_at);
+    }
+}
+
+fn render_claim_next(result: Option<&FullTask>, json: bool) {
+    match result {
+        Some(task) => render_claim(task, json),
+        None => render_empty_claim_next(json),
+    }
+}
+
+fn render_empty_claim_next(json: bool) {
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string(&Envelope::<()> {
+                ok: true,
+                data: None,
+                error: None,
+            })
+            .expect("serializable response")
+        );
+    } else {
+        println!("No available task to claim.");
     }
 }
 

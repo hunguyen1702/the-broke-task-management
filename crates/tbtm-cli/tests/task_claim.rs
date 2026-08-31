@@ -48,6 +48,12 @@ fn claim(current: &std::path::Path, task: &str, agent: &str) -> std::process::Ou
     )
 }
 
+fn claim_next(current: &std::path::Path, agent: &str, filters: &[&str]) -> std::process::Output {
+    let mut arguments = vec!["task", "claim-next", "--agent", agent];
+    arguments.extend_from_slice(filters);
+    tbtm(current, &arguments)
+}
+
 #[test]
 fn claim_populates_detail_and_list_without_mutating_task_metadata() {
     let temp = tempdir().unwrap();
@@ -275,6 +281,104 @@ fn concurrent_claims_persist_exactly_one_winner() {
         )
         .unwrap();
     assert_eq!(count, 1);
+}
+
+#[test]
+fn claim_next_selects_the_first_filtered_available_task_and_preserves_metadata() {
+    let temp = tempdir().unwrap();
+    initialize(temp.path());
+    let low = create(temp.path(), "Low");
+    let high = create(temp.path(), "High");
+    let (agent, display_name) = register(temp.path(), "next-worker");
+    let database = temp.path().join(".tbtm/tbtm.db");
+    let connection = Connection::open(&database).unwrap();
+    connection
+        .execute("UPDATE tasks SET priority = 10 WHERE id = ?1", [&low])
+        .unwrap();
+    connection
+        .execute("UPDATE tasks SET priority = 90 WHERE id = ?1", [&high])
+        .unwrap();
+    let before: Value =
+        serde_json::from_slice(&tbtm(temp.path(), &["task", "view", &high, "--json"]).stdout)
+            .unwrap();
+
+    let output = claim_next(temp.path(), &agent, &["--type", "task", "--json"]);
+    assert!(output.status.success());
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(value["data"]["id"], high);
+    assert_eq!(value["data"]["claim"]["agent"]["displayName"], display_name);
+    assert_eq!(value["data"]["updatedAt"], before["data"]["updatedAt"]);
+    assert_eq!(value["data"]["updatedBy"], before["data"]["updatedBy"]);
+    let low_detail: Value =
+        serde_json::from_slice(&tbtm(temp.path(), &["task", "view", &low, "--json"]).stdout)
+            .unwrap();
+    assert!(low_detail["data"]["claim"].is_null());
+}
+
+#[test]
+fn claim_next_empty_validation_and_concurrency_are_stable() {
+    let temp = tempdir().unwrap();
+    initialize(temp.path());
+    let (agent_a, _) = register(temp.path(), "next-a");
+    let (agent_b, _) = register(temp.path(), "next-b");
+    let empty = claim_next(temp.path(), &agent_a, &["--json"]);
+    assert!(empty.status.success());
+    assert_eq!(
+        serde_json::from_slice::<Value>(&empty.stdout).unwrap()["data"],
+        Value::Null
+    );
+    assert_eq!(
+        String::from_utf8(claim_next(temp.path(), &agent_a, &[]).stdout).unwrap(),
+        "No available task to claim.\n"
+    );
+    let missing_agent = uuid::Uuid::new_v4().to_string();
+    let output = claim_next(
+        temp.path(),
+        &missing_agent,
+        &["--status", "missing", "--json"],
+    );
+    assert_eq!(output.status.code(), Some(3));
+    assert_eq!(
+        serde_json::from_slice::<Value>(&output.stdout).unwrap()["error"]["code"],
+        "AGENT_NOT_FOUND"
+    );
+    let task = create(temp.path(), "Only candidate");
+    let root = temp.path().to_path_buf();
+    let outputs: Vec<_> = [agent_a, agent_b]
+        .into_iter()
+        .map(|agent| {
+            let root = root.clone();
+            std::thread::spawn(move || claim_next(&root, &agent, &["--json"]))
+        })
+        .collect::<Vec<_>>()
+        .into_iter()
+        .map(|handle| handle.join().unwrap())
+        .collect();
+    assert_eq!(
+        outputs
+            .iter()
+            .filter(|output| output.status.success())
+            .count(),
+        2
+    );
+    assert_eq!(
+        outputs
+            .iter()
+            .filter(|output| {
+                serde_json::from_slice::<Value>(&output.stdout).unwrap()["data"]["id"] == task
+            })
+            .count(),
+        1
+    );
+    assert_eq!(
+        outputs
+            .iter()
+            .filter(
+                |output| serde_json::from_slice::<Value>(&output.stdout).unwrap()["data"].is_null()
+            )
+            .count(),
+        1
+    );
 }
 
 #[test]

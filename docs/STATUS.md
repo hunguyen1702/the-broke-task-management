@@ -28,7 +28,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E4-S1-T1 is implemented with transactional single-parent mutations, type/cycle validation, direct hydration, and deterministic recursive reads.
 - E4-S5-T1 is implemented with deterministic cycle-safe recursive maps, snapshot-consistent node state, and stable human/JSON output.
 - E1-S4-T1 is implemented with deterministic read-only agent and active-claim listing.
-- E5-S2 planning is complete; E5-S2-T1 is ready to implement atomic next-available-task selection and claiming.
+- E5-S2-T1 is implemented and verified with atomic next-available-task selection and claiming.
 
 ## E1 — Repository foundation and identity
 
@@ -93,8 +93,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 |---|---|---|---|
 | [E5-S1](epics/E5-S1-claim-a-specified-task-atomically.md) | done | done | E1-S3, E2-S1, E3-S1, E4-S2 |
 | [E5-S1-T1](tasks/E5-S1-T1-implement-atomic-specified-task-claiming.md) | done | done | E1-S3-T1, E1-S5-T1, E2-S1-T1, E2-S2-T1, E3-S1-T1, E4-S2-T1 |
-| [E5-S2](epics/E5-S2-claim-the-next-available-task-atomically.md) | done | ready | E4-S3, E5-S1 |
-| [E5-S2-T1](tasks/E5-S2-T1-implement-atomic-next-available-task-claiming.md) | done | ready | E4-S3-T1, E5-S1-T1 |
+| [E5-S2](epics/E5-S2-claim-the-next-available-task-atomically.md) | done | done | E4-S3, E5-S1 |
+| [E5-S2-T1](tasks/E5-S2-T1-implement-atomic-next-available-task-claiming.md) | done | done | E4-S3-T1, E5-S1-T1 |
 | [E5-S3](epics/E5-S3-unclaim-owned-work.md) | done | done | E5-S1 |
 | [E5-S3-T1](tasks/E5-S3-T1-implement-owner-controlled-task-unclaim.md) | done | done | E5-S1-T1 |
 | E5-S4 Force-unclaim stale work | needed | not_planned | E5-S1 |
