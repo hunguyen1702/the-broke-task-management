@@ -29,6 +29,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E4-S5-T1 is implemented with deterministic cycle-safe recursive maps, snapshot-consistent node state, and stable human/JSON output.
 - E1-S4-T1 is implemented with deterministic read-only agent and active-claim listing.
 - E5-S2-T1 is implemented and verified with atomic next-available-task selection and claiming.
+- E5-S4-T1 is planned and ready to implement user force-unclaim with observed-claim confirmation binding and authoritative post-release availability.
 
 ## E1 — Repository foundation and identity
 
@@ -97,7 +98,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E5-S2-T1](tasks/E5-S2-T1-implement-atomic-next-available-task-claiming.md) | done | done | E4-S3-T1, E5-S1-T1 |
 | [E5-S3](epics/E5-S3-unclaim-owned-work.md) | done | done | E5-S1 |
 | [E5-S3-T1](tasks/E5-S3-T1-implement-owner-controlled-task-unclaim.md) | done | done | E5-S1-T1 |
-| E5-S4 Force-unclaim stale work | needed | not_planned | E5-S1 |
+| [E5-S4](epics/E5-S4-force-unclaim-stale-work.md) | done | ready | E5-S1 |
+| [E5-S4-T1](tasks/E5-S4-T1-implement-user-force-unclaim.md) | done | ready | E5-S1-T1, E5-S3-T1, E4-S3-T1, E2-S2-T1, E2-S5-T1 |
 | E5-S5 Preserve claim/status independence | needed | not_planned | E3-S1, E5-S1, E5-S3, E2-S5 |
 
 ## E6 — Task comments and collaboration context

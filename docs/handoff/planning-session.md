@@ -73,6 +73,9 @@ Story đã hoàn tất planning:
 - **E5-S2: Claim the next available task atomically**
   - [Epic plan](../epics/E5-S2-claim-the-next-available-task-atomically.md)
   - [Implementation task](../tasks/E5-S2-T1-implement-atomic-next-available-task-claiming.md)
+- **E5-S4: Force-unclaim stale work**
+  - [Epic plan](../epics/E5-S4-force-unclaim-stale-work.md)
+  - [Implementation task](../tasks/E5-S4-T1-implement-user-force-unclaim.md)
 
 Story được chủ đích defer:
 
@@ -80,7 +83,7 @@ Story được chủ đích defer:
 
 Story tiếp theo nếu tiếp tục planning:
 
-- **E5-S4: Force-unclaim stale work** — xây dựng user-controlled stale-claim recovery trên authoritative claim model E5-S1.
+- **E5-S5: Preserve claim/status independence** — hợp nhất và kiểm chứng contract độc lập giữa claim, status và archive trên các implementation E3-S1, E5-S1, E5-S3 và E2-S5 đã hoàn tất.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -92,9 +95,10 @@ Story tiếp theo nếu tiếp tục planning:
 - **E4-S3-T1** đã implementation xong với authoritative available-task query.
 - **E5-S1-T1** đã implementation xong, cung cấp authoritative active-claim model, atomic specified-task claim và claim hydration cho các story phụ thuộc.
 - **E5-S3-T1** đã implementation xong với transactional owner-controlled unclaim behavior.
-- **E5-S2-T1** đã planning xong và sẵn sàng implementation trên E4-S3-T1 và E5-S1-T1.
+- **E5-S2-T1** đã implementation xong với atomic next-available-task selection và claiming.
+- **E5-S4-T1** đã planning xong và sẵn sàng implementation trên authoritative claim, owner-unclaim, availability, full-task và force-confirmation contracts hiện có.
 
-E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S3-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. **E5-S2-T1** hiện `ready`. E3-S2 tiếp tục được defer.
+E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. **E5-S4-T1** hiện `ready`. E3-S2 tiếp tục được defer.
 
 ## Việc đã làm
 
@@ -189,6 +193,11 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S3-T1, E4-S3-T1 và E1-S4-T
 - Chốt writer concurrency được serialize trên canonical database: nhiều candidate cho distinct ordered claims, một candidate cho one claim plus one empty success; busy timeout là operational error.
 - Chốt giữ SQLite `journal_mode = DELETE` cho MVP, không prompt hoặc external work trong locked section, không thêm retry/fallback hay thay đổi task metadata.
 - Viết epic/task E5-S2; decision review kết luận READY. E5-S2-T1 sẵn sàng implementation trên E4-S3-T1 và E5-S1-T1.
+- Chốt E5-S4 bằng cách mở rộng `task unclaim`: owner path tiếp tục dùng `--agent`, logical-user force path dùng `--force [--yes]`, và hai path loại trừ nhau.
+- Chốt interactive confirmation bind với `{agentId, claimedAt}`; claim biến mất trả `CLAIM_NOT_FOUND`, claim thay thế trả `CLAIM_CHANGED`, và không bao giờ xóa claim chưa được quan sát.
+- Chốt force-unclaim chỉ xóa claim, giữ nguyên task metadata, rồi trả wrapper `{task, releasedClaim, availability}` với authoritative reason precedence và deterministic human/JSON output.
+- Ghi nhận hậu MVP về agent-runtime approval cho user-only commands trong `docs/improvements/agent-approval-for-user-only-commands.md` mà không biến logical actor thành authentication boundary.
+- Viết và review epic/task E5-S4; decision review và direct document review đều kết luận READY. E5-S4-T1 sẵn sàng implementation.
 
 ## Quy tắc planning cho mỗi story
 
@@ -275,13 +284,13 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. Implement [E5-S2-T1: Implement atomic next-available-task claiming](../tasks/E5-S2-T1-implement-atomic-next-available-task-claiming.md) trên authoritative availability selector và claim model.
+1. Implement [E5-S4-T1: Implement user force-unclaim](../tasks/E5-S4-T1-implement-user-force-unclaim.md) trên authoritative claim, owner-unclaim, availability, full-task và force-confirmation contracts.
 2. Xem [status dashboard](../STATUS.md) trước khi claim task khác vì nhiều implementation session có thể đang dùng chung worktree.
 
 Nếu tiếp tục planning:
 
-1. Mở `docs/PRD.md` và tìm `Story E5-S4: Force-unclaim stale work`.
-2. Đọc FR-8, claim contract E5-S1, owner-unclaim contract E5-S3, archive force-confirmation contract E2-S5 và output contracts E2-S2.
-3. Tóm tắt context E5-S4, rồi hỏi người dùng các quyết định implementation còn thiếu về user actor, confirmation, stale claim observation, race behavior và returned task projection.
+1. Mở `docs/PRD.md` và tìm `Story E5-S5: Preserve claim/status independence`.
+2. Đọc claim/status rules, E3-S1, E5-S1, E5-S3, E2-S5 và các implementation regression contracts liên quan.
+3. Tóm tắt context E5-S5, rồi hỏi người dùng các quyết định implementation còn thiếu về scope hợp nhất, command surface và regression verification.
 4. Sau mỗi câu trả lời, spawn review agent theo 5 tiêu chí.
-5. Khi READY, tạo epic và technical task E5-S4, review file, cập nhật danh sách trong handoff này.
+5. Khi READY, tạo epic và technical task E5-S5, review file, cập nhật danh sách trong handoff này.
