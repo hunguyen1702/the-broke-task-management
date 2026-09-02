@@ -76,6 +76,9 @@ Story đã hoàn tất planning:
 - **E5-S4: Force-unclaim stale work**
   - [Epic plan](../epics/E5-S4-force-unclaim-stale-work.md)
   - [Implementation task](../tasks/E5-S4-T1-implement-user-force-unclaim.md)
+- **E5-S5: Preserve claim/status independence**
+  - [Epic plan](../epics/E5-S5-preserve-claim-status-independence.md)
+  - [Implementation task](../tasks/E5-S5-T1-harden-claim-status-independence.md)
 
 Story được chủ đích defer:
 
@@ -83,7 +86,7 @@ Story được chủ đích defer:
 
 Story tiếp theo nếu tiếp tục planning:
 
-- **E5-S5: Preserve claim/status independence** — hợp nhất và kiểm chứng contract độc lập giữa claim, status và archive trên các implementation E3-S1, E5-S1, E5-S3 và E2-S5 đã hoàn tất.
+- **E6-S1: Add and view comments** — mở đầu task-comment collaboration context trên agent identity và task core đã hoàn tất.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -97,6 +100,7 @@ Story tiếp theo nếu tiếp tục planning:
 - **E5-S3-T1** đã implementation xong với transactional owner-controlled unclaim behavior.
 - **E5-S2-T1** đã implementation xong với atomic next-available-task selection và claiming.
 - **E5-S4-T1** đã planning xong và sẵn sàng implementation trên authoritative claim, owner-unclaim, availability, full-task và force-confirmation contracts hiện có.
+- **E5-S5-T1** đã planning xong và sẵn sàng harden claim/status independence trên status update, claim, owner-unclaim, archive và unarchive contracts hiện có.
 
 E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. **E5-S4-T1** hiện `ready`. E3-S2 tiếp tục được defer.
 
@@ -198,6 +202,10 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E4-S3-T1 v
 - Chốt force-unclaim chỉ xóa claim, giữ nguyên task metadata, rồi trả wrapper `{task, releasedClaim, availability}` với authoritative reason precedence và deterministic human/JSON output.
 - Ghi nhận hậu MVP về agent-runtime approval cho user-only commands trong `docs/improvements/agent-approval-for-user-only-commands.md` mà không biến logical actor thành authentication boundary.
 - Viết và review epic/task E5-S4; decision review và direct document review đều kết luận READY. E5-S4-T1 sẵn sàng implementation.
+- Chốt E5-S5 không thêm command, schema, migration, output hoặc error; story hợp nhất và regression-test các lifecycle contract hiện có.
+- Chốt user, claim owner và foreign registered agent đều có thể đổi status của active claimed task; claim là coordination signal, không phải authorization lock.
+- Chốt status transition hai chiều và valid no-op giữ nguyên claimant UUID/`claimedAt`; owner-unclaim giữ status, archive là ngoại lệ tự động release, và unarchive không phục hồi claim cũ.
+- Viết epic/task E5-S5; decision review kết luận READY. E5-S5-T1 sẵn sàng implementation trên E3-S1/E2-S3/E5-S1/E5-S3/E2-S5/E2-S6.
 
 ## Quy tắc planning cho mỗi story
 
@@ -284,13 +292,13 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. Implement [E5-S4-T1: Implement user force-unclaim](../tasks/E5-S4-T1-implement-user-force-unclaim.md) trên authoritative claim, owner-unclaim, availability, full-task và force-confirmation contracts.
+1. Implement [E5-S4-T1: Implement user force-unclaim](../tasks/E5-S4-T1-implement-user-force-unclaim.md) hoặc [E5-S5-T1: Harden claim/status independence](../tasks/E5-S5-T1-harden-claim-status-independence.md), sau khi kiểm tra claim trạng thái hiện hành.
 2. Xem [status dashboard](../STATUS.md) trước khi claim task khác vì nhiều implementation session có thể đang dùng chung worktree.
 
 Nếu tiếp tục planning:
 
-1. Mở `docs/PRD.md` và tìm `Story E5-S5: Preserve claim/status independence`.
-2. Đọc claim/status rules, E3-S1, E5-S1, E5-S3, E2-S5 và các implementation regression contracts liên quan.
-3. Tóm tắt context E5-S5, rồi hỏi người dùng các quyết định implementation còn thiếu về scope hợp nhất, command surface và regression verification.
+1. Mở `docs/PRD.md` và tìm `Story E6-S1: Add and view comments`.
+2. Đọc comment/actor/task rules, E1-S3, E2-S1 và các implementation contracts liên quan.
+3. Tóm tắt context E6-S1, rồi hỏi người dùng các quyết định implementation còn thiếu về comment command surface, output và ordering.
 4. Sau mỗi câu trả lời, spawn review agent theo 5 tiêu chí.
-5. Khi READY, tạo epic và technical task E5-S5, review file, cập nhật danh sách trong handoff này.
+5. Khi READY, tạo epic và technical task E6-S1, review file, cập nhật danh sách trong handoff này.
