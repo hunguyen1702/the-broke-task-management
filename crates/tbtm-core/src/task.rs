@@ -265,6 +265,29 @@ pub struct UnclaimTaskResult {
     pub released_agent_display_name: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct ForceUnclaimTaskInput {
+    pub task_id: String,
+    pub observed_claim: Option<ObservedClaim>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ForceUnclaimAvailability {
+    pub available: bool,
+    pub reason: Option<AvailabilityReason>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unresolved_upstream_ids: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ForceUnclaimTaskResult {
+    pub task: FullTask,
+    pub released_claim: TaskClaim,
+    pub availability: ForceUnclaimAvailability,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObservedClaim {
     pub agent_id: String,
@@ -1144,6 +1167,106 @@ pub fn unclaim_task(current: &Path, input: UnclaimTaskInput) -> Result<UnclaimTa
     Ok(UnclaimTaskResult {
         task,
         released_agent_display_name: agent_name,
+    })
+}
+
+pub fn force_unclaim_task(
+    current: &Path,
+    input: ForceUnclaimTaskInput,
+) -> Result<ForceUnclaimTaskResult, Error> {
+    let mut resolved = resolve_repository(current, AccessIntent::ReadWrite)?;
+    resolved
+        .connection_mut()
+        .busy_timeout(std::time::Duration::from_secs(5))
+        .map_err(|error| {
+            sqlite_access_error("database busy timeout", &resolved.database_path, error)
+        })?;
+    apply_pending_migrations(&mut resolved)?;
+    let database_path = resolved.database_path.clone();
+    let transaction = resolved
+        .connection_mut()
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|error| sqlite_access_error("task force unclaim", &database_path, error))?;
+    let task_exists = transaction
+        .query_row(
+            "SELECT 1 FROM tasks WHERE id = ?1",
+            [&input.task_id],
+            |_| Ok(()),
+        )
+        .optional()
+        .map_err(|error| sqlite_access_error("force unclaim task lookup", &database_path, error))?
+        .is_some();
+    if !task_exists {
+        return Err(Error::TaskNotFound { id: input.task_id });
+    }
+    let (agent_id, display_name, claimed_at) = transaction
+        .query_row(
+            "SELECT a.id, a.display_name, c.claimed_at FROM task_claims c JOIN agents a ON a.id = c.agent_id WHERE c.task_id = ?1",
+            [&input.task_id],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?)),
+        )
+        .optional()
+        .map_err(|error| sqlite_access_error("force unclaim claim lookup", &database_path, error))?
+        .ok_or_else(|| Error::ClaimNotFound { task_id: input.task_id.clone() })?;
+    if input
+        .observed_claim
+        .as_ref()
+        .is_some_and(|observed| observed.agent_id != agent_id || observed.claimed_at != claimed_at)
+    {
+        return Err(Error::ClaimChanged {
+            task_id: input.task_id,
+            agent_id,
+            agent_display_name: display_name,
+            claimed_at,
+        });
+    }
+    let released_claim = TaskClaim {
+        agent: ClaimAgent {
+            id: agent_id.clone(),
+            display_name,
+        },
+        claimed_at: claimed_at.clone(),
+    };
+    let affected = transaction
+        .execute(
+            "DELETE FROM task_claims WHERE task_id = ?1 AND agent_id = ?2 AND claimed_at = ?3",
+            params![input.task_id, agent_id, claimed_at],
+        )
+        .map_err(|error| sqlite_access_error("task force unclaim", &database_path, error))?;
+    if affected != 1 {
+        return Err(sqlite_access_error(
+            "task force unclaim integrity",
+            &database_path,
+            rusqlite::Error::ExecuteReturnedResults,
+        ));
+    }
+    let mut task = load_full_task(&transaction, &input.task_id, &database_path)?
+        .expect("force-unclaimed task exists");
+    load_full_context(&transaction, &mut task, &database_path)?;
+    let explanation =
+        select_task_blocking_explanation(&transaction, &input.task_id, &database_path)?;
+    let reason = explanation.reasons.first().copied();
+    let unresolved_upstream_ids =
+        (reason == Some(AvailabilityReason::DependenciesBlocked)).then(|| {
+            explanation
+                .unresolved_dependencies
+                .direct
+                .iter()
+                .map(|item| item.id.clone())
+                .collect()
+        });
+    let availability = ForceUnclaimAvailability {
+        available: explanation.available,
+        reason,
+        unresolved_upstream_ids,
+    };
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("task force unclaim", &database_path, error))?;
+    Ok(ForceUnclaimTaskResult {
+        task,
+        released_claim,
+        availability,
     })
 }
 

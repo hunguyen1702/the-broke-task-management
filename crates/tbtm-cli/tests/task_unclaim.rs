@@ -1,6 +1,10 @@
 use rusqlite::Connection;
 use serde_json::Value;
 use std::process::Command;
+use tbtm_core::{
+    Error,
+    task::{ForceUnclaimTaskInput, ObservedClaim, force_unclaim_task},
+};
 use tempfile::tempdir;
 
 fn tbtm(current: &std::path::Path, arguments: &[&str]) -> std::process::Output {
@@ -298,4 +302,118 @@ fn linked_worktree_unclaim_updates_shared_claim_state() {
     );
     assert!(released["claim"].is_null());
     assert!(data(&main, &["task", "view", &task, "--json"])["claim"].is_null());
+}
+
+#[test]
+fn force_unclaim_yes_returns_released_claim_and_authoritative_availability() {
+    let temp = tempdir().unwrap();
+    data(temp.path(), &["init", "--prefix", "project", "--json"]);
+    let upstream = data(
+        temp.path(),
+        &[
+            "task", "create", "--title", "Upstream", "--type", "task", "--json",
+        ],
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let task = data(
+        temp.path(),
+        &[
+            "task", "create", "--title", "Stale", "--type", "task", "--json",
+        ],
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let agent = data(temp.path(), &["agent", "register", "stale", "--json"]);
+    let agent_id = agent["id"].as_str().unwrap();
+    let claimed = data(
+        temp.path(),
+        &["task", "claim", &task, "--agent", agent_id, "--json"],
+    );
+    data(
+        temp.path(),
+        &[
+            "task",
+            "dependency",
+            "add",
+            &task,
+            "--depends-on",
+            &upstream,
+            "--json",
+        ],
+    );
+
+    let result = data(
+        temp.path(),
+        &["task", "unclaim", &task, "--force", "--yes", "--json"],
+    );
+    assert!(result["task"]["claim"].is_null());
+    assert_eq!(result["releasedClaim"]["agent"]["id"], agent["id"]);
+    assert_eq!(
+        result["releasedClaim"]["agent"]["displayName"],
+        agent["displayName"]
+    );
+    assert_eq!(
+        result["releasedClaim"]["claimedAt"],
+        claimed["claim"]["claimedAt"]
+    );
+    assert_eq!(result["availability"]["available"], false);
+    assert_eq!(result["availability"]["reason"], "dependencies_blocked");
+    assert_eq!(
+        result["availability"]["unresolvedUpstreamIds"],
+        serde_json::json!([upstream])
+    );
+}
+
+#[test]
+fn force_unclaim_validates_flags_confirmation_and_observed_claim() {
+    let temp = tempdir().unwrap();
+    data(temp.path(), &["init", "--prefix", "project", "--json"]);
+    let task = data(
+        temp.path(),
+        &[
+            "task", "create", "--title", "Guarded", "--type", "task", "--json",
+        ],
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let agent = data(temp.path(), &["agent", "register", "owner", "--json"])["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let claimed = data(
+        temp.path(),
+        &["task", "claim", &task, "--agent", &agent, "--json"],
+    );
+
+    for arguments in [
+        vec!["task", "unclaim", &task, "--force", "--json"],
+        vec!["task", "unclaim", &task, "--yes", "--json"],
+        vec![
+            "task", "unclaim", &task, "--agent", &agent, "--force", "--yes", "--json",
+        ],
+    ] {
+        let output = tbtm(temp.path(), &arguments);
+        assert_eq!(output.status.code(), Some(2));
+    }
+
+    let error = force_unclaim_task(
+        temp.path(),
+        ForceUnclaimTaskInput {
+            task_id: task.clone(),
+            observed_claim: Some(ObservedClaim {
+                agent_id: agent.clone(),
+                claimed_at: "2000-01-01T00:00:00Z".to_owned(),
+            }),
+        },
+    )
+    .unwrap_err();
+    assert!(matches!(error, Error::ClaimChanged { .. }));
+    assert_eq!(
+        data(temp.path(), &["task", "view", &task, "--json"])["claim"],
+        claimed["claim"]
+    );
 }

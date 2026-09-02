@@ -10,16 +10,17 @@ use tbtm_core::{
     agent::{AgentList, list_agents},
     exit_code, initialize, inspect_repository_health, register_agent,
     task::{
-        ArchiveScope, ArchiveTaskInput, AvailableTasksInput, ClaimNextTaskInput, ClaimTaskInput,
-        CreateTaskInput, CreatedTask, DependencyInput, DependencyResult, FullTask, HierarchyResult,
+        ArchiveScope, ArchiveTaskInput, AvailabilityReason, AvailableTasksInput,
+        ClaimNextTaskInput, ClaimTaskInput, CreateTaskInput, CreatedTask, DependencyInput,
+        DependencyResult, ForceUnclaimTaskInput, ForceUnclaimTaskResult, FullTask, HierarchyResult,
         ListTasksInput, ObservedClaim, ParentMutationResult, ParentRemoveInput, ParentSetInput,
         PatchValue, RelationshipDirection, RelationshipEdge, RelationshipMap, RelationshipNode,
         TaskBlockingExplanation, TaskListItem, TaskType, UnarchiveImpact, UnarchiveTaskInput,
         UnarchiveTaskResult, UnclaimTaskInput, UnclaimTaskResult, UpdateTaskInput, add_dependency,
         archive_task, available_tasks, claim_next_task, claim_task, create_task,
-        explain_task_blocking, list_tasks, parse_code_reference, preview_unarchive,
-        remove_dependency, remove_parent, set_parent, task_hierarchy, task_relationship_map,
-        unarchive_task, unclaim_task, update_task, view_task,
+        explain_task_blocking, force_unclaim_task, list_tasks, parse_code_reference,
+        preview_unarchive, remove_dependency, remove_parent, set_parent, task_hierarchy,
+        task_relationship_map, unarchive_task, unclaim_task, update_task, view_task,
     },
     uninstall,
 };
@@ -149,7 +150,11 @@ struct TaskClaimNextArgs {
 struct TaskUnclaimArgs {
     task_id: String,
     #[arg(long)]
-    agent: uuid::Uuid,
+    agent: Option<uuid::Uuid>,
+    #[arg(long)]
+    force: bool,
+    #[arg(long)]
+    yes: bool,
     #[arg(long)]
     json: bool,
 }
@@ -754,15 +759,70 @@ fn run() -> Result<(), (Error, bool)> {
                 render_claim_next(result.as_ref(), args.json);
             }
             TaskCommand::Unclaim(args) => {
-                let result = unclaim_task(
-                    &current,
-                    UnclaimTaskInput {
-                        task_id: args.task_id,
-                        agent_id: args.agent,
-                    },
-                )
-                .map_err(|error| (error, args.json))?;
-                render_unclaim(&result, args.json);
+                if args.agent.is_some() == args.force || (args.yes && !args.force) {
+                    return Err((Error::ConflictingArguments, args.json));
+                }
+                if args.force {
+                    if !args.yes && (args.json || !io::stdin().is_terminal()) {
+                        return Err((
+                            Error::phase(
+                                "CONFIRMATION_REQUIRED",
+                                io::Error::other("pass --yes for non-interactive force unclaim"),
+                            ),
+                            args.json,
+                        ));
+                    }
+                    let observed_claim = if args.yes {
+                        None
+                    } else {
+                        let task = view_task(&current, &args.task_id)
+                            .map_err(|error| (error, args.json))?;
+                        let claim = task.claim.ok_or_else(|| {
+                            (
+                                Error::ClaimNotFound {
+                                    task_id: args.task_id.clone(),
+                                },
+                                args.json,
+                            )
+                        })?;
+                        let prompt = format!(
+                            "Task: {}\nCurrent claim: {} ({}) at {}\nForce-unclaim this claim?",
+                            args.task_id,
+                            claim.agent.display_name,
+                            claim.agent.id,
+                            claim.claimed_at
+                        );
+                        if !confirm(&prompt).map_err(|error| {
+                            (Error::phase("CONFIRMATION_FAILED", error), args.json)
+                        })? {
+                            println!("Unclaim cancelled.");
+                            return Ok(());
+                        }
+                        Some(ObservedClaim {
+                            agent_id: claim.agent.id,
+                            claimed_at: claim.claimed_at,
+                        })
+                    };
+                    let result = force_unclaim_task(
+                        &current,
+                        ForceUnclaimTaskInput {
+                            task_id: args.task_id,
+                            observed_claim,
+                        },
+                    )
+                    .map_err(|error| (error, args.json))?;
+                    render_force_unclaim(&result, args.json);
+                } else {
+                    let result = unclaim_task(
+                        &current,
+                        UnclaimTaskInput {
+                            task_id: args.task_id,
+                            agent_id: args.agent.expect("validated owner path"),
+                        },
+                    )
+                    .map_err(|error| (error, args.json))?;
+                    render_unclaim(&result, args.json);
+                }
             }
             TaskCommand::Archive(args) => {
                 if args.yes && !args.force {
@@ -941,6 +1001,35 @@ fn render_unclaim(result: &UnclaimTaskResult, json: bool) {
     } else {
         println!("Unclaimed task: {}", result.task.id);
         println!("Agent: {}", result.released_agent_display_name);
+    }
+}
+
+fn render_force_unclaim(result: &ForceUnclaimTaskResult, json: bool) {
+    if json {
+        render_success(result, true);
+        return;
+    }
+    println!("Force-unclaimed task: {}", result.task.id);
+    println!(
+        "Released claim: {} ({}) at {}",
+        result.released_claim.agent.display_name,
+        result.released_claim.agent.id,
+        result.released_claim.claimed_at
+    );
+    match result.availability.reason {
+        None => println!("Available: yes"),
+        Some(AvailabilityReason::Archived) => println!("Available: no (archived)"),
+        Some(AvailabilityReason::Completed) => println!("Available: no (completed)"),
+        Some(AvailabilityReason::DependenciesBlocked) => println!(
+            "Available: no (dependencies blocked: {})",
+            result
+                .availability
+                .unresolved_upstream_ids
+                .as_ref()
+                .expect("dependency IDs")
+                .join(", ")
+        ),
+        Some(AvailabilityReason::Claimed) => unreachable!("claim was released"),
     }
 }
 
