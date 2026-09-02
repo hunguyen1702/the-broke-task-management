@@ -2,7 +2,8 @@
 id: E5-S5-T1
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
+scenario_impact: none
 depends_on:
   - E3-S1-T1
   - E2-S3-T1
@@ -155,6 +156,10 @@ Also smoke-test one claimed task through incomplete-to-completed-to-incomplete t
 - Existing command outputs, errors, exits, transactions, and core/CLI boundaries remain stable.
 - Core database, CLI, rollback, concurrency, and linked-worktree regressions pass.
 - Formatting, Clippy with warnings denied, and all workspace tests pass.
+
+## Implementation outcome
+
+The existing production operations already satisfied the contract. Implementation added a focused cross-command regression matrix without changing schema, public behavior, output, errors, or transaction boundaries. Acceptance scenario impact is `none`; the approved owning-story scenarios continue to cover the public commands, while the E5-S5 invariant matrix remains implementation-level regression coverage.
 
 ## References
 
