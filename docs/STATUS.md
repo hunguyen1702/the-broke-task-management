@@ -31,6 +31,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E5-S2-T1 is implemented and verified with atomic next-available-task selection and claiming.
 - E5-S4-T1 is implemented and verified with observed-claim confirmation binding, exact claim release, and authoritative post-release availability.
 - E5-S5-T1 is implemented and verified with cross-command status/claim, actor, archive/unarchive, concurrency, and linked-worktree regression coverage.
+- E6-S1 planning is complete; E6-S1-T1 is ready to implement task comment creation and chronological listing.
 
 ## E1 — Repository foundation and identity
 
@@ -108,7 +109,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 | Story | Planning | Implementation | Depends on |
 |---|---|---|---|
-| E6-S1 Add and view comments | needed | not_planned | E1-S3, E2-S1 |
+| [E6-S1](epics/E6-S1-add-and-view-comments.md) | done | ready | E1-S3, E2-S1 |
+| [E6-S1-T1](tasks/E6-S1-T1-implement-task-comments.md) | done | ready | E1-S3-T1, E2-S1-T1 |
 | E6-S2 Delete a comment under ownership rules | needed | not_planned | E6-S1 |
 | E6-S3 Keep comments immutable | needed | not_planned | E6-S1, E6-S2 |
 

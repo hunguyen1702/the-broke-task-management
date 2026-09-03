@@ -79,6 +79,9 @@ Story đã hoàn tất planning:
 - **E5-S5: Preserve claim/status independence**
   - [Epic plan](../epics/E5-S5-preserve-claim-status-independence.md)
   - [Implementation task](../tasks/E5-S5-T1-harden-claim-status-independence.md)
+- **E6-S1: Add and view comments**
+  - [Epic plan](../epics/E6-S1-add-and-view-comments.md)
+  - [Implementation task](../tasks/E6-S1-T1-implement-task-comments.md)
 
 Story được chủ đích defer:
 
@@ -86,7 +89,7 @@ Story được chủ đích defer:
 
 Story tiếp theo nếu tiếp tục planning:
 
-- **E6-S1: Add and view comments** — mở đầu task-comment collaboration context trên agent identity và task core đã hoàn tất.
+- **E6-S2: Delete a comment under ownership rules** — phụ thuộc E6-S1 implementation và sẽ chốt ownership failure/output behavior sau khi comment model hoàn tất.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -99,10 +102,12 @@ Story tiếp theo nếu tiếp tục planning:
 - **E5-S1-T1** đã implementation xong, cung cấp authoritative active-claim model, atomic specified-task claim và claim hydration cho các story phụ thuộc.
 - **E5-S3-T1** đã implementation xong với transactional owner-controlled unclaim behavior.
 - **E5-S2-T1** đã implementation xong với atomic next-available-task selection và claiming.
-- **E5-S4-T1** đã planning xong và sẵn sàng implementation trên authoritative claim, owner-unclaim, availability, full-task và force-confirmation contracts hiện có.
-- **E5-S5-T1** đã planning xong và sẵn sàng harden claim/status independence trên status update, claim, owner-unclaim, archive và unarchive contracts hiện có.
+- **E5-S4-T1** đã implementation xong với observed-claim confirmation binding, exact release và authoritative post-release availability.
+- **E5-S5-T1** đã implementation xong với cross-command claim/status independence regression coverage.
 
-E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. **E5-S4-T1** hiện `ready`. E3-S2 tiếp tục được defer.
+E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, E5-S5-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. E3-S2 tiếp tục được defer.
+
+**E6-S1-T1** đã planning xong và `ready` trên E1-S3-T1 cùng E2-S1-T1; task này sẽ thêm comment creation/listing mà không thay đổi task mutation metadata.
 
 ## Việc đã làm
 
@@ -206,6 +211,11 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E4-S3-T1 v
 - Chốt user, claim owner và foreign registered agent đều có thể đổi status của active claimed task; claim là coordination signal, không phải authorization lock.
 - Chốt status transition hai chiều và valid no-op giữ nguyên claimant UUID/`claimedAt`; owner-unclaim giữ status, archive là ngoại lệ tự động release, và unarchive không phục hồi claim cũ.
 - Viết epic/task E5-S5; decision review kết luận READY. E5-S5-T1 sẵn sàng implementation trên E3-S1/E2-S3/E5-S1/E5-S3/E2-S5/E2-S6.
+- Chốt E6-S1 với `task comment add/list`, Markdown content bắt buộc không rỗng, UUID v4 comment ID và deterministic `createdAt`/ID chronological ordering.
+- Chốt actor JSON là `user` hoặc registered-agent UUID; human output hydrate display name, và archived task nhận comment như active task.
+- Chốt comment là child record độc lập, không đổi `updatedAt`, `updatedBy` hoặc state khác của task; comment history không được thêm vào shared full-task aggregate.
+- Chốt add là transactional mutation có compatible migration, list là read-only one-snapshot/no-migration query, cùng stable human/JSON and exit behavior.
+- Viết epic/task E6-S1; decision review kết luận READY. E6-S1-T1 sẵn sàng implementation trên E1-S3-T1 và E2-S1-T1.
 
 ## Quy tắc planning cho mỗi story
 
@@ -292,13 +302,13 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. Implement [E5-S4-T1: Implement user force-unclaim](../tasks/E5-S4-T1-implement-user-force-unclaim.md) hoặc [E5-S5-T1: Harden claim/status independence](../tasks/E5-S5-T1-harden-claim-status-independence.md), sau khi kiểm tra claim trạng thái hiện hành.
+1. Implement [E6-S1-T1: Implement task comments](../tasks/E6-S1-T1-implement-task-comments.md), sau khi claim trạng thái `ready` theo workflow repository.
 2. Xem [status dashboard](../STATUS.md) trước khi claim task khác vì nhiều implementation session có thể đang dùng chung worktree.
 
 Nếu tiếp tục planning:
 
-1. Mở `docs/PRD.md` và tìm `Story E6-S1: Add and view comments`.
-2. Đọc comment/actor/task rules, E1-S3, E2-S1 và các implementation contracts liên quan.
-3. Tóm tắt context E6-S1, rồi hỏi người dùng các quyết định implementation còn thiếu về comment command surface, output và ordering.
+1. Mở `docs/PRD.md` và tìm `Story E6-S2: Delete a comment under ownership rules`.
+2. Đọc comment/actor/task rules, E6-S1 và các implementation contracts liên quan.
+3. Chỉ bắt đầu planning E6-S2 sau khi E6-S1-T1 cung cấp authoritative comment schema và add/list behavior.
 4. Sau mỗi câu trả lời, spawn review agent theo 5 tiêu chí.
-5. Khi READY, tạo epic và technical task E6-S1, review file, cập nhật danh sách trong handoff này.
+5. Khi READY, tạo epic và technical task E6-S2, review file, cập nhật danh sách trong handoff này.
