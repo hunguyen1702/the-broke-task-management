@@ -8,6 +8,7 @@ use std::{
 use tbtm_core::{
     AgentRegistration, Error, RepositoryHealth,
     agent::{AgentList, list_agents},
+    comment::{AddCommentInput, TaskComment, add_comment, list_comments},
     exit_code, initialize, inspect_repository_health, register_agent,
     task::{
         ArchiveScope, ArchiveTaskInput, AvailabilityReason, AvailableTasksInput,
@@ -90,6 +91,40 @@ enum TaskCommand {
     Archive(TaskArchiveArgs),
     #[command(about = "Return an archived task to active planning")]
     Unarchive(TaskUnarchiveArgs),
+    #[command(about = "Add and list task comments")]
+    Comment(TaskCommentArgs),
+}
+
+#[derive(Args)]
+struct TaskCommentArgs {
+    #[command(subcommand)]
+    command: TaskCommentCommand,
+}
+
+#[derive(Subcommand)]
+enum TaskCommentCommand {
+    #[command(about = "Add a comment to a task")]
+    Add(TaskCommentAddArgs),
+    #[command(about = "List a task's comments chronologically")]
+    List(TaskCommentListArgs),
+}
+
+#[derive(Args)]
+struct TaskCommentAddArgs {
+    task_id: String,
+    #[arg(long)]
+    content: String,
+    #[arg(long)]
+    agent: Option<uuid::Uuid>,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct TaskCommentListArgs {
+    task_id: String,
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Args)]
@@ -917,6 +952,25 @@ fn run() -> Result<(), (Error, bool)> {
                 .map_err(|error| (error, args.json))?;
                 render_unarchive(&result, args.json);
             }
+            TaskCommand::Comment(args) => match args.command {
+                TaskCommentCommand::Add(args) => {
+                    let result = add_comment(
+                        &current,
+                        AddCommentInput {
+                            task_id: args.task_id,
+                            content: args.content,
+                            agent_id: args.agent,
+                        },
+                    )
+                    .map_err(|error| (error, args.json))?;
+                    render_comment(&result, args.json);
+                }
+                TaskCommentCommand::List(args) => {
+                    let result = list_comments(&current, &args.task_id)
+                        .map_err(|error| (error, args.json))?;
+                    render_comment_list(&result, args.json);
+                }
+            },
         },
     }
     Ok(())
@@ -954,8 +1008,46 @@ fn command_uses_json(command: &Command) -> bool {
             TaskCommand::Unclaim(args) => args.json,
             TaskCommand::Archive(args) => args.json,
             TaskCommand::Unarchive(args) => args.json,
+            TaskCommand::Comment(args) => match &args.command {
+                TaskCommentCommand::Add(args) => args.json,
+                TaskCommentCommand::List(args) => args.json,
+            },
         },
     }
+}
+
+fn render_comment(comment: &TaskComment, json: bool) {
+    if json {
+        render_success(comment, true);
+        return;
+    }
+    println!("Comment ID: {}", comment.id);
+    println!("Task ID: {}", comment.task_id);
+    println!("Author: {}", comment_author(comment));
+    println!("Created: {}", comment.created_at);
+    println!("Content:\n{}", comment.content);
+}
+
+fn render_comment_list(comments: &[TaskComment], json: bool) {
+    if json {
+        render_success(&comments, true);
+    } else if comments.is_empty() {
+        println!("No comments found.");
+    } else {
+        for (index, comment) in comments.iter().enumerate() {
+            if index > 0 {
+                println!();
+            }
+            render_comment(comment, false);
+        }
+    }
+}
+
+fn comment_author(comment: &TaskComment) -> String {
+    comment.author_display_name.as_ref().map_or_else(
+        || "user".to_owned(),
+        |display_name| format!("{display_name} ({})", comment.author),
+    )
 }
 
 fn render_claim(result: &FullTask, json: bool) {

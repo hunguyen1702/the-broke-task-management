@@ -206,6 +206,7 @@ fn read_commands_reject_pending_claim_migration_until_a_write_upgrades() {
     connection
         .execute("DELETE FROM schema_migrations WHERE version >= 5", [])
         .unwrap();
+    connection.execute("DROP TABLE task_comments", []).unwrap();
     connection.execute("DROP TABLE task_hierarchy", []).unwrap();
     connection.execute("DROP TABLE task_claims", []).unwrap();
     connection

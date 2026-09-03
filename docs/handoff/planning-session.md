@@ -89,7 +89,7 @@ Story được chủ đích defer:
 
 Story tiếp theo nếu tiếp tục planning:
 
-- **E6-S2: Delete a comment under ownership rules** — phụ thuộc E6-S1 implementation và sẽ chốt ownership failure/output behavior sau khi comment model hoàn tất.
+- **E6-S2: Delete a comment under ownership rules** — E6-S1 implementation đã hoàn tất; story này hiện sẵn sàng planning để chốt ownership failure/output behavior.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -107,7 +107,7 @@ Story tiếp theo nếu tiếp tục planning:
 
 E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, E5-S5-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. E3-S2 tiếp tục được defer.
 
-**E6-S1-T1** đã planning xong và `ready` trên E1-S3-T1 cùng E2-S1-T1; task này sẽ thêm comment creation/listing mà không thay đổi task mutation metadata.
+**E6-S1-T1** đã implementation và verification xong với comment creation/listing, actor attribution, migration 0008, deterministic read-only ordering và linked-worktree concurrency coverage.
 
 ## Việc đã làm
 
@@ -302,13 +302,12 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. Implement [E6-S1-T1: Implement task comments](../tasks/E6-S1-T1-implement-task-comments.md), sau khi claim trạng thái `ready` theo workflow repository.
-2. Xem [status dashboard](../STATUS.md) trước khi claim task khác vì nhiều implementation session có thể đang dùng chung worktree.
+1. Xem [status dashboard](../STATUS.md) để chọn task implementation đã planned và `ready`; E6-S1-T1 đã hoàn tất.
 
 Nếu tiếp tục planning:
 
 1. Mở `docs/PRD.md` và tìm `Story E6-S2: Delete a comment under ownership rules`.
 2. Đọc comment/actor/task rules, E6-S1 và các implementation contracts liên quan.
-3. Chỉ bắt đầu planning E6-S2 sau khi E6-S1-T1 cung cấp authoritative comment schema và add/list behavior.
+3. Kế thừa authoritative comment schema và add/list behavior đã hoàn tất trong E6-S1-T1.
 4. Sau mỗi câu trả lời, spawn review agent theo 5 tiêu chí.
 5. Khi READY, tạo epic và technical task E6-S2, review file, cập nhật danh sách trong handoff này.

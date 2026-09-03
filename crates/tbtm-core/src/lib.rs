@@ -14,13 +14,14 @@ use unicode_script::{Script, UnicodeScript};
 use uuid::Uuid;
 
 pub mod agent;
+pub mod comment;
 pub mod status;
 pub mod task;
 
 const CONFIG_FILE: &str = "config.json";
 const DATABASE_FILE: &str = "tbtm.db";
 const STEALTH_RULE: &str = "/.tbtm/";
-const LATEST_MIGRATION: i64 = 7;
+const LATEST_MIGRATION: i64 = 8;
 const IDENTITY_RETRY_LIMIT: usize = 8;
 
 #[derive(Debug, Error)]
@@ -55,6 +56,8 @@ pub enum Error {
     TaskArchived { id: String },
     #[error("archive reason must not be blank")]
     InvalidArchiveReason,
+    #[error("comment content must not be blank")]
+    InvalidCommentContent,
     #[error("task is claimed by another agent: {task_id}")]
     TaskClaimed {
         task_id: String,
@@ -185,6 +188,7 @@ impl Error {
             Self::TaskNotFound { .. } => "TASK_NOT_FOUND",
             Self::TaskArchived { .. } => "TASK_ARCHIVED",
             Self::InvalidArchiveReason => "INVALID_ARCHIVE_REASON",
+            Self::InvalidCommentContent => "INVALID_COMMENT_CONTENT",
             Self::TaskClaimed { .. } => "TASK_CLAIMED",
             Self::ArchivePermissionDenied => "PERMISSION_DENIED",
             Self::ConfirmationRequired { .. } => "CONFIRMATION_REQUIRED",
@@ -1050,6 +1054,7 @@ fn apply_pending_migrations(resolved: &mut ResolvedRepository) -> Result<(), Err
             include_str!("../migrations/0006_task_archive_reason.sql"),
         ),
         (7, include_str!("../migrations/0007_task_hierarchy.sql")),
+        (8, include_str!("../migrations/0008_task_comments.sql")),
     ] {
         if version > current {
             transaction
@@ -1252,6 +1257,15 @@ fn create_database(
     transaction
         .execute(
             "INSERT INTO schema_migrations (version, applied_at) VALUES (7, ?1)",
+            [created_at],
+        )
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute_batch(include_str!("../migrations/0008_task_comments.sql"))
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute(
+            "INSERT INTO schema_migrations (version, applied_at) VALUES (8, ?1)",
             [created_at],
         )
         .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
@@ -1477,6 +1491,7 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::NoUpdateFields
         | Error::TaskArchived { .. }
         | Error::InvalidArchiveReason
+        | Error::InvalidCommentContent
         | Error::ConfirmationRequired { .. }
         | Error::TaskNotAvailable { .. }
         | Error::SelfDependency { .. }
@@ -1877,7 +1892,7 @@ mod tests {
     fn health_rejects_invalid_migration_ledger_without_writing() {
         for statement in [
             "DELETE FROM schema_migrations",
-            "UPDATE schema_migrations SET version = 8 WHERE version = 7",
+            "UPDATE schema_migrations SET version = 9 WHERE version = 8",
         ] {
             let temp = tempdir().unwrap();
             let initialized = initialize(temp.path(), None, false, false, false).unwrap();
