@@ -3,7 +3,9 @@ id: E5-S5-T1
 kind: implementation_task
 planning_status: done
 implementation_status: done
-scenario_impact: none
+scenario_impact: add
+scenario_impact_targets:
+  - AT-E5-S5-001
 depends_on:
   - E3-S1-T1
   - E2-S3-T1

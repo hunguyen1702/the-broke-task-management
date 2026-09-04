@@ -2,6 +2,15 @@
 
 This dashboard is the current human-readable status index. Frontmatter in an existing epic or implementation-task document is authoritative for that document. Until repository tooling replaces this dashboard, update both places in the same change.
 
+## Acceptance testing
+
+- Scenario catalog: `approved`
+- Last simplified: 2026-09-04 (QA-oriented happy paths and likely user errors)
+- Last revalidation: 2026-09-04 (simplified catalog approved after QA review)
+- Last full execution: not run
+- Current result: not run
+- Detailed catalog: [Acceptance regression catalog](testing/README.md)
+
 ## Status values
 
 - Planning: `needed` or `done`.

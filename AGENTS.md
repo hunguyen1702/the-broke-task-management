@@ -8,6 +8,8 @@ Rust Cargo workspace for `tbtm`, repository-local task-management CLI.
 - `crates/tbtm-core/migrations/`: sequential migrations, e.g. `0002_add_tasks.sql`.
 - `crates/tbtm-cli/`: Clap parsing, prompts, output, exit codes.
 - `docs/epics/`, `docs/tasks/`: approved behavior contracts.
+- `docs/testing/`: concise QA acceptance scenarios and optional run summaries.
+- `docs/decisions/`: durable technical decisions and scenario-impact records.
 - `mise.toml`: Rust pin and verification tasks.
 
 Keep CLI code out of core; core operations must be testable without process boundary.
@@ -53,10 +55,38 @@ Use temporary directories for filesystem tests. Cover normal, invalid, no-op pat
 - Summarize the task context before planning, confirm observable decisions with the user, complete the required reviews, and write both `docs/epics/<STORY>.md` and `docs/tasks/<STORY>-T1-*.md`; do not implement source code during planning.
 - Once planning is complete and reviewed, update the new documents' frontmatter, `docs/STATUS.md`, and the planning handoff immediately before the docs commit, then ask the user to confirm committing the documentation.
 
+### Build acceptance scenarios
+
+- Read `docs/STATUS.md`, implemented story contracts, public CLI help, and current tests.
+- Generate the catalog without interviewing the user scenario by scenario. Use one concise file per story or cohesive user journey.
+- Use searchable English directory and file names combined with epic/story IDs. Do not organize scenarios around code functions or private implementation details.
+- Write cases as input plus expected user-visible output. Cover the main happy path and likely user errors; leave rare boundaries, races, fault injection, transaction internals, and database checks to Rust tests.
+- Ask an independent QA reviewer to check common user-flow coverage and contract consistency, resolve meaningful blockers, then present the catalog for user approval. Do not execute scenarios during this workflow.
+
+### Revalidate acceptance scenarios
+
+- Before execution or after public behavior changes, compare affected scenarios with current story contracts and CLI behavior.
+- Add or update cases only for changed common workflows or likely user errors. Preserve approved scenario history when doing so remains useful; otherwise avoid ceremony for unexecuted drafts.
+- Only `approved` scenarios are eligible for execution.
+
+### Execute approved acceptance scenarios
+
+- Revalidate affected behavior first, then run approved scenarios in isolated temporary repositories using `docs/testing/test-setup.md`.
+- Compare each command's exit code and user-visible output with its expected result. Mark cases `passed`, `failed`, or `blocked`.
+- Record pass/fail and preserve actual commands and output for failures. Add a run summary under `docs/testing/runs/` only when retained evidence is useful.
+- Report failures without modifying source code or expected behavior. Implementation fixes require a separate approved task workflow.
+
+### Record acceptance impact
+
+- Every implementation task that changes a common user workflow must classify scenario impact as `none`, `revalidate`, `add`, or `supersede`. Internal-only changes normally use `none` because they are covered by Rust tests.
+- Create a record from `docs/decisions/TD-template.md` for meaningful architecture, persistence, compatibility, concurrency, migration, or public-contract decisions. A technical decision supplements but never replaces PRD/epic updates for observable behavior.
+- Non-`none` impact triggers revalidation only of affected user-facing scenarios after implementation.
+
 ### Keep documentation status current
 
 - After implementing a task, mark implementation status and dependency readiness in its epic/task frontmatter and `docs/STATUS.md`.
 - After planning a story, mark planning and implementation readiness in its epic/task frontmatter, `docs/STATUS.md`, and `docs/handoff/planning-session.md` immediately before committing the planning docs.
+- Keep the acceptance summary in `docs/STATUS.md` aligned with `docs/testing/README.md`; keep detailed scenario and run history out of the implementation tables.
 
 ## Commit & Pull Request Guidelines
 
