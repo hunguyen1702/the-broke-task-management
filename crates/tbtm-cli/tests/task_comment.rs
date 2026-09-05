@@ -761,3 +761,192 @@ fn delete_failure_rolls_back_and_help_describes_actor_selection() {
     assert!(stdout.contains("omission selects logical-user authority"));
     assert!(!stdout.to_lowercase().contains("authenticate"));
 }
+
+#[test]
+fn comment_command_surface_has_no_edit_operation() {
+    let temp = tempdir().unwrap();
+    initialize(temp.path());
+    let task_id = create_task(temp.path());
+    let comment = add_comment(temp.path(), &task_id, "immutable", None);
+
+    let help = tbtm(temp.path(), &["task", "comment", "--help"]);
+    assert!(help.status.success());
+    let stdout = String::from_utf8(help.stdout).unwrap();
+    for command in ["add", "list", "delete"] {
+        assert!(
+            stdout
+                .lines()
+                .any(|line| line.trim_start().starts_with(command))
+        );
+    }
+    for command in ["edit", "update", "amend", "replace"] {
+        assert!(
+            !stdout
+                .lines()
+                .any(|line| line.trim_start().starts_with(command))
+        );
+        let rejected = tbtm(
+            temp.path(),
+            &[
+                "task",
+                "comment",
+                command,
+                &task_id,
+                comment["id"].as_str().unwrap(),
+            ],
+        );
+        assert_eq!(rejected.status.code(), Some(2));
+    }
+}
+
+#[test]
+fn supported_operations_leave_existing_comment_fields_unchanged() {
+    let temp = tempdir().unwrap();
+    initialize(temp.path());
+    let task_id = create_task(temp.path());
+    let retained = add_comment(temp.path(), &task_id, "retain every field", None);
+    let disposable = add_comment(temp.path(), &task_id, "later comment", None);
+
+    for _ in 0..2 {
+        let listed: Value = serde_json::from_slice(
+            &tbtm(
+                temp.path(),
+                &["task", "comment", "list", &task_id, "--json"],
+            )
+            .stdout,
+        )
+        .unwrap();
+        assert_eq!(listed["data"][0], retained);
+    }
+    assert!(
+        tbtm(
+            temp.path(),
+            &["task", "update", &task_id, "--title", "Renamed", "--json"]
+        )
+        .status
+        .success()
+    );
+    assert!(
+        tbtm(
+            temp.path(),
+            &[
+                "task",
+                "comment",
+                "delete",
+                &task_id,
+                disposable["id"].as_str().unwrap(),
+                "--json",
+            ]
+        )
+        .status
+        .success()
+    );
+    let listed: Value = serde_json::from_slice(
+        &tbtm(
+            temp.path(),
+            &["task", "comment", "list", &task_id, "--json"],
+        )
+        .stdout,
+    )
+    .unwrap();
+    assert_eq!(listed["data"], serde_json::json!([retained]));
+}
+
+#[test]
+fn correction_is_non_atomic_and_uses_a_new_identity_on_active_and_archived_tasks() {
+    for archived in [false, true] {
+        let temp = tempdir().unwrap();
+        initialize(temp.path());
+        let task_id = create_task(temp.path());
+        let owner = register_agent(temp.path(), "owner");
+        if archived {
+            assert!(
+                tbtm(
+                    temp.path(),
+                    &["task", "archive", &task_id, "--reason", "Done", "--json"]
+                )
+                .status
+                .success()
+            );
+        }
+        let original = add_comment(temp.path(), &task_id, "typo", Some(&owner));
+        let task_before: Value = serde_json::from_slice(
+            &tbtm(temp.path(), &["task", "view", &task_id, "--json"]).stdout,
+        )
+        .unwrap();
+
+        let deleted = tbtm(
+            temp.path(),
+            &[
+                "task",
+                "comment",
+                "delete",
+                &task_id,
+                original["id"].as_str().unwrap(),
+                "--json",
+            ],
+        );
+        assert!(deleted.status.success());
+        assert_eq!(
+            serde_json::from_slice::<Value>(&deleted.stdout).unwrap()["data"],
+            original
+        );
+
+        let failed_add = tbtm(
+            temp.path(),
+            &[
+                "task",
+                "comment",
+                "add",
+                &task_id,
+                "--content",
+                "  ",
+                "--json",
+            ],
+        );
+        assert_eq!(failed_add.status.code(), Some(2));
+        let empty: Value = serde_json::from_slice(
+            &tbtm(
+                temp.path(),
+                &["task", "comment", "list", &task_id, "--json"],
+            )
+            .stdout,
+        )
+        .unwrap();
+        assert_eq!(empty["data"], serde_json::json!([]));
+
+        let corrected = add_comment(temp.path(), &task_id, "corrected", None);
+        assert_ne!(corrected["id"], original["id"]);
+        assert_eq!(corrected["author"], "user");
+        assert!(
+            time::OffsetDateTime::parse(
+                corrected["createdAt"].as_str().unwrap(),
+                &time::format_description::well_known::Rfc3339,
+            )
+            .is_ok()
+        );
+        let task_after: Value = serde_json::from_slice(
+            &tbtm(temp.path(), &["task", "view", &task_id, "--json"]).stdout,
+        )
+        .unwrap();
+        assert_eq!(task_after["data"], task_before["data"]);
+    }
+}
+
+#[test]
+fn linked_worktree_add_preserves_preexisting_comment_exactly() {
+    let (_temp, main, linked) = linked_worktree();
+    initialize(&main);
+    let task_id = create_task(&main);
+    let retained = add_comment(&main, &task_id, "stable", None);
+    let added = add_comment(&linked, &task_id, "from linked worktree", None);
+
+    let listed: Value = serde_json::from_slice(
+        &tbtm(&main, &["task", "comment", "list", &task_id, "--json"]).stdout,
+    )
+    .unwrap();
+    let comments = listed["data"].as_array().unwrap();
+    assert_eq!(comments.len(), 2);
+    assert!(comments.contains(&retained));
+    assert!(comments.contains(&added));
+}

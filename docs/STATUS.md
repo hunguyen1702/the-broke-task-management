@@ -48,7 +48,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E5-S5-T1 is implemented and verified with cross-command status/claim, actor, archive/unarchive, concurrency, and linked-worktree regression coverage.
 - E6-S1-T1 is implemented and verified with durable actor-attributed comments, deterministic read-only listing, collision handling, migration coverage, and linked-worktree concurrency coverage.
 - E6-S2-T1 is implemented and verified with ownership-aware atomic hard deletion, stable errors, rollback coverage, and linked-worktree concurrency coverage.
-- E6-S3-T1 is ready to implement comment-immutability regression hardening.
+- E6-S3-T1 is implemented and verified with insert/list/delete architectural guards, immutable-field regression coverage, non-atomic correction boundaries, active/archived lifecycle parity, and linked-worktree coverage. Acceptance impact `add` is queued for the separate scenario workflow.
 
 ## E1 — Repository foundation and identity
 
@@ -132,8 +132,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E6-S1-T1](tasks/E6-S1-T1-implement-task-comments.md) | done | done | E1-S3-T1, E2-S1-T1 |
 | [E6-S2](epics/E6-S2-delete-comments-under-ownership-rules.md) | done | done | E6-S1 |
 | [E6-S2-T1](tasks/E6-S2-T1-implement-ownership-aware-comment-deletion.md) | done | done | E6-S1-T1 |
-| [E6-S3](epics/E6-S3-keep-comments-immutable.md) | done | ready | E6-S1, E6-S2 |
-| [E6-S3-T1](tasks/E6-S3-T1-harden-comment-immutability.md) | done | ready | E6-S1-T1, E6-S2-T1 |
+| [E6-S3](epics/E6-S3-keep-comments-immutable.md) | done | done | E6-S1, E6-S2 |
+| [E6-S3-T1](tasks/E6-S3-T1-harden-comment-immutability.md) | done | done | E6-S1-T1, E6-S2-T1 |
 
 ## E7 — Agent-first CLI
 

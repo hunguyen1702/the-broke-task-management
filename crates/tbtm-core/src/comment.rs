@@ -329,6 +329,32 @@ mod tests {
     }
 
     #[test]
+    fn comment_mutation_surface_is_insert_list_delete_only() {
+        let source = include_str!("comment.rs");
+        let production = source.split("#[cfg(test)]").next().unwrap();
+        let public_functions: Vec<_> = production
+            .lines()
+            .filter_map(|line| line.trim().strip_prefix("pub fn "))
+            .map(|declaration| declaration.split('(').next().unwrap())
+            .collect();
+
+        assert_eq!(
+            public_functions,
+            ["add_comment", "list_comments", "delete_comment"]
+        );
+        assert!(
+            !production
+                .to_ascii_uppercase()
+                .contains("UPDATE TASK_COMMENTS")
+        );
+        assert!(
+            !include_str!("../migrations/0008_task_comments.sql")
+                .to_ascii_uppercase()
+                .contains("UPDATE TASK_COMMENTS")
+        );
+    }
+
+    #[test]
     fn retries_only_comment_id_collisions_and_exhausts_without_partial_rows() {
         let temp = tempdir().unwrap();
         crate::initialize(temp.path(), Some("project"), false, false, false).unwrap();

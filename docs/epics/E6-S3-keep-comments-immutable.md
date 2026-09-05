@@ -2,7 +2,7 @@
 id: E6-S3
 kind: epic
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - E6-S1
   - E6-S2

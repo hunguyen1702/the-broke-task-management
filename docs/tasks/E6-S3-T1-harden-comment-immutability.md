@@ -2,7 +2,7 @@
 id: E6-S3-T1
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 scenario_impact: add
 scenario_impact_targets:
   - AT-E6-S3-001
@@ -25,7 +25,7 @@ Consolidate and regression-test the invariant that supported TBTM operations may
 
 ## Readiness
 
-Planning is complete. E6-S1-T1 already supplies authoritative comment creation, listing, persistence, actor representation, and output. E6-S2-T1 must first implement ownership-aware deletion so the complete correction workflow and its failure boundaries can be tested. This task remains blocked until E6-S2-T1 is done.
+Planning and implementation are complete. E6-S1-T1 supplies authoritative comment creation, listing, persistence, actor representation, and output; E6-S2-T1 supplies ownership-aware deletion. The combined correction workflow and its failure boundaries are regression-tested here.
 
 ## Deliverables
 
@@ -149,7 +149,7 @@ Smoke-test an authorized user correction and a forbidden agent correction on bot
 
 ## Acceptance scenario impact
 
-`add`: E6-S3 establishes the combined public correction journey and its partial-failure boundary even though it introduces no command. After implementation, add `AT-E6-S3-001` under the E6 comment catalog to cover authorized delete-then-add identity replacement, forbidden deletion preserving the original, and failed add after committed deletion without duplicating E6-S1/E6-S2 command-level cases.
+`add`: E6-S3 establishes the combined public correction journey and its partial-failure boundary even though it introduces no command. Hand off `AT-E6-S3-001` to the separate acceptance-scenario workflow to cover authorized delete-then-add identity replacement, forbidden deletion preserving the original, and failed add after committed deletion without duplicating E6-S1/E6-S2 command-level cases.
 
 ## Definition of done
 
