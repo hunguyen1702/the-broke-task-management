@@ -15,7 +15,7 @@ Build `tbtm` and create a temporary Git repository.
 | Case | Input | Expected output |
 |---|---|---|
 | Initialize | `"$TB_BIN" init --prefix acc --json` | Exit `0`; output identifies an initialized repository with prefix `acc` |
-| Initialize twice | Run the initialize command again | Exit `4`; error code is `ALREADY_INITIALIZED` |
+| Initialize twice | Run the initialize command again | Exit `2`; error code is `ALREADY_INITIALIZED` |
 | Invalid prefix | `"$TB_BIN" init --prefix '' --json` in a fresh repository | Exit `2`; error code is `INVALID_PREFIX`; no repository is initialized |
 | Uninstall preview | `"$TB_BIN" uninstall --dry-run --json` | Exit `0`; output lists what would be removed and repository state remains present |
 | Uninstall | `"$TB_BIN" uninstall --yes --json` | Exit `0`; output confirms removal and repository state is gone |

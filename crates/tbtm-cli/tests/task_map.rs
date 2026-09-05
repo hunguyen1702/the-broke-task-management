@@ -165,6 +165,42 @@ fn all_deduplicates_nodes_retains_edges_and_orders_shortest_reaches() {
 }
 
 #[test]
+fn all_includes_parent_child_upstream_and_downstream() {
+    let temp = tempdir().unwrap();
+    initialize(temp.path());
+    let epic = create(temp.path(), "Parent", "epic");
+    let root = create(temp.path(), "Root", "story");
+    let child = create(temp.path(), "Child", "task");
+    let upstream = create(temp.path(), "Upstream", "task");
+    let downstream = create(temp.path(), "Downstream", "task");
+    parent(temp.path(), &root, &epic);
+    parent(temp.path(), &child, &root);
+    dependency(temp.path(), &root, &upstream);
+    dependency(temp.path(), &downstream, &root);
+
+    let data = map(temp.path(), &root, Some("all"));
+    let ids: Vec<_> = data["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|node| node["id"].as_str().unwrap())
+        .collect();
+    for expected in [&root, &epic, &child, &upstream, &downstream] {
+        assert!(ids.contains(&expected.as_str()));
+    }
+    assert_eq!(data["edges"].as_array().unwrap().len(), 4);
+    for direction in ["parent", "child", "upstream", "downstream"] {
+        assert!(
+            data["edges"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|edge| edge["direction"] == direction)
+        );
+    }
+}
+
+#[test]
 fn human_diamond_uses_breadth_first_tree_and_one_reference() {
     let temp = tempdir().unwrap();
     initialize(temp.path());

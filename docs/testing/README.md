@@ -6,6 +6,7 @@
 - Approved: 2026-09-04
 - Last simplified: 2026-09-04
 - Last full execution: 2026-09-04 (86 passed, 2 failed, 0 blocked)
+- Latest targeted execution: 2026-09-05, AT-E1-S1-001 passed (5 cases)
 
 This catalog is a concise QA suite for common user workflows. It checks public
 CLI inputs, outputs, and likely errors. Exhaustive validation, transactions,

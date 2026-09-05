@@ -2,7 +2,7 @@
 id: E1-S1-T2
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - E1-S1-T1
 implements:
@@ -55,3 +55,11 @@ scenario without changing public CLI behavior.
 
 `revalidate`: AT-E1-S1-001 must be updated, approved, and rerun.
 
+## Completion
+
+- AT-E1-S1-001 now expects exit `2` with `ALREADY_INITIALIZED` for repeat
+  initialization, matching the E1-S1 contract and current CLI help.
+- The user approved the corrected expectation on 2026-09-05.
+- The approved scenario was rerun in isolated temporary repositories: 5 passed,
+  0 failed, 0 blocked.
+- Evidence: [2026-09-05 targeted acceptance run](../testing/runs/2026-09-05-cda9671/summary.md).

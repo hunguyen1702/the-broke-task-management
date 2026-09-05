@@ -9,6 +9,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - Last revalidation: 2026-09-04 (simplified catalog approved after QA review)
 - Last full execution: 2026-09-04
 - Current result: failed (86 passed, 2 failed, 0 blocked)
+- Latest targeted execution: 2026-09-05, AT-E1-S1-001 passed (5 cases)
 - Detailed catalog: [Acceptance regression catalog](testing/README.md)
 
 ## Status values
@@ -21,9 +22,10 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 ## Next work
 
-- E1-S1-T2 is ready to align the repeat-initialization acceptance expectation
-  with the authoritative exit-code contract.
-- E4-S5-T2 is ready to restore child traversal in combined relationship maps.
+- E1-S1-T2 is complete; repeat initialization now expects the authoritative
+  exit `2`, and AT-E1-S1-001 passed its targeted rerun.
+- E4-S5-T2 is complete with focused core and CLI regression coverage for child
+  traversal in combined relationship maps.
 - E2-S1-T1 is implemented.
 - E3-S1-T1 is complete and provides the status-code contract required by task creation.
 - E2-S2-T1 is implemented and verified.
@@ -52,7 +54,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 |---|---|---|---|---|
 | [E1-S1](epics/E1-S1-initialize-repository.md) | Epic | done | done | — |
 | [E1-S1-T1](tasks/E1-S1-T1-implement-repository-initialization.md) | Task | done | done (`8721ecf`) | — |
-| [E1-S1-T2](tasks/E1-S1-T2-align-repeat-init-acceptance-exit.md) | Task | done | ready | E1-S1-T1 |
+| [E1-S1-T2](tasks/E1-S1-T2-align-repeat-init-acceptance-exit.md) | Task | done | done | E1-S1-T1 |
 | [E1-S2](epics/E1-S2-resolve-repository-configuration.md) | Epic | done | done | E1-S1 |
 | [E1-S2-T1](tasks/E1-S2-T1-implement-repository-configuration-resolution.md) | Task | done | done (`f535803`) | E1-S1-T1 |
 | [E1-S5](epics/E1-S5-share-repository-state-across-git-worktrees.md) | Epic | done | done | E1-S2 |
@@ -103,7 +105,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E4-S4-T1](tasks/E4-S4-T1-implement-blocking-explanations.md) | done | done | E4-S2-T1, E4-S3-T1 |
 | [E4-S5](epics/E4-S5-view-relationship-maps.md) | done | done | E4-S1, E4-S2 |
 | [E4-S5-T1](tasks/E4-S5-T1-implement-relationship-maps.md) | done | done | E4-S1-T1, E4-S2-T1, E4-S3-T1, E5-S1-T1 |
-| [E4-S5-T2](tasks/E4-S5-T2-restore-child-traversal-in-all-maps.md) | done | ready | E4-S5-T1 |
+| [E4-S5-T2](tasks/E4-S5-T2-restore-child-traversal-in-all-maps.md) | done | done | E4-S5-T1 |
 
 ## E5 — Multi-agent claiming
 

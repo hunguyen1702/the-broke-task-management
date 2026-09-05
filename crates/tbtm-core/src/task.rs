@@ -3135,4 +3135,36 @@ mod tests {
             Err(Error::InvalidTaskUpdatePriority)
         ));
     }
+
+    #[test]
+    fn all_relationship_directions_include_child_traversal() {
+        assert_eq!(
+            RelationshipDirection::All.selected(),
+            &[
+                RelationshipDirection::Parent,
+                RelationshipDirection::Child,
+                RelationshipDirection::Upstream,
+                RelationshipDirection::Downstream,
+            ]
+        );
+
+        let mut reached = BTreeMap::new();
+        let mut edges = BTreeSet::new();
+        traverse_map_direction(
+            "root",
+            RelationshipDirection::Child,
+            RelationshipType::Hierarchy,
+            &[
+                ("root".to_owned(), "child".to_owned()),
+                ("child".to_owned(), "grandchild".to_owned()),
+            ],
+            false,
+            &mut reached,
+            &mut edges,
+        );
+
+        assert_eq!(reached["child"][&RelationshipDirection::Child], 1);
+        assert_eq!(reached["grandchild"][&RelationshipDirection::Child], 2);
+        assert_eq!(edges.len(), 2);
+    }
 }
