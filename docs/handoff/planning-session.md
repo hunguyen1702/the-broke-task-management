@@ -49,6 +49,9 @@ Story đã hoàn tất planning:
 - **E3-S1: Use default statuses**
   - [Epic plan](../epics/E3-S1-use-default-statuses.md)
   - [Implementation task](../tasks/E3-S1-T1-implement-default-status-codes.md)
+- **E3-S2: Create and organize custom statuses**
+  - [Epic plan](../epics/E3-S2-create-and-organize-custom-statuses.md)
+  - [Implementation task](../tasks/E3-S2-T1-implement-custom-status-creation-and-ordering.md)
 - **E4-S1: Manage task hierarchy**
   - [Epic plan](../epics/E4-S1-manage-task-hierarchy.md)
   - [Implementation task](../tasks/E4-S1-T1-implement-task-hierarchy-management.md)
@@ -89,13 +92,9 @@ Story đã hoàn tất planning:
   - [Epic plan](../epics/E6-S3-keep-comments-immutable.md)
   - [Implementation task](../tasks/E6-S3-T1-harden-comment-immutability.md)
 
-Story được chủ đích defer:
-
-- **E3-S2: Create and organize custom statuses** — default statuses đã đủ cho workflow MVP cơ bản; custom statuses không nằm trên critical path hiện tại.
-
 Story tiếp theo nếu tiếp tục planning:
 
-- **E7-S1: Provide consistent command output** — bắt đầu Epic E7 trên các command và shared envelopes đã có.
+- **E3-S3: Change status completion semantics** — tiếp tục status workflow trên E3-S2 và authoritative availability của E4-S3.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -111,7 +110,7 @@ Story tiếp theo nếu tiếp tục planning:
 - **E5-S4-T1** đã implementation xong với observed-claim confirmation binding, exact release và authoritative post-release availability.
 - **E5-S5-T1** đã implementation xong với cross-command claim/status independence regression coverage.
 
-E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, E5-S5-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. E3-S2 tiếp tục được defer.
+E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, E5-S5-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. E3-S2-T1 đã planning xong và sẵn sàng implementation.
 
 **E6-S1-T1** đã implementation và verification xong với comment creation/listing, actor attribution, migration 0008, deterministic read-only ordering và linked-worktree concurrency coverage.
 
@@ -174,6 +173,9 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, 
 - Chủ đích giữ concurrency MVP đơn giản: sau khi user xác nhận non-empty impact, transaction chấp nhận chi tiết thay đổi và trả latest impact, không dùng snapshot token hay `IMPACT_CHANGED`.
 - Cập nhật PRD và viết epic/task E2-S6; planning review kết luận READY. E2-S6-T1 bị block bởi E2-S5-T1 và E4-S4-T1.
 - Chủ đích defer E3-S2 vì ba default statuses đã đủ cho use case MVP cơ bản; ưu tiên dependency/claiming/availability critical path.
+- Sau khi critical path hoàn tất, chốt E3-S2 với top-level `status list/create/rename/move`, custom statuses mới mặc định incomplete, code immutable và tên unique theo ASCII case-insensitive qua migration `0009`.
+- Chốt create append hoặc đặt before/after; rename chỉ custom; reorder cả default/custom với contiguous zero-based order, atomic immediate transactions và valid no-write no-ops.
+- Chốt logical-user-only authority, exact human/JSON shapes và stable status errors; decision review kết luận READY trước khi tạo tài liệu.
 - Chốt E4-S2 với directed many-to-many mandatory dependencies, command `task dependency add/remove`, explicit downstream qua `<task-id>` và upstream qua `--depends-on`.
 - Chốt chỉ downstream không archived mới được mutation; completed active downstream vẫn được sửa, archived upstream vẫn là target hợp lệ và thỏa edge theo effective completion.
 - Chốt remove cạnh không tồn tại là `DEPENDENCY_NOT_FOUND`; duplicate, self và cycle đều bị từ chối; không expose arbitrary `cyclePath` ở MVP.
@@ -326,8 +328,8 @@ Nếu tiếp tục implementation:
 
 Nếu tiếp tục planning:
 
-1. Mở `docs/PRD.md` và tìm `Story E7-S1: Provide consistent command output`.
-2. Đọc các output requirements, shared human/JSON envelopes, exit-code conventions và public help hiện hành.
-3. Kế thừa contract của các command đã implemented thay vì tạo output model cạnh tranh.
+1. Mở `docs/PRD.md` và tìm `Story E3-S3: Change status completion semantics`.
+2. Đọc E3-S2, E4-S3, dependency/effective-completion rules và public status/task behavior hiện hành.
+3. Kế thừa status identity, name/order contract và authoritative availability predicate thay vì tạo model cạnh tranh.
 4. Chỉ spawn review agent sau một vòng quyết định đã được người dùng xác nhận; không review trong lúc người dùng còn hỏi hoặc khám phá requirement.
-5. Khi READY, tạo epic và technical task E7-S1, review file, cập nhật danh sách trong handoff này.
+5. Khi READY, tạo epic và technical task E3-S3, review file, cập nhật danh sách trong handoff này.

@@ -788,7 +788,7 @@ As a user, I want custom ordered statuses so that the board matches my workflow.
 Acceptance criteria:
 
 - A status has an immutable unique code, display name, completed value, and display order.
-- Custom statuses can be created, renamed, and reordered.
+- Custom statuses can be created and renamed; both default and custom statuses can be reordered.
 - Custom-status creation requires an explicit code; rename changes only the display name.
 - Names are validated for repository-level uniqueness.
 
