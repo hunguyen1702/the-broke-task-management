@@ -14,6 +14,8 @@ Do not store temporary repositories, databases, binary output, hashes, or
 successful command transcripts unless needed to diagnose a failure.
 
 Before closing a failed run, follow the failure-to-task procedure in
-[`test-setup.md`](../test-setup.md#result-and-cleanup). A later run should reuse
-the same task for the same unresolved defect and link the new evidence rather
-than create a duplicate.
+[`test-setup.md`](../test-setup.md#failed-case-to-remediation-task). Creating the
+task, implementing it through the normal `ready` → `in_progress` → `done`
+lifecycle, and rerunning acceptance are separate workflows. A later run should
+reuse the same open task for the same unresolved defect and link new evidence
+rather than create a duplicate.

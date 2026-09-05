@@ -33,18 +33,72 @@ A case passes when its command has the expected exit code and its user-visible
 output contains the stated values. Record the command and output for a failure.
 Remove the temporary directory and linked worktree after the scenario.
 
-For every failed case, create or update one follow-up file under `docs/tasks/`
-before closing the run:
+### Failed case to remediation task
+
+For every failed case, create or update one normal implementation task under
+`docs/tasks/` before closing the run. A scenario failure means something must
+be corrected before that scenario can pass; the correction may be to the
+scenario, documentation/contract alignment, setup, or product code.
+
+The acceptance executor creates the remediation task but does not perform it:
 
 - Search existing tasks and prior run summaries first; update the existing open
   task when it tracks the same failure instead of creating a duplicate.
-- Use the affected story's next task ID and record the scenario ID, run ID,
-  failure evidence, and classification in the task.
+- Use the affected story's next task ID. Use the standard task frontmatter with
+  `kind: implementation_task`, `planning_status: done`, and
+  `implementation_status: ready`, then add it to `docs/STATUS.md` as `ready`.
+- Never introduce a new task status for acceptance. Remediation tasks use the
+  same `ready` → `in_progress` → `done` implementation lifecycle as every other
+  implementation task. Scenario state and run results are tracked only under
+  `docs/testing/`.
 - Classify the failure as an implementation defect, scenario drift, contract
   ambiguity, or environment/setup problem. Do not assume every mismatch needs
   a source-code change.
-- Define the expected correction, verification, and acceptance impact. A failed
-  common workflow normally requires `revalidate` and rerun after correction.
-- Add the follow-up task to `docs/STATUS.md` with status `ready`, or document why
-  it is blocked. Acceptance execution still must not modify implementation or
-  expected behavior while diagnosing the failure.
+- Treat `docs/PRD.md`, the approved epic, and approved task contracts as the
+  source of truth. If they disagree, record the ambiguity instead of choosing a
+  new behavior during execution.
+
+Every remediation task must be implementable without rereading the full run.
+Include:
+
+- the failed scenario ID and run-summary link;
+- exact reproduction input or command, including required fixture state;
+- actual exit code and relevant user-visible output;
+- expected exit code and user-visible output from the source of truth;
+- the authoritative PRD/epic/task references and failure classification;
+- the correction scope and explicit out-of-scope behavior;
+- normal, invalid, no-op, regression, and transactional coverage relevant to
+  the correction;
+- verification commands and acceptance impact (`revalidate`, `add`, or
+  `supersede`).
+
+### Implement the remediation task
+
+A different agent may implement the task through the normal approved-task
+workflow. Before changing files, it claims the task by setting
+`implementation_status: in_progress` in the task and `docs/STATUS.md`. After
+the requested correction and task-level verification are complete, it sets
+`implementation_status: done` in both places just like any other task.
+
+Task completion means the correction described by the task is implemented and
+verified. It does not mean the failed acceptance scenario has passed. Unless
+the user separately asks that agent to run acceptance, the implementation agent
+must not re-execute the scenario or update the acceptance result. It must not
+add `acceptance_status`, `testing_status`, or any other task lifecycle field.
+
+### Revalidate and rerun separately
+
+After the remediation task is `done`, start a separate acceptance workflow:
+
+1. Revalidate the affected scenario against the current source of truth and
+   public CLI help.
+2. If the scenario text changed, obtain the required approval before execution.
+3. Execute only approved scenarios in a fresh isolated repository.
+4. Record pass/fail/blocked evidence and update `docs/testing/README.md` and the
+   acceptance summary in `docs/STATUS.md`.
+5. Link the rerun to the remediation task, but do not reopen or redefine the
+   completed task merely because the scenario still fails. A remaining mismatch
+   produces a new or updated remediation task through this same procedure.
+
+These are deliberately separate workflows: creating a remediation task,
+implementing and completing that task, and revalidating/executing acceptance.

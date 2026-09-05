@@ -30,3 +30,10 @@ the public `tbtm` CLI.
 Scenarios use `draft`, `in_review`, `approved`, `outdated`, or `superseded`.
 When behavior changes, update an unapproved scenario or supersede an approved
 one when preserving its previous meaning is useful.
+
+Scenario lifecycle is independent from implementation-task lifecycle. A failed
+execution creates a normal remediation task using `implementation_status`
+`ready`, `in_progress`, and `done`; it never adds an acceptance-specific status
+to the task. Completing that task and rerunning the affected approved scenario
+are separate workflows. Follow the detailed procedure in
+[`test-setup.md`](test-setup.md#failed-case-to-remediation-task).
