@@ -8,7 +8,10 @@ use std::{
 use tbtm_core::{
     AgentRegistration, Error, RepositoryHealth,
     agent::{AgentList, list_agents},
-    comment::{AddCommentInput, TaskComment, add_comment, list_comments},
+    comment::{
+        AddCommentInput, DeleteCommentInput, TaskComment, add_comment, delete_comment,
+        list_comments,
+    },
     exit_code, initialize, inspect_repository_health, register_agent,
     task::{
         ArchiveScope, ArchiveTaskInput, AvailabilityReason, AvailableTasksInput,
@@ -91,7 +94,7 @@ enum TaskCommand {
     Archive(TaskArchiveArgs),
     #[command(about = "Return an archived task to active planning")]
     Unarchive(TaskUnarchiveArgs),
-    #[command(about = "Add and list task comments")]
+    #[command(about = "Add, list, and delete task comments")]
     Comment(TaskCommentArgs),
 }
 
@@ -107,6 +110,8 @@ enum TaskCommentCommand {
     Add(TaskCommentAddArgs),
     #[command(about = "List a task's comments chronologically")]
     List(TaskCommentListArgs),
+    #[command(about = "Delete a task comment under the selected actor identity")]
+    Delete(TaskCommentDeleteArgs),
 }
 
 #[derive(Args)]
@@ -123,6 +128,19 @@ struct TaskCommentAddArgs {
 #[derive(Args)]
 struct TaskCommentListArgs {
     task_id: String,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct TaskCommentDeleteArgs {
+    task_id: String,
+    comment_id: uuid::Uuid,
+    #[arg(
+        long,
+        help = "Act as this registered agent; omission selects logical-user authority"
+    )]
+    agent: Option<uuid::Uuid>,
     #[arg(long)]
     json: bool,
 }
@@ -970,6 +988,18 @@ fn run() -> Result<(), (Error, bool)> {
                         .map_err(|error| (error, args.json))?;
                     render_comment_list(&result, args.json);
                 }
+                TaskCommentCommand::Delete(args) => {
+                    let result = delete_comment(
+                        &current,
+                        DeleteCommentInput {
+                            task_id: args.task_id,
+                            comment_id: args.comment_id,
+                            agent_id: args.agent,
+                        },
+                    )
+                    .map_err(|error| (error, args.json))?;
+                    render_deleted_comment(&result, args.json);
+                }
             },
         },
     }
@@ -1011,6 +1041,7 @@ fn command_uses_json(command: &Command) -> bool {
             TaskCommand::Comment(args) => match &args.command {
                 TaskCommentCommand::Add(args) => args.json,
                 TaskCommentCommand::List(args) => args.json,
+                TaskCommentCommand::Delete(args) => args.json,
             },
         },
     }
@@ -1040,6 +1071,17 @@ fn render_comment_list(comments: &[TaskComment], json: bool) {
             }
             render_comment(comment, false);
         }
+    }
+}
+
+fn render_deleted_comment(comment: &TaskComment, json: bool) {
+    if json {
+        render_success(comment, true);
+    } else {
+        println!(
+            "Deleted comment {} from task {}.",
+            comment.id, comment.task_id
+        );
     }
 }
 

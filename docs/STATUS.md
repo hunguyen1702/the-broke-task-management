@@ -47,7 +47,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E5-S4-T1 is implemented and verified with observed-claim confirmation binding, exact claim release, and authoritative post-release availability.
 - E5-S5-T1 is implemented and verified with cross-command status/claim, actor, archive/unarchive, concurrency, and linked-worktree regression coverage.
 - E6-S1-T1 is implemented and verified with durable actor-attributed comments, deterministic read-only listing, collision handling, migration coverage, and linked-worktree concurrency coverage.
-- E6-S2 planning is complete; E6-S2-T1 is ready to implement ownership-aware hard deletion on the authoritative E6-S1 comment model.
+- E6-S2-T1 is implemented and verified with ownership-aware atomic hard deletion, stable errors, rollback coverage, and linked-worktree concurrency coverage.
 
 ## E1 — Repository foundation and identity
 
@@ -129,8 +129,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 |---|---|---|---|
 | [E6-S1](epics/E6-S1-add-and-view-comments.md) | done | done | E1-S3, E2-S1 |
 | [E6-S1-T1](tasks/E6-S1-T1-implement-task-comments.md) | done | done | E1-S3-T1, E2-S1-T1 |
-| [E6-S2](epics/E6-S2-delete-comments-under-ownership-rules.md) | done | ready | E6-S1 |
-| [E6-S2-T1](tasks/E6-S2-T1-implement-ownership-aware-comment-deletion.md) | done | ready | E6-S1-T1 |
+| [E6-S2](epics/E6-S2-delete-comments-under-ownership-rules.md) | done | done | E6-S1 |
+| [E6-S2-T1](tasks/E6-S2-T1-implement-ownership-aware-comment-deletion.md) | done | done | E6-S1-T1 |
 | E6-S3 Keep comments immutable | needed | not_planned | E6-S1, E6-S2 |
 
 ## E7 — Agent-first CLI

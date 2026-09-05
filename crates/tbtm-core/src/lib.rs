@@ -58,6 +58,14 @@ pub enum Error {
     InvalidArchiveReason,
     #[error("comment content must not be blank")]
     InvalidCommentContent,
+    #[error("comment not found: {comment_id} on task {task_id}")]
+    CommentNotFound { task_id: String, comment_id: String },
+    #[error("comment deletion forbidden: {comment_id} on task {task_id}")]
+    CommentDeleteForbidden {
+        task_id: String,
+        comment_id: String,
+        author: String,
+    },
     #[error("task is claimed by another agent: {task_id}")]
     TaskClaimed {
         task_id: String,
@@ -189,6 +197,8 @@ impl Error {
             Self::TaskArchived { .. } => "TASK_ARCHIVED",
             Self::InvalidArchiveReason => "INVALID_ARCHIVE_REASON",
             Self::InvalidCommentContent => "INVALID_COMMENT_CONTENT",
+            Self::CommentNotFound { .. } => "COMMENT_NOT_FOUND",
+            Self::CommentDeleteForbidden { .. } => "COMMENT_DELETE_FORBIDDEN",
             Self::TaskClaimed { .. } => "TASK_CLAIMED",
             Self::ArchivePermissionDenied => "PERMISSION_DENIED",
             Self::ConfirmationRequired { .. } => "CONFIRMATION_REQUIRED",
@@ -318,6 +328,22 @@ impl Error {
             Self::ConfirmationRequired { impact } => {
                 serde_json::to_value(impact).expect("unarchive impact is serializable")
             }
+            Self::CommentNotFound {
+                task_id,
+                comment_id,
+            } => serde_json::json!({
+                "taskId": task_id,
+                "commentId": comment_id
+            }),
+            Self::CommentDeleteForbidden {
+                task_id,
+                comment_id,
+                author,
+            } => serde_json::json!({
+                "taskId": task_id,
+                "commentId": comment_id,
+                "author": author
+            }),
             Self::RepositoryNotInitialized { path } => serde_json::json!({
                 "check": "workspace",
                 "path": path,
@@ -1506,11 +1532,14 @@ pub fn exit_code(error: &Error) -> i32 {
         Error::AgentNotFound { .. }
         | Error::StatusNotFound { .. }
         | Error::TaskNotFound { .. }
+        | Error::CommentNotFound { .. }
         | Error::ClaimNotFound { .. }
         | Error::DependencyNotFound { .. } => 3,
         Error::ParentNotFound { .. } => 3,
         Error::ClaimConflict { .. } | Error::TaskClaimed { .. } | Error::ClaimChanged { .. } => 4,
-        Error::ClaimNotOwned { .. } | Error::ArchivePermissionDenied => 5,
+        Error::ClaimNotOwned { .. }
+        | Error::ArchivePermissionDenied
+        | Error::CommentDeleteForbidden { .. } => 5,
         Error::Phase {
             phase: "FORCE_CONFIRMATION_REQUIRED" | "CONFIRMATION_REQUIRED",
             ..
