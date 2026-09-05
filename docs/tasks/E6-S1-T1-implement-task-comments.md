@@ -217,7 +217,7 @@ Smoke-test in a temporary repository by registering an agent, creating active an
 - Human and JSON output, actor representation, errors, details, and exits are stable and tested.
 - Collision, rollback, concurrent-process, and linked-worktree tests pass.
 - No edit/delete operation or `FullTask` comment field is introduced.
-- Scenario impact is revalidated and new approved behavior scenarios are added through the acceptance workflow.
+- Scenario impact is recorded for handoff; scenario creation, revalidation, approval, and execution are not implementation completion criteria.
 - Formatting, Clippy with warnings denied, and all workspace tests pass.
 
 ## References

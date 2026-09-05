@@ -27,6 +27,22 @@ the public `tbtm` CLI.
 
 ## Lifecycle
 
+Acceptance work has two non-overlapping workflows:
+
+1. **Build and maintain scenarios:** create, edit, revalidate, supersede, review,
+   and approve scenario definitions and catalog entries. This workflow does not
+   implement product code or execute cases.
+2. **Execute approved scenarios:** run unchanged, approved definitions and
+   record results. This workflow does not edit scenario definitions, expected
+   behavior, or product code. A stale scenario returns to the build workflow;
+   a product defect returns to a separate implementation-task workflow.
+
+Story planning does not name or design acceptance scenarios. Task implementation
+records only an impact classification and affected scope; it does not create or
+modify anything under `docs/testing/`. These boundaries apply even when one
+person or agent performs the workflows consecutively, and each workflow should
+use its own commit when changes are committed.
+
 Scenarios use `draft`, `in_review`, `approved`, `outdated`, or `superseded`.
 When behavior changes, update an unapproved scenario or supersede an approved
 one when preserving its previous meaning is useful.

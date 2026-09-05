@@ -4,6 +4,11 @@ Acceptance scenarios exercise normal user workflows through the public `tbtm`
 CLI. Detailed transaction, migration, race, locking, and fault-injection checks
 belong in the automated Rust test suite.
 
+This document governs execution only. Scenario creation, editing, revalidation,
+review, and approval must already be complete before execution begins. Never
+change scenario text or expected results during a run; return stale definitions
+to the separate acceptance-scenario build workflow.
+
 ## Common setup
 
 1. Build the CLI with `rtk cargo build -p tbtm` and set `TB_BIN` to its absolute
@@ -90,10 +95,12 @@ add `acceptance_status`, `testing_status`, or any other task lifecycle field.
 
 After the remediation task is `done`, start a separate acceptance workflow:
 
-1. Revalidate the affected scenario against the current source of truth and
-   public CLI help.
-2. If the scenario text changed, obtain the required approval before execution.
-3. Execute only approved scenarios in a fresh isolated repository.
+1. In the acceptance-scenario build workflow, revalidate the affected scenario
+   against the current source of truth and public CLI help.
+2. If the scenario text changed, obtain the required approval and finish that
+   workflow before execution.
+3. Start a distinct execution workflow and run only approved scenarios in a
+   fresh isolated repository.
 4. Record pass/fail/blocked evidence and update `docs/testing/README.md` and the
    acceptance summary in `docs/STATUS.md`.
 5. Link the rerun to the remediation task, but do not reopen or redefine the

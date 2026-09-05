@@ -4,8 +4,6 @@ kind: implementation_task
 planning_status: done
 implementation_status: done
 scenario_impact: add
-scenario_impact_targets:
-  - AT-E6-S3-001
 depends_on:
   - E6-S1-T1
   - E6-S2-T1
@@ -149,7 +147,10 @@ Smoke-test an authorized user correction and a forbidden agent correction on bot
 
 ## Acceptance scenario impact
 
-`add`: E6-S3 establishes the combined public correction journey and its partial-failure boundary even though it introduces no command. Hand off `AT-E6-S3-001` to the separate acceptance-scenario workflow to cover authorized delete-then-add identity replacement, forbidden deletion preserving the original, and failed add after committed deletion without duplicating E6-S1/E6-S2 command-level cases.
+`add`: E6-S3 establishes the combined public correction journey and its
+partial-failure boundary even though it introduces no command. Hand off the
+affected E6-S3 behavior to the separate acceptance-scenario workflow; that
+workflow owns scenario IDs and case design.
 
 ## Definition of done
 

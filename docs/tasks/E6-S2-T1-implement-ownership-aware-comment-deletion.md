@@ -157,7 +157,7 @@ Smoke-test user, owner-agent, and foreign-agent deletion on active and archived 
 - Task state and mutation metadata remain unchanged on success and failure.
 - Human/JSON output, stable errors/details/exits, active/archived parity, rollback, concurrency, and linked-worktree tests pass.
 - Help and contract describe the actor trust model without claiming caller authentication.
-- Acceptance impact is revalidated and E6-S2 scenarios are added through the acceptance workflow.
+- Acceptance impact is recorded for handoff; scenario creation, revalidation, approval, and execution are not implementation completion criteria.
 - Formatting, Clippy with warnings denied, and all workspace tests pass.
 
 ## References
