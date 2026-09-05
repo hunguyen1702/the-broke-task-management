@@ -5,7 +5,7 @@
 - Catalog state: `approved`
 - Approved: 2026-09-04
 - Last simplified: 2026-09-04
-- Last full execution: not run
+- Last full execution: 2026-09-04 (86 passed, 2 failed, 0 blocked)
 
 This catalog is a concise QA suite for common user workflows. It checks public
 CLI inputs, outputs, and likely errors. Exhaustive validation, transactions,

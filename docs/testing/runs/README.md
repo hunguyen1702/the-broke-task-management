@@ -7,7 +7,13 @@ When a run needs to be retained, create
 - scenarios run;
 - passed, failed, and blocked cases;
 - actual command and output for failures;
+- the follow-up task linked for every failed case;
 - cleanup result.
 
 Do not store temporary repositories, databases, binary output, hashes, or
 successful command transcripts unless needed to diagnose a failure.
+
+Before closing a failed run, follow the failure-to-task procedure in
+[`test-setup.md`](../test-setup.md#result-and-cleanup). A later run should reuse
+the same task for the same unresolved defect and link the new evidence rather
+than create a duplicate.

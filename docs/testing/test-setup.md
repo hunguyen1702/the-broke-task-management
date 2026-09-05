@@ -32,3 +32,19 @@ failure blocks the scenario; the executor should not invent replacement data.
 A case passes when its command has the expected exit code and its user-visible
 output contains the stated values. Record the command and output for a failure.
 Remove the temporary directory and linked worktree after the scenario.
+
+For every failed case, create or update one follow-up file under `docs/tasks/`
+before closing the run:
+
+- Search existing tasks and prior run summaries first; update the existing open
+  task when it tracks the same failure instead of creating a duplicate.
+- Use the affected story's next task ID and record the scenario ID, run ID,
+  failure evidence, and classification in the task.
+- Classify the failure as an implementation defect, scenario drift, contract
+  ambiguity, or environment/setup problem. Do not assume every mismatch needs
+  a source-code change.
+- Define the expected correction, verification, and acceptance impact. A failed
+  common workflow normally requires `revalidate` and rerun after correction.
+- Add the follow-up task to `docs/STATUS.md` with status `ready`, or document why
+  it is blocked. Acceptance execution still must not modify implementation or
+  expected behavior while diagnosing the failure.
