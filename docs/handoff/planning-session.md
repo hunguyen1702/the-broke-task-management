@@ -2,12 +2,16 @@
 
 ## Mục tiêu session
 
-Đi lần lượt qua từng product story trong [PRD](../PRD.md), phỏng vấn người dùng để chốt hướng implementation, rồi tạo hai đầu ra:
+Planning các product story đủ điều kiện trong [PRD](../PRD.md), phỏng vấn người dùng để chốt hướng implementation, rồi tạo hai đầu ra cho mỗi story:
 
 1. Mô tả story/epic trong `docs/epics/`.
 2. Mô tả technical implementation task trong `docs/tasks/`.
 
 Không implement source code trong planning session này.
+
+Nhiều story có thể được planning song song khi thỏa contract dependency và
+quy tắc ownership bên dưới. Parallel planning không cho phép một story consumer
+đi trước contract mà nó kế thừa.
 
 ## Trạng thái hiện tại
 
@@ -243,25 +247,34 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, 
 
 - Đọc trực tiếp section của story trong `docs/PRD.md`; không dựa chỉ vào handoff này.
 - Đọc thêm các section PRD được story tham chiếu: domain rules, functional requirements, workflows, validation, NFR, MVP acceptance criteria và dependency stories.
-- Đọc epic/task đã planned nếu story mới phụ thuộc vào quyết định trước đó.
+- Đọc trực tiếp mọi epic contract trong `contract_depends_on` và implementation task tương ứng nếu đã tồn tại; không dựa vào riêng dashboard hoặc bản tóm tắt handoff.
 - PRD là source of truth cho product behavior; epic/task ghi solution decisions.
 
-### 2. Tóm tắt context trước khi planning
+### 2. Kiểm tra eligibility và claim planning
+
+- `contract_depends_on` chỉ chứa story ID. `depends_on` trong technical task chỉ chứa implementation-task ID; không dùng lẫn hai loại.
+- Một story đủ điều kiện planning khi mọi story trong toàn bộ transitive closure của `contract_depends_on` có planning `done` và epic contract đã tồn tại.
+- Các story đủ điều kiện và không nằm trong dependency path của nhau có thể được planning song song, kể cả khi thuộc cùng epic.
+- Trước khi phỏng vấn, claim story bằng cách đổi Planning từ `needed` sang `in_progress` trong `docs/STATUS.md`, rồi đọc lại dòng vừa cập nhật. Nếu session khác đã claim, dừng story đó và chọn story đủ điều kiện khác.
+- Mỗi session chỉ sở hữu epic/task của story đã claim. Không sửa file story của session khác; khi cập nhật dashboard hoặc handoff phải giữ nguyên thay đổi đồng thời.
+- Giữ claim `in_progress` cho đến khi tạo file, hoàn tất cross-check dependency, review và cập nhật handoff. Nếu planning dừng giữa chừng, không đánh dấu `done`.
+
+### 3. Tóm tắt context trước khi planning
 
 - Trước khi bắt đầu phỏng vấn hoặc đề xuất hướng implementation, tóm tắt lại context của story cho người dùng.
 - Tóm tắt phải nêu ngắn gọn outcome, behavior bắt buộc từ PRD, dependencies, các quyết định đã kế thừa từ story trước và những điểm còn mở cần planning.
 - Chỉ bắt đầu câu hỏi planning sau khi context này đã được trình bày, để người dùng có cùng baseline khi đưa ra quyết định.
 
-### 3. Phỏng vấn người dùng
+### 4. Phỏng vấn người dùng
 
-- Đi từng story, bắt đầu từ story tiếp theo trong danh sách trạng thái.
+- Chọn một story `needed` đã đủ điều kiện theo contract graph; không bắt buộc theo thứ tự epic.
 - Chỉ hỏi điểm còn mơ hồ hoặc có nhiều hướng implementation ảnh hưởng observable behavior.
 - Đề xuất phương án mặc định rõ ràng để người dùng có thể trả lời ngắn.
 - Giữ MVP đơn giản; không đào sâu adversarial filesystem behavior, recovery protocol hoặc edge case hiếm nếu PRD không yêu cầu.
 - Khi người dùng chốt trade-off khác PRD, nêu conflict và xin phép cập nhật PRD trước khi ghi plan.
-- Không bắt đầu story kế tiếp trước khi story hiện tại đạt READY và tài liệu đã được tạo.
+- Một session không bắt đầu story thứ hai trước khi story hiện tại đạt READY và tài liệu đã được tạo. Session khác có thể đồng thời planning story độc lập đã claim riêng.
 
-### 4. Review sau mỗi vòng trả lời
+### 5. Review sau mỗi vòng trả lời
 
 Chỉ bắt đầu review khi người dùng đã xác nhận một hoặc nhiều quyết định planning. Không gọi review khi người dùng đang hỏi thêm về requirement, phản biện giả định, so sánh phương án, hoặc chưa thể hiện rằng họ đã chốt lựa chọn. Tiếp tục trao đổi tự nhiên cho đến khi có quyết định rõ ràng; nếu chưa chắc, hỏi lại thay vì suy diễn một câu hỏi thành approval.
 
@@ -275,9 +288,9 @@ Sau mỗi vòng quyết định đã được người dùng xác nhận, spawn 
 
 Agent review phải trả `READY` hoặc `NOT READY` và blocker cụ thể. Nếu `NOT READY`, tiếp tục phỏng vấn những blocker quan trọng. Không mở rộng sang chi tiết ít giá trị chỉ để đạt độ bao phủ lý thuyết.
 
-Sau khi viết file, yêu cầu agent review trực tiếp PRD/epic/task để tìm contradiction quan trọng. Sửa blocker, rồi chạy review lại.
+Sau khi viết file và hoàn tất dependency cross-check bên dưới, yêu cầu agent review trực tiếp PRD/epic/task để tìm contradiction quan trọng. Sửa blocker, chạy lại cross-check bị ảnh hưởng, rồi review lại.
 
-### 5. Tạo output
+### 6. Tạo output
 
 Khi READY, tạo:
 
@@ -287,6 +300,8 @@ docs/tasks/<STORY-ID>-T1-<slug>.md
 ```
 
 Epic plan nên gồm:
+
+- Frontmatter `contract_depends_on` khớp chính xác contract dependency trong PRD và `docs/STATUS.md`.
 
 - Outcome và user story.
 - Scope/out of scope.
@@ -298,6 +313,8 @@ Epic plan nên gồm:
 
 Technical task nên gồm:
 
+- Frontmatter `depends_on` chỉ rõ các implementation task phải `done` trước khi task này có thể `ready`.
+
 - Objective và deliverables.
 - Proposed structure và technical choices.
 - Implementation flow đủ để coding agent bắt đầu.
@@ -308,11 +325,25 @@ Technical task nên gồm:
 
 Giữ plan đủ cụ thể để implement nhưng không biến thành line-by-line implementation hoặc catalogue mọi edge case.
 
-### 6. Kiểm tra trước handoff
+### 7. Cross-check contract dependency sau khi tạo file
+
+Đây là gate bắt buộc sau khi tạo epic/task và trước khi đánh dấu planning `done`:
+
+1. Đọc lại phiên bản hiện tại của từng epic trong `contract_depends_on` và technical task tương ứng nếu có; không dùng nội dung đã nhớ từ đầu session.
+2. So sánh contract mới với dependency về terminology, identity, ownership, state transitions, persistence boundary, output/error shape, concurrency và invariant được tái sử dụng.
+3. Xác nhận story mới consume contract hiện có thay vì định nghĩa model hoặc source of truth cạnh tranh.
+4. Kiểm tra `contract_depends_on` của epic khớp PRD và dashboard; kiểm tra `depends_on` của task đủ cho implementation ordering nhưng không đưa dependency chỉ mang tính tham khảo vào làm blocker.
+5. Nếu dependency contract đã thay đổi trong lúc planning hoặc có contradiction, giữ planning `in_progress`, sửa plan hoặc quay lại phỏng vấn. Thay đổi observable behavior trong PRD vẫn cần người dùng chấp thuận.
+6. Ghi kết quả cross-check ngắn trong phần review/handoff của story, gồm các dependency đã đọc và kết luận `NO CONFLICT` hoặc blocker còn lại.
+
+Chỉ sau gate này và document review cuối mới đổi planning sang `done`, rồi tính implementation `ready`/`blocked` từ task-level `depends_on`.
+
+### 8. Kiểm tra trước handoff
 
 - Chạy `git diff --check`.
 - Kiểm tra link giữa PRD, epic và task.
 - Xác nhận PRD/epic/task không mâu thuẫn.
+- Xác nhận dependency cross-check đã đọc lại tất cả direct contract dependencies và không còn conflict.
 - Không sửa hoặc xóa unrelated user files.
 - Mọi shell command phải prefix bằng `rtk` theo repository instruction.
 

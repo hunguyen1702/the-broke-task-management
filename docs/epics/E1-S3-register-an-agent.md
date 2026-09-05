@@ -3,9 +3,8 @@ id: E1-S3
 kind: epic
 planning_status: done
 implementation_status: done
-depends_on:
+contract_depends_on:
   - E1-S1
-  - E1-S5
 ---
 
 # E1-S3: Register an agent

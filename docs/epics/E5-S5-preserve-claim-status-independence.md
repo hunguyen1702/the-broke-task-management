@@ -3,7 +3,7 @@ id: E5-S5
 kind: epic
 planning_status: done
 implementation_status: done
-depends_on:
+contract_depends_on:
   - E3-S1
   - E5-S1
   - E5-S3

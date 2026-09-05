@@ -52,8 +52,10 @@ Use temporary directories for filesystem tests. Cover normal, invalid, no-op pat
 
 ### Plan a story
 
-- Follow `docs/handoff/planning-session.md`. Read the story and referenced domain/dependency sections in `docs/PRD.md`, related approved epic/task contracts, and `docs/STATUS.md`.
+- Follow `docs/handoff/planning-session.md`. Read the story and referenced domain/dependency sections in `docs/PRD.md`, related approved epic/task contracts, and `docs/STATUS.md`. Story frontmatter uses `contract_depends_on`; implementation-task frontmatter uses `depends_on`.
+- A story may be planned only after all transitive `contract_depends_on` stories are planned and approved. Independent eligible stories may be planned in parallel. Before planning, claim the story as `in_progress` in `docs/STATUS.md` and re-read the claim; do not work on a story claimed by another session or overwrite its files.
 - Summarize the task context before planning, confirm observable decisions with the user, complete the required reviews, and write both `docs/epics/<STORY>.md` and `docs/tasks/<STORY>-T1-*.md`; do not implement source code during planning.
+- After creating the epic/task files, re-read every direct dependency epic and its implementation task when present. Cross-check terminology, identity, state transitions, persistence, output/error contracts, concurrency, and shared invariants. Resolve every conflict before marking planning `done`; record a concise `NO CONFLICT` result or remaining blocker in the planning handoff.
 - Once planning is complete and reviewed, update the new documents' frontmatter, `docs/STATUS.md`, and the planning handoff immediately before the docs commit, then ask the user to confirm committing the documentation.
 - Plan only the product contract and implementation task. Do not create or edit acceptance scenarios, assign acceptance scenario IDs, prescribe scenario cases, review the acceptance catalog, or execute acceptance commands. Acceptance impact is determined after implementation from the actual change.
 

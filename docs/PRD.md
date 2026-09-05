@@ -599,6 +599,14 @@ The MVP is accepted when all of the following are demonstrably true:
 
 The backlog below defines product-level stories. Technical implementation tasks and estimates should be created during detailed planning after architecture decisions are recorded.
 
+Every `Dependencies` entry in this section is a **contract dependency**: the
+referenced story contract must be planned and approved before planning of the
+dependent story can finish. It does not by itself require the referenced
+implementation task to be complete. Implementation ordering is recorded
+separately by task-level `depends_on`. An epic identifier in the prose below is
+shorthand for every story currently listed under that epic; `docs/STATUS.md`
+expands those shorthands to explicit story IDs for planning coordination.
+
 ### Epic E1: Repository foundation and identity
 
 **Outcome:** A repository has a stable local task store, configuration, and actor identities.
@@ -1025,7 +1033,7 @@ Acceptance criteria:
 - Task create, view, list, update, archive, and unarchive are covered.
 - Actor identity is explicit for scoped operations.
 
-Dependencies: E1, E2, E7-S1.
+Dependencies: E1-S1, E1-S2, E1-S3, E1-S4, E1-S5, E2-S1, E2-S2, E2-S3, E2-S4, E2-S5, E2-S6, E7-S1.
 
 #### Story E7-S3: Expose planning relationships and status operations
 
@@ -1038,7 +1046,7 @@ Acceptance criteria:
 - Status configuration operations are available.
 - Impact warnings can be confirmed explicitly or rejected non-interactively.
 
-Dependencies: E3, E4, E7-S1.
+Dependencies: E3-S1, E3-S2, E3-S3, E3-S4, E4-S1, E4-S2, E4-S3, E4-S4, E4-S5, E7-S1.
 
 #### Story E7-S4: Expose availability and claim operations
 
@@ -1051,7 +1059,7 @@ Acceptance criteria:
 - Unclaim and explicit force-unclaim are supported.
 - Claim conflicts have stable machine-readable results.
 
-Dependencies: E4-S3, E4-S4, E5, E7-S1.
+Dependencies: E4-S3, E4-S4, E5-S1, E5-S2, E5-S3, E5-S4, E5-S5, E7-S1.
 
 #### Story E7-S5: Expose comment operations
 
@@ -1063,7 +1071,7 @@ Acceptance criteria:
 - No edit operation is exposed.
 - Archived-task comments follow the same command flow.
 
-Dependencies: E6, E7-S1.
+Dependencies: E6-S1, E6-S2, E6-S3, E7-S1.
 
 ### Epic E8: Visual Studio Code scrum experience
 
@@ -1118,7 +1126,7 @@ Acceptance criteria:
 - Archive and unarchive are available with required warnings.
 - Created/updated and claim metadata are visible.
 
-Dependencies: E2, E4-S1, E4-S2, E8-S1.
+Dependencies: E2-S1, E2-S2, E2-S3, E2-S4, E2-S5, E2-S6, E4-S1, E4-S2, E8-S1.
 
 #### Story E8-S5: Manage claims from the UI
 
@@ -1131,7 +1139,7 @@ Acceptance criteria:
 - Force-unclaim is explicit and confirmed.
 - Status does not change as a side effect.
 
-Dependencies: E5, E8-S4.
+Dependencies: E5-S1, E5-S2, E5-S3, E5-S4, E5-S5, E8-S4.
 
 #### Story E8-S6: Manage comments from the UI
 
@@ -1144,7 +1152,7 @@ Acceptance criteria:
 - User can delete any comment.
 - Editing is unavailable.
 
-Dependencies: E6, E8-S4.
+Dependencies: E6-S1, E6-S2, E6-S3, E8-S4.
 
 #### Story E8-S7: Explore relationship maps
 
@@ -1169,7 +1177,7 @@ Acceptance criteria:
 - Completion-semantic changes show impact warnings.
 - Registered agents and their claims are visible.
 
-Dependencies: E1-S4, E3, E8-S1.
+Dependencies: E1-S4, E3-S1, E3-S2, E3-S3, E3-S4, E8-S1.
 
 ### Epic E9: Reliability, verification, and product guidance
 
@@ -1198,7 +1206,7 @@ Acceptance criteria:
 - Archive, unarchive, and status-semantics changes recalculate availability correctly.
 - Deterministic ordering is verified.
 
-Dependencies: E3-S3, E4, E2-S5, E2-S6.
+Dependencies: E3-S3, E4-S1, E4-S2, E4-S3, E4-S4, E4-S5, E2-S5, E2-S6.
 
 #### Story E9-S3: Verify data recovery behavior
 
@@ -1223,7 +1231,7 @@ Acceptance criteria:
 - Claim, status, archive, and comment semantics are documented.
 - JSON output and exit behavior are documented for agents.
 
-Dependencies: E7, E8.
+Dependencies: E7-S1, E7-S2, E7-S3, E7-S4, E7-S5, E8-S1, E8-S2, E8-S3, E8-S4, E8-S5, E8-S6, E8-S7, E8-S8.
 
 ## 15. Suggested delivery sequence
 

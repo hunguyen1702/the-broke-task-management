@@ -15,11 +15,30 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 ## Status values
 
-- Planning: `needed` or `done`.
+- Planning: `needed`, `in_progress`, or `done`. `in_progress` is the
+  repository-visible claim for one planning session.
 - Implementation: `not_planned`, `ready`, `blocked`, `in_progress`, or `done`.
 - `ready` means the implementation plan exists and its implementation dependencies are done.
 - `in_progress` is the repository-visible claim for one active implementation session. Claim a `ready` task here and in its task/epic frontmatter before changing source code; other agents or sessions must not work on a task already marked `in_progress`.
 - `done` means implementation and its required verification are complete.
+
+## Dependency model
+
+- Story/epic rows use **contract dependencies**. A story may begin planning only
+  after every story named in its contract dependency set has
+  `planning_status: done` and an approved story contract. Existing story files
+  record the same set in frontmatter as `contract_depends_on`.
+- Implementation-task rows use **implementation dependencies**. A task may be
+  `ready` only after every task named in `depends_on` has
+  `implementation_status: done`.
+- Contract dependencies must name story IDs (`E<n>-S<n>`), while implementation
+  dependencies must name task IDs (`E<n>-S<n>-T<n>`). Aggregate epic IDs such as
+  `E2` are expanded below so parallel-planning eligibility is unambiguous.
+- Two stories may be planned concurrently only when neither story is reachable
+  from the other through `contract_depends_on`, all of each story's existing
+  contract dependencies are already planned, and the sessions do not edit the
+  same story files. Shared dashboard and handoff updates must be integrated
+  without overwriting concurrent work.
 
 ## Next work
 
@@ -52,7 +71,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 ## E1 — Repository foundation and identity
 
-| ID | Kind | Planning | Implementation | Depends on |
+| ID | Kind | Planning | Implementation | Contract or implementation depends on |
 |---|---|---|---|---|
 | [E1-S1](epics/E1-S1-initialize-repository.md) | Epic | done | done | — |
 | [E1-S1-T1](tasks/E1-S1-T1-implement-repository-initialization.md) | Task | done | done (`8721ecf`) | — |
@@ -61,14 +80,14 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E1-S2-T1](tasks/E1-S2-T1-implement-repository-configuration-resolution.md) | Task | done | done (`f535803`) | E1-S1-T1 |
 | [E1-S5](epics/E1-S5-share-repository-state-across-git-worktrees.md) | Epic | done | done | E1-S2 |
 | [E1-S5-T1](tasks/E1-S5-T1-implement-shared-git-worktree-repository-resolution.md) | Task | done | done (`d45f852`) | E1-S2-T1 |
-| [E1-S3](epics/E1-S3-register-an-agent.md) | Epic | done | done | E1-S1, E1-S5 implementation order |
+| [E1-S3](epics/E1-S3-register-an-agent.md) | Epic | done | done | E1-S1 |
 | [E1-S3-T1](tasks/E1-S3-T1-implement-agent-registration.md) | Task | done | done (`015ffc8`) | E1-S1-T1, E1-S2-T1, E1-S5-T1 |
 | [E1-S4](epics/E1-S4-list-agents-and-claims.md) | Epic | done | done | E1-S3, E5-S1 |
 | [E1-S4-T1](tasks/E1-S4-T1-implement-agent-and-claim-listing.md) | Task | done | done | E1-S3-T1, E2-S1-T1, E3-S1-T1, E4-S2-T1, E5-S1-T1 |
 
 ## E2 — Task content and lifecycle
 
-| Story | Planning | Implementation | Depends on |
+| Story | Planning | Implementation | Contract or implementation depends on |
 |---|---|---|---|
 | [E2-S1](epics/E2-S1-create-a-task.md) | done | done | E1-S1, E1-S3, E3-S1 |
 | [E2-S1-T1](tasks/E2-S1-T1-implement-task-creation.md) | done | done | E1-S1-T1, E1-S3-T1, E3-S1-T1 |
@@ -85,7 +104,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 ## E3 — Status workflow
 
-| Story | Planning | Implementation | Depends on |
+| Story | Planning | Implementation | Contract or implementation depends on |
 |---|---|---|---|
 | [E3-S1](epics/E3-S1-use-default-statuses.md) | done | done | E1-S1 |
 | [E3-S1-T1](tasks/E3-S1-T1-implement-default-status-codes.md) | done | done (`4d8ebb2`) | E1-S1-T1 |
@@ -96,7 +115,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 ## E4 — Hierarchy, dependencies, and availability
 
-| Story | Planning | Implementation | Depends on |
+| Story | Planning | Implementation | Contract or implementation depends on |
 |---|---|---|---|
 | [E4-S1](epics/E4-S1-manage-task-hierarchy.md) | done | done | E2-S1 |
 | [E4-S1-T1](tasks/E4-S1-T1-implement-task-hierarchy-management.md) | done | done | E2-S1-T1, E2-S2-T1 |
@@ -112,7 +131,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 ## E5 — Multi-agent claiming
 
-| Story | Planning | Implementation | Depends on |
+| Story | Planning | Implementation | Contract or implementation depends on |
 |---|---|---|---|
 | [E5-S1](epics/E5-S1-claim-a-specified-task-atomically.md) | done | done | E1-S3, E2-S1, E3-S1, E4-S2 |
 | [E5-S1-T1](tasks/E5-S1-T1-implement-atomic-specified-task-claiming.md) | done | done | E1-S3-T1, E1-S5-T1, E2-S1-T1, E2-S2-T1, E3-S1-T1, E4-S2-T1 |
@@ -127,7 +146,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 ## E6 — Task comments and collaboration context
 
-| Story | Planning | Implementation | Depends on |
+| Story | Planning | Implementation | Contract or implementation depends on |
 |---|---|---|---|
 | [E6-S1](epics/E6-S1-add-and-view-comments.md) | done | done | E1-S3, E2-S1 |
 | [E6-S1-T1](tasks/E6-S1-T1-implement-task-comments.md) | done | done | E1-S3-T1, E2-S1-T1 |
@@ -138,32 +157,32 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 ## E7 — Agent-first CLI
 
-| Story | Planning | Implementation | Depends on |
+| Story | Planning | Implementation | Contract depends on |
 |---|---|---|---|
 | E7-S1 Provide consistent command output | needed | not_planned | E1-S1 |
-| E7-S2 Expose repository, agent, and task operations | needed | not_planned | E1, E2, E7-S1 |
-| E7-S3 Expose planning relationships and status operations | needed | not_planned | E3, E4, E7-S1 |
-| E7-S4 Expose availability and claim operations | needed | not_planned | E4-S3, E4-S4, E5, E7-S1 |
-| E7-S5 Expose comment operations | needed | not_planned | E6, E7-S1 |
+| E7-S2 Expose repository, agent, and task operations | needed | not_planned | E1-S1, E1-S2, E1-S3, E1-S4, E1-S5, E2-S1, E2-S2, E2-S3, E2-S4, E2-S5, E2-S6, E7-S1 |
+| E7-S3 Expose planning relationships and status operations | needed | not_planned | E3-S1, E3-S2, E3-S3, E3-S4, E4-S1, E4-S2, E4-S3, E4-S4, E4-S5, E7-S1 |
+| E7-S4 Expose availability and claim operations | needed | not_planned | E4-S3, E4-S4, E5-S1, E5-S2, E5-S3, E5-S4, E5-S5, E7-S1 |
+| E7-S5 Expose comment operations | needed | not_planned | E6-S1, E6-S2, E6-S3, E7-S1 |
 
 ## E8 — Visual Studio Code scrum experience
 
-| Story | Planning | Implementation | Depends on |
+| Story | Planning | Implementation | Contract depends on |
 |---|---|---|---|
 | E8-S1 Connect the extension to repository state | needed | not_planned | E1-S2, E7-S1 |
 | E8-S2 View and filter the scrum board | needed | not_planned | E2-S2, E3-S2, E4-S3, E5-S1, E8-S1 |
 | E8-S3 Change status using the board | needed | not_planned | E3-S3, E8-S2 |
-| E8-S4 Manage task details | needed | not_planned | E2, E4-S1, E4-S2, E8-S1 |
-| E8-S5 Manage claims from the UI | needed | not_planned | E5, E8-S4 |
-| E8-S6 Manage comments from the UI | needed | not_planned | E6, E8-S4 |
+| E8-S4 Manage task details | needed | not_planned | E2-S1, E2-S2, E2-S3, E2-S4, E2-S5, E2-S6, E4-S1, E4-S2, E8-S1 |
+| E8-S5 Manage claims from the UI | needed | not_planned | E5-S1, E5-S2, E5-S3, E5-S4, E5-S5, E8-S4 |
+| E8-S6 Manage comments from the UI | needed | not_planned | E6-S1, E6-S2, E6-S3, E8-S4 |
 | E8-S7 Explore relationship maps | needed | not_planned | E4-S5, E8-S4 |
-| E8-S8 Configure statuses and inspect agents | needed | not_planned | E1-S4, E3, E8-S1 |
+| E8-S8 Configure statuses and inspect agents | needed | not_planned | E1-S4, E3-S1, E3-S2, E3-S3, E3-S4, E8-S1 |
 
 ## E9 — Reliability, verification, and product guidance
 
-| Story | Planning | Implementation | Depends on |
+| Story | Planning | Implementation | Contract depends on |
 |---|---|---|---|
 | E9-S1 Verify concurrent claim safety | needed | not_planned | E1-S5, E5-S1, E5-S2 |
-| E9-S2 Verify graph and availability invariants | needed | not_planned | E3-S3, E4, E2-S5, E2-S6 |
+| E9-S2 Verify graph and availability invariants | needed | not_planned | E3-S3, E4-S1, E4-S2, E4-S3, E4-S4, E4-S5, E2-S5, E2-S6 |
 | E9-S3 Verify data recovery behavior | needed | not_planned | E1-S1, E4-S2, E5-S1 |
-| E9-S4 Document agent and human workflows | needed | not_planned | E7, E8 |
+| E9-S4 Document agent and human workflows | needed | not_planned | E7-S1, E7-S2, E7-S3, E7-S4, E7-S5, E8-S1, E8-S2, E8-S3, E8-S4, E8-S5, E8-S6, E8-S7, E8-S8 |
