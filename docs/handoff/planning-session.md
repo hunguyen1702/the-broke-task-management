@@ -56,6 +56,9 @@ Story đã hoàn tất planning:
 - **E3-S2: Create and organize custom statuses**
   - [Epic plan](../epics/E3-S2-create-and-organize-custom-statuses.md)
   - [Implementation task](../tasks/E3-S2-T1-implement-custom-status-creation-and-ordering.md)
+- **E3-S3: Change status completion semantics**
+  - [Epic plan](../epics/E3-S3-change-status-completion-semantics.md)
+  - [Implementation task](../tasks/E3-S3-T1-implement-repository-status-completion-changes.md)
 - **E4-S1: Manage task hierarchy**
   - [Epic plan](../epics/E4-S1-manage-task-hierarchy.md)
   - [Implementation task](../tasks/E4-S1-T1-implement-task-hierarchy-management.md)
@@ -98,7 +101,7 @@ Story đã hoàn tất planning:
 
 Story tiếp theo nếu tiếp tục planning:
 
-- **E3-S3: Change status completion semantics** — tiếp tục status workflow trên E3-S2 và authoritative availability của E4-S3.
+- **E3-S4: Delete an unused custom status** — tiếp tục status workflow trên E3-S2; chỉ xóa custom status không được task nào sử dụng.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -115,6 +118,8 @@ Story tiếp theo nếu tiếp tục planning:
 - **E5-S5-T1** đã implementation xong với cross-command claim/status independence regression coverage.
 
 E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, E5-S5-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. E3-S2-T1 đã planning xong và sẵn sàng implementation.
+
+**E3-S3-T1** đã planning xong nhưng implementation còn `blocked` bởi E3-S2-T1; E4-S3-T1 đã hoàn tất. Dependency cross-check đã đọc lại E3-S2/E3-S2-T1 và E4-S3/E4-S3-T1, kết luận `NO CONFLICT`.
 
 **E6-S1-T1** đã implementation và verification xong với comment creation/listing, actor attribution, migration 0008, deterministic read-only ordering và linked-worktree concurrency coverage.
 
@@ -180,6 +185,10 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, 
 - Sau khi critical path hoàn tất, chốt E3-S2 với top-level `status list/create/rename/move`, custom statuses mới mặc định incomplete, code immutable và tên unique theo ASCII case-insensitive qua migration `0009`.
 - Chốt create append hoặc đặt before/after; rename chỉ custom; reorder cả default/custom với contiguous zero-based order, atomic immediate transactions và valid no-write no-ops.
 - Chốt logical-user-only authority, exact human/JSON shapes và stable status errors; decision review kết luận READY trước khi tạo tài liệu.
+- Chốt E3-S3 với `status set-completed`, áp dụng cho cả default/custom status và định nghĩa completion ở cấp canonical repository, không phải per-task hoặc cross-repository global.
+- Chốt deterministic impact gồm active tasks dùng status và qualifying direct downstream tasks, với availability, claims và unresolved upstreams trước/sau; archived và recursive-only tasks bị loại.
+- Chốt explicit confirmation theo precedent E2-S6, valid no-write no-op, transactional impact recalculation, preserved claims và actual committed impact; decision review và direct document review đều kết luận READY.
+- Đọc lại direct dependency E3-S2/E3-S2-T1 và E4-S3/E4-S3-T1; cross-check terminology, identity, persistence, output/error, concurrency và shared invariants kết luận `NO CONFLICT`. E3-S3-T1 bị block đến khi E3-S2-T1 hoàn tất.
 - Chốt E4-S2 với directed many-to-many mandatory dependencies, command `task dependency add/remove`, explicit downstream qua `<task-id>` và upstream qua `--depends-on`.
 - Chốt chỉ downstream không archived mới được mutation; completed active downstream vẫn được sửa, archived upstream vẫn là target hợp lệ và thỏa edge theo effective completion.
 - Chốt remove cạnh không tồn tại là `DEPENDENCY_NOT_FOUND`; duplicate, self và cycle đều bị từ chối; không expose arbitrary `cyclePath` ở MVP.
@@ -359,8 +368,8 @@ Nếu tiếp tục implementation:
 
 Nếu tiếp tục planning:
 
-1. Mở `docs/PRD.md` và tìm `Story E3-S3: Change status completion semantics`.
-2. Đọc E3-S2, E4-S3, dependency/effective-completion rules và public status/task behavior hiện hành.
-3. Kế thừa status identity, name/order contract và authoritative availability predicate thay vì tạo model cạnh tranh.
+1. Mở `docs/PRD.md` và tìm `Story E3-S4: Delete an unused custom status`.
+2. Đọc E3-S2, status identity/usage rules và public status/task behavior hiện hành.
+3. Kế thừa status identity, name/order contract và repository-scoped status definitions thay vì tạo model cạnh tranh.
 4. Chỉ spawn review agent sau một vòng quyết định đã được người dùng xác nhận; không review trong lúc người dùng còn hỏi hoặc khám phá requirement.
-5. Khi READY, tạo epic và technical task E3-S3, review file, cập nhật danh sách trong handoff này.
+5. Khi READY, tạo epic và technical task E3-S4, review file, cập nhật danh sách trong handoff này.
