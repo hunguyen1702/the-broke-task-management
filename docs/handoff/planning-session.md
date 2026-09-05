@@ -85,6 +85,9 @@ Story đã hoàn tất planning:
 - **E6-S2: Delete comments under ownership rules**
   - [Epic plan](../epics/E6-S2-delete-comments-under-ownership-rules.md)
   - [Implementation task](../tasks/E6-S2-T1-implement-ownership-aware-comment-deletion.md)
+- **E6-S3: Keep comments immutable**
+  - [Epic plan](../epics/E6-S3-keep-comments-immutable.md)
+  - [Implementation task](../tasks/E6-S3-T1-harden-comment-immutability.md)
 
 Story được chủ đích defer:
 
@@ -92,7 +95,7 @@ Story được chủ đích defer:
 
 Story tiếp theo nếu tiếp tục planning:
 
-- **E6-S3: Keep comments immutable** — E6-S1 implementation đã hoàn tất và E6-S2 đã planned; story này sẵn sàng planning để chốt contract bất biến và regression coverage.
+- **E7-S1: Provide consistent command output** — bắt đầu Epic E7 trên các command và shared envelopes đã có.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -112,7 +115,9 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, 
 
 **E6-S1-T1** đã implementation và verification xong với comment creation/listing, actor attribution, migration 0008, deterministic read-only ordering và linked-worktree concurrency coverage.
 
-**E6-S2-T1** đã planning xong và sẵn sàng implementation trên comment model của E6-S1-T1, với hard delete theo actor được chọn, task-scoped lookup, stable ownership failures và transactional concurrency behavior.
+**E6-S2-T1** đã implementation và verification xong với hard delete theo actor được chọn, task-scoped lookup, stable ownership failures và transactional concurrency behavior.
+
+**E6-S3-T1** đã planning xong và sẵn sàng implementation. Task này khóa comment immutability bằng regression coverage, không thêm edit command hay migration; correction là hai operation delete rồi add độc lập.
 
 ## Việc đã làm
 
@@ -224,7 +229,11 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, 
 - Chốt E6-S2 với `task comment delete <task-id> <comment-id>`, logical user được xóa mọi comment và declared agent chỉ được xóa comment mang đúng UUID của mình.
 - Chốt actor selection kế thừa E6-S1: bỏ `--agent` chọn logical `user`; đây là trust convention chứ không xác thực physical caller, và authentication/credentials nằm ngoài scope.
 - Chốt task-scoped `COMMENT_NOT_FOUND`, stable `COMMENT_DELETE_FORBIDDEN`, hard delete không confirmation, trả deleted E6-S1 comment shape, không đổi task metadata và serialize concurrent deletes trong immediate transaction.
-- Viết epic/task E6-S2; decision review kết luận READY. E6-S2-T1 sẵn sàng implementation trên E6-S1-T1.
+- Viết epic/task E6-S2; decision review kết luận READY và task sau đó đã được implementation session hiện tại claim trên E6-S1-T1.
+- Chốt E6-S3 là invariant hardening: supported core, CLI và UI consumer không được update comment in place; không thêm edit command, migration, trigger, revision metadata hoặc audit history.
+- Chốt correction là hai operation E6-S2 delete rồi E6-S1 add độc lập, không atomic compensation; comment mới luôn có UUID mới và capture timestamp riêng nhưng timestamp value không bắt buộc khác comment cũ.
+- Chốt focused architecture guard cho public core comment operations và production `UPDATE task_comments`, cùng CLI surface tests; E8-S6 UI phải kế thừa immutable core boundary.
+- Phân loại acceptance impact E6-S3 là `add` cho combined correction journey `AT-E6-S3-001`; hai independent reviews sau chỉnh sửa đều kết luận READY.
 
 ## Quy tắc planning cho mỗi story
 
@@ -313,12 +322,12 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. Xem [status dashboard](../STATUS.md) để chọn task implementation đã planned và `ready`; E6-S2-T1 hiện sẵn sàng.
+1. Xem [status dashboard](../STATUS.md) để chọn task implementation đã planned và `ready`; E6-S3-T1 hiện sẵn sàng.
 
 Nếu tiếp tục planning:
 
-1. Mở `docs/PRD.md` và tìm `Story E6-S3: Keep comments immutable`.
-2. Đọc comment/actor/task rules cùng E6-S1 và E6-S2.
-3. Kế thừa authoritative comment schema, add/list behavior và ownership-aware deletion contract.
+1. Mở `docs/PRD.md` và tìm `Story E7-S1: Provide consistent command output`.
+2. Đọc các output requirements, shared human/JSON envelopes, exit-code conventions và public help hiện hành.
+3. Kế thừa contract của các command đã implemented thay vì tạo output model cạnh tranh.
 4. Chỉ spawn review agent sau một vòng quyết định đã được người dùng xác nhận; không review trong lúc người dùng còn hỏi hoặc khám phá requirement.
-5. Khi READY, tạo epic và technical task E6-S3, review file, cập nhật danh sách trong handoff này.
+5. Khi READY, tạo epic và technical task E7-S1, review file, cập nhật danh sách trong handoff này.
