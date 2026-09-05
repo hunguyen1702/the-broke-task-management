@@ -82,6 +82,9 @@ Story đã hoàn tất planning:
 - **E6-S1: Add and view comments**
   - [Epic plan](../epics/E6-S1-add-and-view-comments.md)
   - [Implementation task](../tasks/E6-S1-T1-implement-task-comments.md)
+- **E6-S2: Delete comments under ownership rules**
+  - [Epic plan](../epics/E6-S2-delete-comments-under-ownership-rules.md)
+  - [Implementation task](../tasks/E6-S2-T1-implement-ownership-aware-comment-deletion.md)
 
 Story được chủ đích defer:
 
@@ -89,7 +92,7 @@ Story được chủ đích defer:
 
 Story tiếp theo nếu tiếp tục planning:
 
-- **E6-S2: Delete a comment under ownership rules** — E6-S1 implementation đã hoàn tất; story này hiện sẵn sàng planning để chốt ownership failure/output behavior.
+- **E6-S3: Keep comments immutable** — E6-S1 implementation đã hoàn tất và E6-S2 đã planned; story này sẵn sàng planning để chốt contract bất biến và regression coverage.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -108,6 +111,8 @@ Story tiếp theo nếu tiếp tục planning:
 E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, E5-S5-T1, E4-S3-T1 và E1-S4-T1 đã implementation xong. E3-S2 tiếp tục được defer.
 
 **E6-S1-T1** đã implementation và verification xong với comment creation/listing, actor attribution, migration 0008, deterministic read-only ordering và linked-worktree concurrency coverage.
+
+**E6-S2-T1** đã planning xong và sẵn sàng implementation trên comment model của E6-S1-T1, với hard delete theo actor được chọn, task-scoped lookup, stable ownership failures và transactional concurrency behavior.
 
 ## Việc đã làm
 
@@ -216,6 +221,10 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, 
 - Chốt comment là child record độc lập, không đổi `updatedAt`, `updatedBy` hoặc state khác của task; comment history không được thêm vào shared full-task aggregate.
 - Chốt add là transactional mutation có compatible migration, list là read-only one-snapshot/no-migration query, cùng stable human/JSON and exit behavior.
 - Viết epic/task E6-S1; decision review kết luận READY. E6-S1-T1 sẵn sàng implementation trên E1-S3-T1 và E2-S1-T1.
+- Chốt E6-S2 với `task comment delete <task-id> <comment-id>`, logical user được xóa mọi comment và declared agent chỉ được xóa comment mang đúng UUID của mình.
+- Chốt actor selection kế thừa E6-S1: bỏ `--agent` chọn logical `user`; đây là trust convention chứ không xác thực physical caller, và authentication/credentials nằm ngoài scope.
+- Chốt task-scoped `COMMENT_NOT_FOUND`, stable `COMMENT_DELETE_FORBIDDEN`, hard delete không confirmation, trả deleted E6-S1 comment shape, không đổi task metadata và serialize concurrent deletes trong immediate transaction.
+- Viết epic/task E6-S2; decision review kết luận READY. E6-S2-T1 sẵn sàng implementation trên E6-S1-T1.
 
 ## Quy tắc planning cho mỗi story
 
@@ -243,7 +252,9 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, 
 
 ### 4. Review sau mỗi vòng trả lời
 
-Sau mỗi lần người dùng trả lời câu hỏi planning, spawn một agent độc lập để đánh giá nội dung theo 5 tiêu chí:
+Chỉ bắt đầu review khi người dùng đã xác nhận một hoặc nhiều quyết định planning. Không gọi review khi người dùng đang hỏi thêm về requirement, phản biện giả định, so sánh phương án, hoặc chưa thể hiện rằng họ đã chốt lựa chọn. Tiếp tục trao đổi tự nhiên cho đến khi có quyết định rõ ràng; nếu chưa chắc, hỏi lại thay vì suy diễn một câu hỏi thành approval.
+
+Sau mỗi vòng quyết định đã được người dùng xác nhận, spawn một agent độc lập để đánh giá nội dung theo 5 tiêu chí:
 
 1. Hướng implementation rõ ràng.
 2. Có cách test.
@@ -302,12 +313,12 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. Xem [status dashboard](../STATUS.md) để chọn task implementation đã planned và `ready`; E6-S1-T1 đã hoàn tất.
+1. Xem [status dashboard](../STATUS.md) để chọn task implementation đã planned và `ready`; E6-S2-T1 hiện sẵn sàng.
 
 Nếu tiếp tục planning:
 
-1. Mở `docs/PRD.md` và tìm `Story E6-S2: Delete a comment under ownership rules`.
-2. Đọc comment/actor/task rules, E6-S1 và các implementation contracts liên quan.
-3. Kế thừa authoritative comment schema và add/list behavior đã hoàn tất trong E6-S1-T1.
-4. Sau mỗi câu trả lời, spawn review agent theo 5 tiêu chí.
-5. Khi READY, tạo epic và technical task E6-S2, review file, cập nhật danh sách trong handoff này.
+1. Mở `docs/PRD.md` và tìm `Story E6-S3: Keep comments immutable`.
+2. Đọc comment/actor/task rules cùng E6-S1 và E6-S2.
+3. Kế thừa authoritative comment schema, add/list behavior và ownership-aware deletion contract.
+4. Chỉ spawn review agent sau một vòng quyết định đã được người dùng xác nhận; không review trong lúc người dùng còn hỏi hoặc khám phá requirement.
+5. Khi READY, tạo epic và technical task E6-S3, review file, cập nhật danh sách trong handoff này.
