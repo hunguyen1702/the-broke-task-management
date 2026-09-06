@@ -107,13 +107,16 @@ Story đã hoàn tất planning:
 - **E7-S2: Expose repository, agent, and task operations**
   - [Epic plan](../epics/E7-S2-expose-repository-agent-and-task-operations.md)
   - [Implementation task](../tasks/E7-S2-T1-harden-repository-agent-and-task-cli-surface.md)
+- **E7-S3: Expose planning relationships and status operations**
+  - [Epic plan](../epics/E7-S3-expose-planning-relationships-and-status-operations.md)
+  - [Implementation task](../tasks/E7-S3-T1-harden-planning-relationship-and-status-cli-surface.md)
 - **E9-S1: Verify concurrent claim safety**
   - [Epic plan](../epics/E9-S1-verify-concurrent-claim-safety.md)
   - [Implementation task](../tasks/E9-S1-T1-harden-concurrent-claim-verification.md)
 
 Story tiếp theo nếu tiếp tục planning:
 
-- **E7-S3: Expose planning relationships and status operations** — kế thừa output boundary E7-S1 và hợp nhất command-surface contract cho status, hierarchy, dependency, availability, blocking và relationship maps đã được E3/E4 định nghĩa.
+- **E8-S1: Connect the extension to repository state** — E7-S4 đang được planning session khác claim; E8-S1 là story `needed` tiếp theo hiện chưa có claim.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -143,9 +146,11 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, 
 
 **E7-S1-T1** đã implementation và verification xong với global/idempotent `--json`, một response envelope, JSON-aware parse errors, stdout/stderr, exit taxonomy, non-interactive confirmation và partial-uninstall reporting; không đổi domain payload hay persistence.
 
-**E7-S2-T1** đã planning xong và sẵn sàng implementation. Task audit, chuẩn hóa help/wiring và regression-test command surface cho repository, agent và task lifecycle đã có; không thêm alias, domain behavior, payload, migration hay persistence. Dependency cross-check đã đọc lại E1-S1–E1-S5, E2-S1–E2-S6, E7-S1 và các implementation task trực tiếp (gồm E1-S1-T2), kết luận `NO CONFLICT`. Independent document review kết luận `READY`.
+**E7-S2-T1** đã implementation và verification xong với command/help inventory, actor-boundary checks và canonical-store lifecycle qua main/linked worktrees.
 
-**E9-S1-T1** đã planning xong và sẵn sàng implementation. Task bổ sung deterministic gated child-process races cho specified claim và claim-next qua main/linked worktrees; không đổi production behavior. Dependency cross-check đã đọc lại E1-S5/E1-S5-T1, E5-S1/E5-S1-T1 và E5-S2/E5-S2-T1, kết luận `NO CONFLICT`.
+**E7-S3-T1** đã planning xong và sẵn sàng implementation. Task audit, chuẩn hóa help/wiring và regression-test command surface cho status, parent/dependency mutations, hierarchy và relationship maps; availability/blockers/claims thuộc E7-S4. Dependency cross-check đã đọc lại E3-S1–E3-S4, E4-S1–E4-S5, E4-S5-T2, E7-S1 và các implementation task trực tiếp, kết luận `NO CONFLICT`. Decision review và direct document review đều kết luận `READY`.
+
+**E9-S1-T1** đã implementation và verification xong với deterministic gated child-process races cho specified claim và claim-next qua main/linked worktrees; không đổi production behavior.
 
 ## Việc đã làm
 
@@ -392,12 +397,12 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. Xem [status dashboard](../STATUS.md) để chọn task implementation đã planned và `ready`; E7-S2-T1 và E9-S1-T1 hiện sẵn sàng.
+1. Xem [status dashboard](../STATUS.md) để chọn task implementation đã planned và `ready`; E7-S3-T1 hiện sẵn sàng.
 
 Nếu tiếp tục planning:
 
-1. Chọn story `needed` đủ contract dependency và chưa bị session khác claim trong `docs/STATUS.md`; E7-S3 là ứng viên tiếp theo theo thứ tự dashboard.
-2. Đọc E3-S1–E3-S4, E4-S1–E4-S5 và E7-S1 cùng implementation tasks tương ứng.
-3. Kế thừa global output boundary của E7-S1 và các status/relationship command contracts hiện hữu thay vì định nghĩa payload hoặc source of truth cạnh tranh.
+1. Chọn story `needed` đủ contract dependency và chưa bị session khác claim trong `docs/STATUS.md`; E8-S1 hiện là ứng viên tiếp theo vì E7-S4 đã được session khác claim.
+2. Đọc E1-S2, E7-S1 và các implementation tasks tương ứng trước khi planning E8-S1.
+3. Kế thừa canonical repository resolution của E1-S2 và global output boundary của E7-S1 thay vì định nghĩa source of truth hoặc transport cạnh tranh.
 4. Chỉ spawn review agent sau một vòng quyết định đã được người dùng xác nhận; không review trong lúc người dùng còn hỏi hoặc khám phá requirement.
 5. Khi READY, tạo epic và technical task, review file, cập nhật danh sách trong handoff này.

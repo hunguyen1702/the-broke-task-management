@@ -72,6 +72,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E6-S3-T1 is implemented and verified with insert/list/delete architectural guards, immutable-field regression coverage, non-atomic correction boundaries, active/archived lifecycle parity, and linked-worktree coverage. Acceptance impact `add` is queued for the separate scenario workflow.
 - E7-S1-T1 is implemented and verified with inherited idempotent JSON mode, JSON-aware parse failures, stream discipline, non-interactive confirmations, and one-envelope partial-uninstall errors. Acceptance impact `add` is queued for the separate scenario workflow.
 - E7-S2-T1 is implemented and verified with command/help inventory, actor-boundary checks, and a canonical-store lifecycle across main and linked worktrees. Acceptance impact `none`.
+- E7-S3 planning is complete; E7-S3-T1 is ready to audit and harden the status and planning-relationship CLI surface while leaving availability, blockers, and claims to E7-S4.
 - E9-S1-T1 is implemented and verified with a deterministic process gate, 120 repeated race rounds across main-to-linked and linked-to-linked worktrees, exact command and canonical-row assertions, and SQLite integrity checks. Acceptance impact is `none`.
 
 ## E1 — Repository foundation and identity
@@ -170,7 +171,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E7-S1-T1](tasks/E7-S1-T1-standardize-cli-output-boundary.md) | done | done | E1-S1-T1 |
 | [E7-S2](epics/E7-S2-expose-repository-agent-and-task-operations.md) | done | done | E1-S1, E1-S2, E1-S3, E1-S4, E1-S5, E2-S1, E2-S2, E2-S3, E2-S4, E2-S5, E2-S6, E7-S1 |
 | [E7-S2-T1](tasks/E7-S2-T1-harden-repository-agent-and-task-cli-surface.md) | done | done | E1-S1-T1, E1-S1-T2, E1-S2-T1, E1-S3-T1, E1-S4-T1, E1-S5-T1, E2-S1-T1, E2-S2-T1, E2-S3-T1, E2-S4-T1, E2-S5-T1, E2-S6-T1, E7-S1-T1 |
-| E7-S3 Expose planning relationships and status operations | needed | not_planned | E3-S1, E3-S2, E3-S3, E3-S4, E4-S1, E4-S2, E4-S3, E4-S4, E4-S5, E7-S1 |
+| [E7-S3](epics/E7-S3-expose-planning-relationships-and-status-operations.md) | done | ready | E3-S1, E3-S2, E3-S3, E3-S4, E4-S1, E4-S2, E4-S3, E4-S4, E4-S5, E7-S1 |
+| [E7-S3-T1](tasks/E7-S3-T1-harden-planning-relationship-and-status-cli-surface.md) | done | ready | E3-S1-T1, E3-S2-T1, E3-S3-T1, E3-S4-T1, E4-S1-T1, E4-S2-T1, E4-S3-T1, E4-S4-T1, E4-S5-T1, E4-S5-T2, E7-S1-T1 |
 | E7-S4 Expose availability and claim operations | needed | not_planned | E4-S3, E4-S4, E5-S1, E5-S2, E5-S3, E5-S4, E5-S5, E7-S1 |
 | E7-S5 Expose comment operations | needed | not_planned | E6-S1, E6-S2, E6-S3, E7-S1 |
 
