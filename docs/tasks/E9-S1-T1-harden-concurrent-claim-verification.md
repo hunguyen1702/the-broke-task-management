@@ -2,7 +2,7 @@
 id: E9-S1-T1
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - E1-S5-T1
   - E5-S1-T1
@@ -168,6 +168,25 @@ During implementation, run the focused integration target repeatedly before the 
 - Existing public behavior and production code remain unchanged, or a discovered production defect is reported as a blocker for separate remediation.
 - Acceptance impact is classified as `none` because the change is internal automated verification only.
 - Formatting, Clippy with warnings denied, and all workspace tests pass.
+
+## Acceptance impact
+
+`none`: this task adds internal automated reliability coverage only. It does
+not change public commands, output, persistence, or behavior.
+
+## Completion
+
+- Added a test-only ready/release process gate that captures each contender's
+  exit status, stdout, stderr, worktree pairing, race kind, and repetition.
+- Repeated specified-claim, one-candidate claim-next, and multi-candidate
+  claim-next races 20 times for both main-to-linked and linked-to-linked
+  pairings (120 total rounds).
+- Verified exact winner/conflict identity and timestamp, empty claim-next
+  success, distinct ordered candidates, canonical claim rows, claim
+  uniqueness, SQLite integrity, and absence of linked-worktree stores.
+- Production code, migrations, public output, and acceptance scenarios remain
+  unchanged.
+- `rtk mise run format`, `rtk mise run lint`, and `rtk mise run test` pass.
 
 ## References
 

@@ -72,7 +72,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E6-S3-T1 is implemented and verified with insert/list/delete architectural guards, immutable-field regression coverage, non-atomic correction boundaries, active/archived lifecycle parity, and linked-worktree coverage. Acceptance impact `add` is queued for the separate scenario workflow.
 - E7-S1-T1 is implemented and verified with inherited idempotent JSON mode, JSON-aware parse failures, stream discipline, non-interactive confirmations, and one-envelope partial-uninstall errors. Acceptance impact `add` is queued for the separate scenario workflow.
 - E7-S2-T1 is implemented and verified with command/help inventory, actor-boundary checks, and a canonical-store lifecycle across main and linked worktrees. Acceptance impact `none`.
-- E9-S1 planning is complete; E9-S1-T1 is ready to add deterministic, repeated process-level claim races across the main and linked worktrees without changing production behavior.
+- E9-S1-T1 is implemented and verified with a deterministic process gate, 120 repeated race rounds across main-to-linked and linked-to-linked worktrees, exact command and canonical-row assertions, and SQLite integrity checks. Acceptance impact is `none`.
 
 ## E1 — Repository foundation and identity
 
@@ -191,8 +191,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 | Story | Planning | Implementation | Contract depends on |
 |---|---|---|---|
-| [E9-S1](epics/E9-S1-verify-concurrent-claim-safety.md) | done | ready | E1-S5, E5-S1, E5-S2 |
-| [E9-S1-T1](tasks/E9-S1-T1-harden-concurrent-claim-verification.md) | done | ready | E1-S5-T1, E5-S1-T1, E5-S2-T1 |
+| [E9-S1](epics/E9-S1-verify-concurrent-claim-safety.md) | done | done | E1-S5, E5-S1, E5-S2 |
+| [E9-S1-T1](tasks/E9-S1-T1-harden-concurrent-claim-verification.md) | done | done | E1-S5-T1, E5-S1-T1, E5-S2-T1 |
 | E9-S2 Verify graph and availability invariants | needed | not_planned | E3-S3, E4-S1, E4-S2, E4-S3, E4-S4, E4-S5, E2-S5, E2-S6 |
 | E9-S3 Verify data recovery behavior | needed | not_planned | E1-S1, E4-S2, E5-S1 |
 | E9-S4 Document agent and human workflows | needed | not_planned | E7-S1, E7-S2, E7-S3, E7-S4, E7-S5, E8-S1, E8-S2, E8-S3, E8-S4, E8-S5, E8-S6, E8-S7, E8-S8 |
