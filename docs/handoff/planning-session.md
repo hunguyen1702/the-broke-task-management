@@ -110,6 +110,9 @@ Story đã hoàn tất planning:
 - **E7-S3: Expose planning relationships and status operations**
   - [Epic plan](../epics/E7-S3-expose-planning-relationships-and-status-operations.md)
   - [Implementation task](../tasks/E7-S3-T1-harden-planning-relationship-and-status-cli-surface.md)
+- **E7-S4: Expose availability and claim operations**
+  - [Epic plan](../epics/E7-S4-expose-availability-and-claim-operations.md)
+  - [Implementation task](../tasks/E7-S4-T1-harden-availability-and-claim-cli-surface.md)
 - **E7-S5: Expose comment operations**
   - [Epic plan](../epics/E7-S5-expose-comment-operations.md)
   - [Implementation task](../tasks/E7-S5-T1-harden-comment-cli-surface.md)
@@ -119,7 +122,7 @@ Story đã hoàn tất planning:
 
 Story tiếp theo nếu tiếp tục planning:
 
-- **E8-S1: Connect the extension to repository state** — E7-S4 đang được planning session khác claim; E8-S1 là story `needed` tiếp theo hiện chưa có claim.
+- **E8-S1: Connect the extension to repository state** — story `needed` tiếp theo hiện chưa có claim.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -152,6 +155,8 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, 
 **E7-S2-T1** đã implementation và verification xong với command/help inventory, actor-boundary checks và canonical-store lifecycle qua main/linked worktrees.
 
 **E7-S3-T1** đã planning xong và sẵn sàng implementation. Task audit, chuẩn hóa help/wiring và regression-test command surface cho status, parent/dependency mutations, hierarchy và relationship maps; availability/blockers/claims thuộc E7-S4. Dependency cross-check đã đọc lại E3-S1–E3-S4, E4-S1–E4-S5, E4-S5-T2, E7-S1 và các implementation task trực tiếp, kết luận `NO CONFLICT`. Decision review và direct document review đều kết luận `READY`.
+
+**E7-S4-T1** đã planning xong và sẵn sàng implementation. Task audit, chuẩn hóa help/wiring và regression-test năm leaf `task available/blockers/claim/claim-next/unclaim`, gồm hai invocation form owner/force của unclaim, actor placement, atomic-versus-informative distinction và E7-S1 transport; không thêm alias, payload, migration hay persistence. Dependency cross-check đã đọc lại E4-S3, E4-S4, E5-S1–E5-S5, E7-S1 và các implementation task trực tiếp, kết luận `NO CONFLICT`. Decision review và independent document review đều kết luận `READY`.
 
 **E7-S5-T1** đã planning xong và sẵn sàng implementation. Task audit, chuẩn hóa help/wiring và regression-test exact `task comment add/list/delete` surface, actor placement, immutability guidance, active/archived parity và E7-S1 transport; không thêm alias, edit operation, alternate input, payload, migration hay persistence. Dependency cross-check đã đọc lại E6-S1–E6-S3, E7-S1 và các implementation task trực tiếp, kết luận `NO CONFLICT`. Decision review và direct document review đều kết luận `READY`.
 
@@ -287,6 +292,9 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, 
 - Chốt JSON và non-TTY không prompt; operation có confirmation dùng explicit `--yes` hoặc error exit `2`, còn human TTY cancellation là success exit `0`.
 - Chốt partial uninstall chỉ phát một error envelope và chuyển toàn bộ `UninstallResult` hiện hữu vào `error.details`, giữ failure code, exit precedence, committed effects và recovery information.
 - Viết epic/task E7-S1; decision review và direct document review đều kết luận READY. Đọc lại E1-S1/E1-S1-T1 và cross-check terminology, ownership boundary, output/error, confirmation, filesystem semantics cùng dependency type kết luận `NO CONFLICT`.
+- Chốt E7-S4 giữ năm leaf `task available`, `blockers`, `claim`, `claim-next`, `unclaim`; owner và force-unclaim là hai option path trên cùng leaf, không thêm top-level group hoặc alias.
+- Chốt actor chỉ xuất hiện bắt buộc trên claim, claim-next và owner-unclaim; availability/blockers không có actor, force-unclaim là logical-user path với confirmation hiện hữu.
+- Chốt E7-S4 là audit/hardening story, kế thừa nguyên availability, conflict/empty, transaction, claim-status independence và E7-S1 transport; help-and-test-only implementation hợp lệ nếu audit không tìm thấy production gap. Dependency cross-check kết luận `NO CONFLICT`; independent review sau chỉnh sửa kết luận `READY`.
 - Chốt E7-S5 giữ exact nested `task comment add/list/delete` surface, không có top-level alias, alternate content input hoặc edit-like operation; actor placement và ownership kế thừa E6-S1/E6-S2.
 - Chốt comment-group help nêu immutable delete-then-add correction là hai operation độc lập; leaf help chỉ tập trung vào invocation, required values và actor selector.
 - Chốt active/archived parity, comment shape, ordering, empty success, hard-delete result, errors và task invariants giữ nguyên theo E6-S1–S3; toàn bộ command kế thừa E7-S1 transport.
@@ -406,11 +414,11 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. Xem [status dashboard](../STATUS.md) để chọn task implementation đã planned và `ready`; E7-S3-T1 và E7-S5-T1 hiện sẵn sàng.
+1. Xem [status dashboard](../STATUS.md) để chọn task implementation đã planned và `ready`; E7-S3-T1, E7-S4-T1 và E7-S5-T1 hiện sẵn sàng.
 
 Nếu tiếp tục planning:
 
-1. Chọn story `needed` đủ contract dependency và chưa bị session khác claim trong `docs/STATUS.md`; E8-S1 hiện là ứng viên tiếp theo vì E7-S4 đã được session khác claim.
+1. Chọn story `needed` đủ contract dependency và chưa bị session khác claim trong `docs/STATUS.md`; E8-S1 hiện là ứng viên tiếp theo.
 2. Đọc E1-S2, E7-S1 và các implementation tasks tương ứng trước khi planning E8-S1.
 3. Kế thừa canonical repository resolution của E1-S2 và global output boundary của E7-S1 thay vì định nghĩa source of truth hoặc transport cạnh tranh.
 4. Chỉ spawn review agent sau một vòng quyết định đã được người dùng xác nhận; không review trong lúc người dùng còn hỏi hoặc khám phá requirement.
