@@ -2,7 +2,7 @@
 id: E7-S4-T1
 kind: implementation_task
 planning_status: done
-implementation_status: in_progress
+implementation_status: done
 depends_on:
   - E4-S3-T1
   - E4-S4-T1
@@ -156,7 +156,10 @@ Smoke-test every owned leaf and one full availability/claim/release lifecycle fr
 
 ## Acceptance scenario impact
 
-Expected `none` if the audit confirms current public behavior and implementation only adds regression coverage. If implementation changes user-visible help or behavior materially, classify the actual impact at completion and hand it to the separate acceptance-scenario workflow. Do not create or edit acceptance files in this task.
+`none`. The audit found the established command wiring and public help already match
+the approved contract, so implementation only adds regression coverage and does not
+change user-visible behavior. No files under `docs/testing/` were changed, reviewed,
+or executed.
 
 ## Definition of done
 
