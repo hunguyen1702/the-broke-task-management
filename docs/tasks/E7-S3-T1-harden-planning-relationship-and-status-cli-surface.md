@@ -2,7 +2,7 @@
 id: E7-S3-T1
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - E3-S1-T1
   - E3-S2-T1
@@ -225,6 +225,14 @@ rtk mise run test
 
 Also smoke-test the owned inventory and one status/relationship journey across
 the main worktree and a linked worktree.
+
+## Acceptance scenario impact
+
+`revalidate`. Public command behavior and payloads are unchanged, but help text
+for status completion, relationship endpoint roles, actor selection, recursive
+hierarchy, and map direction is now more explicit. The affected scenario IDs
+are not yet known. No files under `docs/testing/` were changed, reviewed, or
+executed.
 
 ## Definition of done
 

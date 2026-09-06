@@ -131,10 +131,11 @@ struct StatusMoveArgs {
 
 #[derive(Args)]
 struct StatusSetCompletedArgs {
+    #[arg(help = "Status code to change")]
     code: String,
-    #[arg(long, action = clap::ArgAction::Set)]
+    #[arg(long, action = clap::ArgAction::Set, help = "Whether the status represents completed work")]
     completed: bool,
-    #[arg(long)]
+    #[arg(long, help = "Confirm a completion change that affects tasks")]
     yes: bool,
 }
 
@@ -223,6 +224,7 @@ struct TaskCommentDeleteArgs {
 
 #[derive(Args)]
 struct TaskBlockersArgs {
+    #[arg(help = "Task to inspect without reserving or claiming it")]
     task_id: String,
 }
 
@@ -248,31 +250,33 @@ struct TaskUnarchiveArgs {
 
 #[derive(Args)]
 struct TaskClaimArgs {
+    #[arg(help = "Available task to claim atomically")]
     task_id: String,
-    #[arg(long)]
+    #[arg(long, help = "Registered agent UUID that will own the claim")]
     agent: uuid::Uuid,
 }
 
 #[derive(Args)]
 struct TaskClaimNextArgs {
-    #[arg(long)]
+    #[arg(long, help = "Registered agent UUID that will own the claim")]
     agent: uuid::Uuid,
-    #[arg(long = "status")]
+    #[arg(long = "status", help = "Filter by status code; repeatable")]
     statuses: Vec<String>,
-    #[arg(long = "type")]
+    #[arg(long = "type", help = "Filter by task type; repeatable")]
     task_types: Vec<String>,
-    #[arg(long = "tag")]
+    #[arg(long = "tag", help = "Filter by tag; repeatable")]
     tags: Vec<String>,
 }
 
 #[derive(Args)]
 struct TaskUnclaimArgs {
+    #[arg(help = "Claimed task to release")]
     task_id: String,
-    #[arg(long)]
+    #[arg(long, help = "Registered owning-agent UUID; conflicts with --force")]
     agent: Option<uuid::Uuid>,
-    #[arg(long)]
+    #[arg(long, help = "Release the current claim as the logical user")]
     force: bool,
-    #[arg(long)]
+    #[arg(long, help = "Confirm --force without an interactive prompt")]
     yes: bool,
 }
 
@@ -292,10 +296,14 @@ enum DependencyCommand {
 
 #[derive(Args)]
 struct DependencyMutationArgs {
+    #[arg(help = "Downstream task that requires the dependency")]
     task_id: String,
-    #[arg(long)]
+    #[arg(long, help = "Mandatory upstream task")]
     depends_on: String,
-    #[arg(long)]
+    #[arg(
+        long,
+        help = "Act as this registered agent; omission selects logical-user authority"
+    )]
     agent: Option<uuid::Uuid>,
 }
 
@@ -315,34 +323,45 @@ enum ParentCommand {
 
 #[derive(Args)]
 struct ParentSetArgs {
+    #[arg(help = "Child task whose parent will be set")]
     task_id: String,
-    #[arg(long)]
+    #[arg(long, help = "Parent task")]
     parent: String,
-    #[arg(long)]
+    #[arg(
+        long,
+        help = "Act as this registered agent; omission selects logical-user authority"
+    )]
     agent: Option<uuid::Uuid>,
 }
 
 #[derive(Args)]
 struct ParentRemoveArgs {
+    #[arg(help = "Child task whose parent will be removed")]
     task_id: String,
-    #[arg(long)]
+    #[arg(
+        long,
+        help = "Act as this registered agent; omission selects logical-user authority"
+    )]
     agent: Option<uuid::Uuid>,
 }
 
 #[derive(Args)]
 struct TaskHierarchyArgs {
+    #[arg(help = "Task whose direct hierarchy will be shown")]
     task_id: String,
-    #[arg(long)]
+    #[arg(long, help = "Include every ancestor and descendant recursively")]
     recursive: bool,
 }
 
 #[derive(Args)]
 struct TaskMapArgs {
+    #[arg(help = "Root task for the relationship map")]
     task_id: String,
     #[arg(
         long,
         default_value = "all",
-        value_parser = ["upstream", "downstream", "parent", "child", "all"]
+        value_parser = ["upstream", "downstream", "parent", "child", "all"],
+        help = "Relationship direction to traverse recursively"
     )]
     direction: String,
 }
@@ -405,11 +424,11 @@ struct TaskListArgs {
 
 #[derive(Args)]
 struct TaskAvailableArgs {
-    #[arg(long = "status")]
+    #[arg(long = "status", help = "Filter by status code; repeatable")]
     statuses: Vec<String>,
-    #[arg(long = "type")]
+    #[arg(long = "type", help = "Filter by task type; repeatable")]
     task_types: Vec<String>,
-    #[arg(long = "tag")]
+    #[arg(long = "tag", help = "Filter by tag; repeatable")]
     tags: Vec<String>,
 }
 
