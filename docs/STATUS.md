@@ -113,7 +113,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E3-S2-T1](tasks/E3-S2-T1-implement-custom-status-creation-and-ordering.md) | done | done | E3-S1-T1 |
 | [E3-S3](epics/E3-S3-change-status-completion-semantics.md) | done | done | E3-S2, E4-S3 |
 | [E3-S3-T1](tasks/E3-S3-T1-implement-repository-status-completion-changes.md) | done | done | E3-S2-T1, E4-S3-T1 |
-| E3-S4 Delete an unused custom status | needed | not_planned | E3-S2 |
+| [E3-S4](epics/E3-S4-delete-an-unused-custom-status.md) | done | ready | E3-S2 |
+| [E3-S4-T1](tasks/E3-S4-T1-implement-safe-custom-status-deletion.md) | done | ready | E3-S2-T1, E2-S1-T1 |
 
 ## E4 — Hierarchy, dependencies, and availability
 
