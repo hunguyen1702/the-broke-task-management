@@ -55,6 +55,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E2-S6-T1 is implemented with transactional unarchive, deterministic direct-impact reporting, explicit confirmation, and preserved claims.
 - E3-S2-T1 is implemented and verified with ASCII case-insensitive name uniqueness, atomic custom status creation/rename/reordering, stable output and typed errors. Acceptance impact `add` is queued for the separate scenario workflow.
 - E3-S3-T1 is implemented and verified with repository-scoped completion changes, deterministic before/after task impact, transactional confirmation, preserved claims, and immediate availability reuse. Acceptance impact `add` is queued for the separate scenario workflow.
+- E3-S4-T1 is implemented and verified with atomic unused-custom-status deletion, active and archived task-usage protection, deterministic order compaction, and linked-worktree concurrency safety. Acceptance impact `add` is queued for the separate scenario workflow.
 - E4-S2-T1 is implemented with transactional dependency management and cycle prevention.
 - E5-S1-T1 is implemented with atomic specified-task claiming, stable conflict and unavailable errors, and claim hydration.
 - E5-S3-T1 is implemented with transactional owner-controlled unclaim behavior and shared-worktree claim release.
@@ -113,8 +114,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E3-S2-T1](tasks/E3-S2-T1-implement-custom-status-creation-and-ordering.md) | done | done | E3-S1-T1 |
 | [E3-S3](epics/E3-S3-change-status-completion-semantics.md) | done | done | E3-S2, E4-S3 |
 | [E3-S3-T1](tasks/E3-S3-T1-implement-repository-status-completion-changes.md) | done | done | E3-S2-T1, E4-S3-T1 |
-| [E3-S4](epics/E3-S4-delete-an-unused-custom-status.md) | done | ready | E3-S2 |
-| [E3-S4-T1](tasks/E3-S4-T1-implement-safe-custom-status-deletion.md) | done | ready | E3-S2-T1, E2-S1-T1 |
+| [E3-S4](epics/E3-S4-delete-an-unused-custom-status.md) | done | done | E3-S2 |
+| [E3-S4-T1](tasks/E3-S4-T1-implement-safe-custom-status-deletion.md) | done | done | E3-S2-T1, E2-S1-T1 |
 
 ## E4 — Hierarchy, dependencies, and availability
 

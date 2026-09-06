@@ -2,7 +2,7 @@
 id: E3-S4-T1
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - E3-S2-T1
   - E2-S1-T1
@@ -127,6 +127,10 @@ Also smoke-test deletion in an isolated repository from its main and linked work
 ## Acceptance scenario impact
 
 `add`: E3-S4 introduces a public status-deletion workflow with likely user-facing default-status and in-use rejection paths. A separate acceptance-scenario workflow should cover those common cases after implementation.
+
+## Implementation result
+
+Implemented `status delete` with an immediate transaction, default and task-usage protection, exact active-plus-archived usage counts, atomic order compaction, shared human/JSON output, and linked-worktree concurrency coverage. No schema migration was required. Acceptance impact remains `add` for the separate acceptance-scenario workflow.
 
 ## Definition of done
 

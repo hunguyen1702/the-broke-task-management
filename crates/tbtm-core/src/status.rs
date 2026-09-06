@@ -375,6 +375,35 @@ pub fn rename_status(current: &Path, code: &str, requested_name: &str) -> Result
     })
 }
 
+pub fn delete_status(current: &Path, code: &str) -> Result<Status, Error> {
+    mutate(current, |transaction| {
+        let status = find_required(transaction, code, "source")?;
+        if status.is_default {
+            return Err(Error::StatusDefaultImmutable {
+                code: code.to_owned(),
+            });
+        }
+        let task_count = transaction
+            .query_row(
+                "SELECT COUNT(*) FROM tasks WHERE status_id = ?1",
+                [&status.id],
+                |row| row.get(0),
+            )
+            .map_err(status_operation_error)?;
+        if task_count > 0 {
+            return Err(Error::StatusInUse {
+                code: code.to_owned(),
+                task_count,
+            });
+        }
+        transaction
+            .execute("DELETE FROM statuses WHERE id = ?1", [&status.id])
+            .map_err(status_operation_error)?;
+        compact_order_after(transaction, status.display_order).map_err(status_operation_error)?;
+        Ok(status)
+    })
+}
+
 pub fn move_status(
     current: &Path,
     code: &str,
@@ -523,6 +552,19 @@ fn write_order(transaction: &Transaction<'_>, statuses: &[Status]) -> rusqlite::
             params![index as i64, status.id],
         )?;
     }
+    Ok(())
+}
+
+fn compact_order_after(transaction: &Transaction<'_>, deleted_order: i64) -> rusqlite::Result<()> {
+    const OFFSET: i64 = 1_000_000;
+    transaction.execute(
+        "UPDATE statuses SET display_order = display_order + ?1 WHERE display_order > ?2",
+        params![OFFSET, deleted_order],
+    )?;
+    transaction.execute(
+        "UPDATE statuses SET display_order = display_order - ?1 - 1 WHERE display_order > ?1 + ?2",
+        params![OFFSET, deleted_order],
+    )?;
     Ok(())
 }
 

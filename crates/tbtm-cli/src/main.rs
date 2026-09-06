@@ -15,7 +15,7 @@ use tbtm_core::{
     exit_code, initialize, inspect_repository_health, register_agent,
     status::{
         CreateStatusInput, MoveStatusResult, Placement, SetCompletedInput, SetCompletedResult,
-        Status, StatusCompletionImpact, create_status, list_statuses, move_status,
+        Status, StatusCompletionImpact, create_status, delete_status, list_statuses, move_status,
         preview_set_completed, rename_status, set_completed,
     },
     task::{
@@ -79,6 +79,8 @@ enum StatusCommand {
     Rename(StatusRenameArgs),
     #[command(about = "Move a status in board order")]
     Move(StatusMoveArgs),
+    #[command(about = "Delete an unused custom status")]
+    Delete(StatusDeleteArgs),
     #[command(about = "Change whether a status represents completed work")]
     SetCompleted(StatusSetCompletedArgs),
 }
@@ -108,6 +110,13 @@ struct StatusRenameArgs {
     code: String,
     #[arg(long)]
     name: String,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct StatusDeleteArgs {
+    code: String,
     #[arg(long)]
     json: bool,
 }
@@ -695,6 +704,11 @@ fn run() -> Result<(), (Error, bool)> {
                     .map_err(|error| (error, args.json))?;
                 render_status_move(&result, args.json);
             }
+            StatusCommand::Delete(args) => {
+                let result =
+                    delete_status(&current, &args.code).map_err(|error| (error, args.json))?;
+                render_status_delete(&result, args.json);
+            }
             StatusCommand::SetCompleted(args) => {
                 let preview = preview_set_completed(&current, &args.code, args.completed)
                     .map_err(|error| (error, args.json))?;
@@ -1166,6 +1180,7 @@ fn command_uses_json(command: &Command) -> bool {
             StatusCommand::Create(args) => args.json,
             StatusCommand::Rename(args) => args.json,
             StatusCommand::Move(args) => args.json,
+            StatusCommand::Delete(args) => args.json,
             StatusCommand::SetCompleted(args) => args.json,
         },
         Command::Task(args) => match &args.command {
@@ -1254,6 +1269,14 @@ fn render_status_move(result: &MoveStatusResult, json: bool) {
         for status in &result.statuses {
             render_status_line(status);
         }
+    }
+}
+
+fn render_status_delete(status: &Status, json: bool) {
+    if json {
+        render_success(status, true);
+    } else {
+        println!("Deleted status: {} | {}", status.code, status.name);
     }
 }
 

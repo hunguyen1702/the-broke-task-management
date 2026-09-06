@@ -60,8 +60,10 @@ pub enum Error {
     StatusCodeConflict { code: String },
     #[error("status name already exists: {name}")]
     StatusNameConflict { name: String },
-    #[error("default status cannot be renamed: {code}")]
+    #[error("default status is immutable: {code}")]
     StatusDefaultImmutable { code: String },
+    #[error("status is in use: {code} ({task_count} tasks)")]
+    StatusInUse { code: String, task_count: i64 },
     #[error("status cannot be positioned relative to itself: {code}")]
     InvalidStatusPosition { code: String, target_code: String },
     #[error("task not found: {id}")]
@@ -217,6 +219,7 @@ impl Error {
             Self::StatusCodeConflict { .. } => "STATUS_CODE_CONFLICT",
             Self::StatusNameConflict { .. } => "STATUS_NAME_CONFLICT",
             Self::StatusDefaultImmutable { .. } => "STATUS_DEFAULT_IMMUTABLE",
+            Self::StatusInUse { .. } => "STATUS_IN_USE",
             Self::InvalidStatusPosition { .. } => "INVALID_STATUS_POSITION",
             Self::TaskNotFound { .. } => "TASK_NOT_FOUND",
             Self::TaskArchived { .. } => "TASK_ARCHIVED",
@@ -268,6 +271,9 @@ impl Error {
                 serde_json::json!({"code": code, "role": role})
             }
             Self::StatusDefaultImmutable { code } => serde_json::json!({"code": code}),
+            Self::StatusInUse { code, task_count } => {
+                serde_json::json!({"code": code, "taskCount": task_count})
+            }
             Self::InvalidStatusPosition { code, target_code } => {
                 serde_json::json!({"code": code, "targetCode": target_code})
             }
@@ -1597,7 +1603,8 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::TaskClaimed { .. }
         | Error::ClaimChanged { .. }
         | Error::StatusCodeConflict { .. }
-        | Error::StatusNameConflict { .. } => 4,
+        | Error::StatusNameConflict { .. }
+        | Error::StatusInUse { .. } => 4,
         Error::ClaimNotOwned { .. }
         | Error::ArchivePermissionDenied
         | Error::CommentDeleteForbidden { .. }

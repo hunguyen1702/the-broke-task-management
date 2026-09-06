@@ -1,9 +1,13 @@
 use rusqlite::Connection;
 use serde_json::Value;
-use std::process::{Command, Output};
+use std::{
+    fs,
+    path::Path,
+    process::{Command, Output},
+};
 use tempfile::tempdir;
 
-fn tbtm(current: &std::path::Path, arguments: &[&str]) -> Output {
+fn tbtm(current: &Path, arguments: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_tbtm"))
         .current_dir(current)
         .args(arguments)
@@ -11,7 +15,7 @@ fn tbtm(current: &std::path::Path, arguments: &[&str]) -> Output {
         .unwrap()
 }
 
-fn initialize(current: &std::path::Path) {
+fn initialize(current: &Path) {
     assert!(
         tbtm(current, &["init", "--prefix", "project", "--json"])
             .status
@@ -21,6 +25,44 @@ fn initialize(current: &std::path::Path) {
 
 fn json(output: &Output) -> Value {
     serde_json::from_slice(&output.stdout).unwrap()
+}
+
+fn linked_worktree() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+    let temp = tempdir().unwrap();
+    let main = temp.path().join("main");
+    let linked = temp.path().join("linked");
+    fs::create_dir(&main).unwrap();
+    for arguments in [
+        vec!["init", "--quiet"],
+        vec!["config", "user.email", "test@example.com"],
+        vec!["config", "user.name", "Test"],
+        vec!["commit", "--allow-empty", "--quiet", "-m", "initial"],
+    ] {
+        assert!(
+            Command::new("git")
+                .current_dir(&main)
+                .args(arguments)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    assert!(
+        Command::new("git")
+            .current_dir(&main)
+            .args([
+                "worktree",
+                "add",
+                "--quiet",
+                "-b",
+                "linked",
+                linked.to_str().unwrap()
+            ])
+            .status()
+            .unwrap()
+            .success()
+    );
+    (temp, main, linked)
 }
 
 #[test]
@@ -201,13 +243,168 @@ fn status_help_has_required_placement_and_no_agent_authority() {
     let help = tbtm(tempdir().unwrap().path(), &["status", "--help"]);
     assert!(help.status.success());
     let text = String::from_utf8(help.stdout).unwrap();
-    for command in ["list", "create", "rename", "move", "set-completed"] {
+    for command in [
+        "list",
+        "create",
+        "rename",
+        "move",
+        "delete",
+        "set-completed",
+    ] {
         assert!(text.contains(command));
     }
     assert!(!text.contains("--agent"));
 
     let missing = tbtm(tempdir().unwrap().path(), &["status", "move", "done"]);
     assert_eq!(missing.status.code(), Some(2));
+}
+
+#[test]
+fn delete_unused_custom_status_returns_snapshot_and_compacts_order() {
+    let temp = tempdir().unwrap();
+    initialize(temp.path());
+    for (code, name) in [("review", "Review"), ("verify", "Verify")] {
+        assert!(
+            tbtm(
+                temp.path(),
+                &[
+                    "status", "create", "--code", code, "--name", name, "--before", "done",
+                    "--json"
+                ],
+            )
+            .status
+            .success()
+        );
+    }
+
+    let deleted = tbtm(temp.path(), &["status", "delete", "review", "--json"]);
+    assert!(deleted.status.success());
+    let deleted = json(&deleted);
+    assert_eq!(deleted["data"]["code"], "review");
+    assert_eq!(deleted["data"]["name"], "Review");
+    assert_eq!(deleted["data"]["displayOrder"], 2);
+    assert_eq!(deleted["data"]["isDefault"], false);
+
+    let listed = json(&tbtm(temp.path(), &["status", "list", "--json"]));
+    let codes: Vec<_> = listed["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|status| status["code"].as_str().unwrap())
+        .collect();
+    assert_eq!(codes, ["to_do", "in_progress", "verify", "done"]);
+    for (position, status) in listed["data"].as_array().unwrap().iter().enumerate() {
+        assert_eq!(status["displayOrder"], position as i64);
+    }
+
+    let human = tbtm(temp.path(), &["status", "delete", "verify"]);
+    assert!(human.status.success());
+    assert_eq!(
+        String::from_utf8(human.stdout).unwrap(),
+        "Deleted status: verify | Verify\n"
+    );
+}
+
+#[test]
+fn delete_rejects_missing_default_and_used_statuses_without_mutation() {
+    let temp = tempdir().unwrap();
+    initialize(temp.path());
+    assert!(
+        tbtm(
+            temp.path(),
+            &[
+                "status", "create", "--code", "review", "--name", "Review", "--json"
+            ],
+        )
+        .status
+        .success()
+    );
+    let first = create_task(temp.path(), "Active review", "review");
+    let second = create_task(temp.path(), "Archived review", "review");
+    let database = temp.path().join(".tbtm/tbtm.db");
+    Connection::open(&database)
+        .unwrap()
+        .execute(
+            "UPDATE tasks SET archived = 1, archive_reason = 'done' WHERE id = ?1",
+            [&second],
+        )
+        .unwrap();
+    let before = std::fs::read(&database).unwrap();
+
+    for (code, exit, error_code, details) in [
+        (
+            "missing",
+            3,
+            "STATUS_NOT_FOUND",
+            serde_json::json!({"code":"missing","role":"source"}),
+        ),
+        (
+            "done",
+            5,
+            "STATUS_DEFAULT_IMMUTABLE",
+            serde_json::json!({"code":"done"}),
+        ),
+        (
+            "review",
+            4,
+            "STATUS_IN_USE",
+            serde_json::json!({"code":"review","taskCount":2}),
+        ),
+    ] {
+        let output = tbtm(temp.path(), &["status", "delete", code, "--json"]);
+        assert_eq!(output.status.code(), Some(exit));
+        let response = json(&output);
+        assert_eq!(response["error"]["code"], error_code);
+        assert_eq!(response["error"]["details"], details);
+        assert_eq!(std::fs::read(&database).unwrap(), before);
+    }
+    assert_eq!(first.len(), "project-task-".len() + 8);
+}
+
+#[test]
+fn delete_and_linked_worktree_task_creation_serialize_without_dangling_references() {
+    let (_temp, main, linked) = linked_worktree();
+    initialize(&main);
+    assert!(
+        tbtm(
+            &main,
+            &[
+                "status", "create", "--code", "review", "--name", "Review", "--json"
+            ],
+        )
+        .status
+        .success()
+    );
+    let database = main.join(".tbtm/tbtm.db");
+
+    let delete = std::thread::spawn(move || tbtm(&main, &["status", "delete", "review", "--json"]));
+    let create = std::thread::spawn(move || {
+        tbtm(
+            &linked,
+            &[
+                "task", "create", "--title", "Race", "--type", "task", "--status", "review",
+                "--json",
+            ],
+        )
+    });
+    let delete = delete.join().unwrap();
+    let create = create.join().unwrap();
+    assert_ne!(delete.status.success(), create.status.success());
+    if delete.status.success() {
+        assert_eq!(json(&create)["error"]["code"], "STATUS_NOT_FOUND");
+    } else {
+        assert_eq!(json(&delete)["error"]["code"], "STATUS_IN_USE");
+        assert_eq!(json(&delete)["error"]["details"]["taskCount"], 1);
+    }
+    let dangling: i64 = Connection::open(database)
+        .unwrap()
+        .query_row(
+            "SELECT COUNT(*) FROM tasks t LEFT JOIN statuses s ON s.id = t.status_id WHERE s.id IS NULL",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(dangling, 0);
 }
 
 #[test]
