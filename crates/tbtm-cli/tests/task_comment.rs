@@ -422,7 +422,7 @@ fn add_upgrades_v7_and_comment_constraints_preserve_existing_data() {
     let connection = Connection::open(&database).unwrap();
     connection.execute("DROP TABLE task_comments", []).unwrap();
     connection
-        .execute("DELETE FROM schema_migrations WHERE version = 8", [])
+        .execute("DELETE FROM schema_migrations WHERE version >= 8", [])
         .unwrap();
     drop(connection);
 

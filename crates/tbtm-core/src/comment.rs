@@ -552,7 +552,7 @@ mod tests {
         let connection = Connection::open(&database).unwrap();
         connection.execute("DROP TABLE task_comments", []).unwrap();
         connection
-            .execute("DELETE FROM schema_migrations WHERE version = 8", [])
+            .execute("DELETE FROM schema_migrations WHERE version >= 8", [])
             .unwrap();
         drop(connection);
 

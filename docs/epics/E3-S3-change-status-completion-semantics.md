@@ -2,7 +2,7 @@
 id: E3-S3
 kind: epic
 planning_status: done
-implementation_status: blocked
+implementation_status: ready
 contract_depends_on:
   - E3-S2
   - E4-S3

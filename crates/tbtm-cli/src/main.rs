@@ -13,6 +13,10 @@ use tbtm_core::{
         list_comments,
     },
     exit_code, initialize, inspect_repository_health, register_agent,
+    status::{
+        CreateStatusInput, MoveStatusResult, Placement, Status, create_status, list_statuses,
+        move_status, rename_status,
+    },
     task::{
         ArchiveScope, ArchiveTaskInput, AvailabilityReason, AvailableTasksInput,
         ClaimNextTaskInput, ClaimTaskInput, CreateTaskInput, CreatedTask, DependencyInput,
@@ -54,6 +58,67 @@ enum Command {
     Agent(AgentArgs),
     #[command(about = "Manage repository-local tasks")]
     Task(Box<TaskArgs>),
+    #[command(about = "Manage repository workflow statuses")]
+    Status(StatusArgs),
+}
+
+#[derive(Args)]
+struct StatusArgs {
+    #[command(subcommand)]
+    command: StatusCommand,
+}
+
+#[derive(Subcommand)]
+enum StatusCommand {
+    #[command(about = "List statuses in board order")]
+    List(StatusListArgs),
+    #[command(about = "Create a custom status")]
+    Create(StatusCreateArgs),
+    #[command(about = "Rename a custom status")]
+    Rename(StatusRenameArgs),
+    #[command(about = "Move a status in board order")]
+    Move(StatusMoveArgs),
+}
+
+#[derive(Args)]
+struct StatusListArgs {
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct StatusCreateArgs {
+    #[arg(long)]
+    code: String,
+    #[arg(long)]
+    name: String,
+    #[arg(long, conflicts_with = "after")]
+    before: Option<String>,
+    #[arg(long, conflicts_with = "before")]
+    after: Option<String>,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct StatusRenameArgs {
+    code: String,
+    #[arg(long)]
+    name: String,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+#[command(group(clap::ArgGroup::new("placement").required(true).args(["before", "after"])))]
+struct StatusMoveArgs {
+    code: String,
+    #[arg(long, conflicts_with = "after")]
+    before: Option<String>,
+    #[arg(long, conflicts_with = "before")]
+    after: Option<String>,
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Args)]
@@ -586,6 +651,37 @@ fn run() -> Result<(), (Error, bool)> {
                 render_agent_list(&result, args.json);
             }
         },
+        Command::Status(args) => match args.command {
+            StatusCommand::List(args) => {
+                let result = list_statuses(&current).map_err(|error| (error, args.json))?;
+                render_status_list(&result, args.json);
+            }
+            StatusCommand::Create(args) => {
+                let placement = placement(args.before.as_deref(), args.after.as_deref());
+                let result = create_status(
+                    &current,
+                    CreateStatusInput {
+                        code: &args.code,
+                        name: &args.name,
+                        placement,
+                    },
+                )
+                .map_err(|error| (error, args.json))?;
+                render_status_mutation("Created", &result, args.json);
+            }
+            StatusCommand::Rename(args) => {
+                let result = rename_status(&current, &args.code, &args.name)
+                    .map_err(|error| (error, args.json))?;
+                render_status_mutation("Renamed", &result, args.json);
+            }
+            StatusCommand::Move(args) => {
+                let placement = placement(args.before.as_deref(), args.after.as_deref())
+                    .expect("clap requires a placement");
+                let result = move_status(&current, &args.code, placement)
+                    .map_err(|error| (error, args.json))?;
+                render_status_move(&result, args.json);
+            }
+        },
         Command::Task(args) => match args.command {
             TaskCommand::Create(args) => {
                 let task_type =
@@ -1017,6 +1113,12 @@ fn command_uses_json(command: &Command) -> bool {
             AgentCommand::Register(args) => args.json,
             AgentCommand::List(args) => args.json,
         },
+        Command::Status(StatusArgs { command }) => match command {
+            StatusCommand::List(args) => args.json,
+            StatusCommand::Create(args) => args.json,
+            StatusCommand::Rename(args) => args.json,
+            StatusCommand::Move(args) => args.json,
+        },
         Command::Task(args) => match &args.command {
             TaskCommand::Create(args) => args.json,
             TaskCommand::View(args) => args.json,
@@ -1044,6 +1146,65 @@ fn command_uses_json(command: &Command) -> bool {
                 TaskCommentCommand::Delete(args) => args.json,
             },
         },
+    }
+}
+
+fn placement<'a>(before: Option<&'a str>, after: Option<&'a str>) -> Option<Placement<'a>> {
+    before
+        .map(Placement::Before)
+        .or_else(|| after.map(Placement::After))
+}
+
+fn render_status_line(status: &Status) {
+    println!(
+        "{} | {} | {} | {} | position {}",
+        status.code,
+        status.name,
+        if status.completed {
+            "completed"
+        } else {
+            "incomplete"
+        },
+        if status.is_default {
+            "default"
+        } else {
+            "custom"
+        },
+        status.display_order
+    );
+}
+
+fn render_status_list(statuses: &[Status], json: bool) {
+    if json {
+        render_success(&statuses, true);
+    } else if statuses.is_empty() {
+        println!("No statuses.");
+    } else {
+        for status in statuses {
+            render_status_line(status);
+        }
+    }
+}
+
+fn render_status_mutation(operation: &str, status: &Status, json: bool) {
+    if json {
+        render_success(status, true);
+    } else {
+        println!("{operation} status:");
+        render_status_line(status);
+    }
+}
+
+fn render_status_move(result: &MoveStatusResult, json: bool) {
+    if json {
+        render_success(result, true);
+    } else {
+        println!("Moved status:");
+        render_status_line(&result.status);
+        println!("Board order:");
+        for status in &result.statuses {
+            render_status_line(status);
+        }
     }
 }
 

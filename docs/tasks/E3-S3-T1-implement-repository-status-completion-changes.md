@@ -2,7 +2,7 @@
 id: E3-S3-T1
 kind: implementation_task
 planning_status: done
-implementation_status: blocked
+implementation_status: ready
 depends_on:
   - E3-S2-T1
   - E4-S3-T1
@@ -20,7 +20,7 @@ Implement a logical-user-only, repository-scoped status completion mutation with
 
 ## Readiness
 
-Planning is complete. Implementation remains blocked until E3-S2-T1 provides the public status commands, shared status object, mutable custom/default ordering model, and migration `0009`. E4-S3-T1 is complete and already provides the authoritative availability selector required by this task.
+Planning is complete. E3-S2-T1 now provides the public status commands, shared status object, mutable custom/default ordering model, and migration `0009`. E4-S3-T1 provides the authoritative availability selector, so this task is ready for implementation.
 
 ## Deliverables
 

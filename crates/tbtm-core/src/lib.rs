@@ -21,7 +21,7 @@ pub mod task;
 const CONFIG_FILE: &str = "config.json";
 const DATABASE_FILE: &str = "tbtm.db";
 const STEALTH_RULE: &str = "/.tbtm/";
-const LATEST_MIGRATION: i64 = 8;
+const LATEST_MIGRATION: i64 = 9;
 const IDENTITY_RETRY_LIMIT: usize = 8;
 
 #[derive(Debug, Error)]
@@ -50,6 +50,20 @@ pub enum Error {
     AgentNotFound { id: Uuid },
     #[error("status not found: {code}")]
     StatusNotFound { code: String },
+    #[error("status not found: {code}")]
+    StatusLookupNotFound { code: String, role: &'static str },
+    #[error("invalid status code: {code}")]
+    InvalidStatusCode { code: String },
+    #[error("invalid status name: {name}")]
+    InvalidStatusName { name: String },
+    #[error("status code already exists: {code}")]
+    StatusCodeConflict { code: String },
+    #[error("status name already exists: {name}")]
+    StatusNameConflict { name: String },
+    #[error("default status cannot be renamed: {code}")]
+    StatusDefaultImmutable { code: String },
+    #[error("status cannot be positioned relative to itself: {code}")]
+    InvalidStatusPosition { code: String, target_code: String },
     #[error("task not found: {id}")]
     TaskNotFound { id: String },
     #[error("task is archived: {id}")]
@@ -193,6 +207,13 @@ impl Error {
             Self::DuplicateTaskContext { .. } => "DUPLICATE_TASK_CONTEXT",
             Self::AgentNotFound { .. } => "AGENT_NOT_FOUND",
             Self::StatusNotFound { .. } => "STATUS_NOT_FOUND",
+            Self::StatusLookupNotFound { .. } => "STATUS_NOT_FOUND",
+            Self::InvalidStatusCode { .. } => "INVALID_STATUS_CODE",
+            Self::InvalidStatusName { .. } => "INVALID_STATUS_NAME",
+            Self::StatusCodeConflict { .. } => "STATUS_CODE_CONFLICT",
+            Self::StatusNameConflict { .. } => "STATUS_NAME_CONFLICT",
+            Self::StatusDefaultImmutable { .. } => "STATUS_DEFAULT_IMMUTABLE",
+            Self::InvalidStatusPosition { .. } => "INVALID_STATUS_POSITION",
             Self::TaskNotFound { .. } => "TASK_NOT_FOUND",
             Self::TaskArchived { .. } => "TASK_ARCHIVED",
             Self::InvalidArchiveReason => "INVALID_ARCHIVE_REASON",
@@ -232,6 +253,19 @@ impl Error {
 
     pub fn details(&self) -> serde_json::Value {
         match self {
+            Self::InvalidStatusCode { code } | Self::StatusCodeConflict { code } => {
+                serde_json::json!({"code": code})
+            }
+            Self::InvalidStatusName { name } | Self::StatusNameConflict { name } => {
+                serde_json::json!({"name": name})
+            }
+            Self::StatusLookupNotFound { code, role } => {
+                serde_json::json!({"code": code, "role": role})
+            }
+            Self::StatusDefaultImmutable { code } => serde_json::json!({"code": code}),
+            Self::InvalidStatusPosition { code, target_code } => {
+                serde_json::json!({"code": code, "targetCode": target_code})
+            }
             Self::InvalidAgentName { normalized } => serde_json::json!({
                 "normalized": normalized,
                 "minimumLength": 1,
@@ -1081,6 +1115,7 @@ fn apply_pending_migrations(resolved: &mut ResolvedRepository) -> Result<(), Err
         ),
         (7, include_str!("../migrations/0007_task_hierarchy.sql")),
         (8, include_str!("../migrations/0008_task_comments.sql")),
+        (9, include_str!("../migrations/0009_status_name_nocase.sql")),
     ] {
         if version > current {
             transaction
@@ -1288,6 +1323,15 @@ fn create_database(
         .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
     transaction
         .execute_batch(include_str!("../migrations/0008_task_comments.sql"))
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute_batch(include_str!("../migrations/0009_status_name_nocase.sql"))
+        .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
+    transaction
+        .execute(
+            "INSERT INTO schema_migrations (version, applied_at) VALUES (9, ?1)",
+            [created_at],
+        )
         .map_err(|e| Error::phase("DATABASE_MIGRATION_FAILED", e))?;
     transaction
         .execute(
@@ -1518,6 +1562,9 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::TaskArchived { .. }
         | Error::InvalidArchiveReason
         | Error::InvalidCommentContent
+        | Error::InvalidStatusCode { .. }
+        | Error::InvalidStatusName { .. }
+        | Error::InvalidStatusPosition { .. }
         | Error::ConfirmationRequired { .. }
         | Error::TaskNotAvailable { .. }
         | Error::SelfDependency { .. }
@@ -1531,15 +1578,21 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::InvalidInitialization => 2,
         Error::AgentNotFound { .. }
         | Error::StatusNotFound { .. }
+        | Error::StatusLookupNotFound { .. }
         | Error::TaskNotFound { .. }
         | Error::CommentNotFound { .. }
         | Error::ClaimNotFound { .. }
         | Error::DependencyNotFound { .. } => 3,
         Error::ParentNotFound { .. } => 3,
-        Error::ClaimConflict { .. } | Error::TaskClaimed { .. } | Error::ClaimChanged { .. } => 4,
+        Error::ClaimConflict { .. }
+        | Error::TaskClaimed { .. }
+        | Error::ClaimChanged { .. }
+        | Error::StatusCodeConflict { .. }
+        | Error::StatusNameConflict { .. } => 4,
         Error::ClaimNotOwned { .. }
         | Error::ArchivePermissionDenied
-        | Error::CommentDeleteForbidden { .. } => 5,
+        | Error::CommentDeleteForbidden { .. }
+        | Error::StatusDefaultImmutable { .. } => 5,
         Error::Phase {
             phase: "FORCE_CONFIRMATION_REQUIRED" | "CONFIRMATION_REQUIRED",
             ..
@@ -1921,7 +1974,7 @@ mod tests {
     fn health_rejects_invalid_migration_ledger_without_writing() {
         for statement in [
             "DELETE FROM schema_migrations",
-            "UPDATE schema_migrations SET version = 9 WHERE version = 8",
+            "UPDATE schema_migrations SET version = 10 WHERE version = 9",
         ] {
             let temp = tempdir().unwrap();
             let initialized = initialize(temp.path(), None, false, false, false).unwrap();
