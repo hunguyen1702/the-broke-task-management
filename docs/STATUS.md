@@ -7,9 +7,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - Scenario catalog: `approved`
 - Last simplified: 2026-09-04 (QA-oriented happy paths and likely user errors)
 - Last revalidation: 2026-09-04 (simplified catalog approved after QA review)
-- Last full execution: 2026-09-04
-- Current result: passed (88 passed, 0 failed, 0 blocked across the full run
-  and targeted reruns)
+- Last full execution: 2026-09-07
+- Current result: passed (88 passed, 0 failed, 0 blocked in the latest full run)
 - Latest targeted execution: 2026-09-05, AT-E4-S5-001 passed (4 cases)
 - Detailed catalog: [Acceptance regression catalog](testing/README.md)
 
