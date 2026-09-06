@@ -4,7 +4,11 @@ use crate::{
 };
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
 use serde::Serialize;
-use std::{path::Path, time::Duration};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::Path,
+    time::Duration,
+};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -57,6 +61,231 @@ pub struct CreateStatusInput<'a> {
 pub struct MoveStatusResult {
     pub status: Status,
     pub statuses: Vec<Status>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct StatusTaskImpact {
+    pub task_id: String,
+    pub title: String,
+    pub claim: Option<crate::task::TaskClaim>,
+    pub available_before: bool,
+    pub available_after: bool,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DownstreamTaskImpact {
+    pub task_id: String,
+    pub title: String,
+    pub claim: Option<crate::task::TaskClaim>,
+    pub available_before: bool,
+    pub available_after: bool,
+    pub unresolved_upstream_task_ids_before: Vec<String>,
+    pub unresolved_upstream_task_ids_after: Vec<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct StatusCompletionImpact {
+    pub status_tasks: Vec<StatusTaskImpact>,
+    pub downstream_tasks: Vec<DownstreamTaskImpact>,
+}
+
+impl StatusCompletionImpact {
+    pub fn is_empty(&self) -> bool {
+        self.status_tasks.is_empty() && self.downstream_tasks.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SetCompletedResult {
+    pub status: Status,
+    pub impact: StatusCompletionImpact,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SetCompletedInput<'a> {
+    pub code: &'a str,
+    pub completed: bool,
+    pub confirmed: bool,
+}
+
+pub fn preview_set_completed(
+    current: &Path,
+    code: &str,
+    completed: bool,
+) -> Result<SetCompletedResult, Error> {
+    let mut resolved = resolve_repository(current, AccessIntent::ReadWrite)?;
+    apply_pending_migrations(&mut resolved)?;
+    let database_path = resolved.database_path.clone();
+    let transaction = resolved
+        .connection_mut()
+        .transaction()
+        .map_err(|error| sqlite_access_error("status completion preview", &database_path, error))?;
+    let status = find_required(&transaction, code, "source")?;
+    let impact = if status.completed == completed {
+        StatusCompletionImpact::default()
+    } else {
+        completion_impact(&transaction, &status, completed)?
+    };
+    transaction
+        .commit()
+        .map_err(|error| sqlite_access_error("status completion preview", &database_path, error))?;
+    Ok(SetCompletedResult { status, impact })
+}
+
+pub fn set_completed(
+    current: &Path,
+    input: SetCompletedInput<'_>,
+) -> Result<SetCompletedResult, Error> {
+    mutate(current, |transaction| {
+        let status = find_required(transaction, input.code, "source")?;
+        if status.completed == input.completed {
+            return Ok(SetCompletedResult {
+                status,
+                impact: StatusCompletionImpact::default(),
+            });
+        }
+        let impact = completion_impact(transaction, &status, input.completed)?;
+        if !impact.is_empty() && !input.confirmed {
+            return Err(Error::StatusCompletionConfirmationRequired { impact });
+        }
+        transaction
+            .execute(
+                "UPDATE statuses SET completed = ?1 WHERE id = ?2",
+                params![input.completed, status.id],
+            )
+            .map_err(status_operation_error)?;
+        Ok(SetCompletedResult {
+            status: find_required(transaction, input.code, "source")?,
+            impact,
+        })
+    })
+}
+
+#[derive(Clone)]
+struct ImpactTask {
+    id: String,
+    title: String,
+    status_id: String,
+    completed: bool,
+    claim: Option<crate::task::TaskClaim>,
+}
+
+fn completion_impact(
+    connection: &Connection,
+    status: &Status,
+    proposed: bool,
+) -> Result<StatusCompletionImpact, Error> {
+    let mut statement = connection.prepare(
+        "SELECT t.id, t.title, t.status_id, s.completed, c.agent_id, a.display_name, c.claimed_at
+         FROM tasks t JOIN statuses s ON s.id = t.status_id
+         LEFT JOIN task_claims c ON c.task_id = t.id LEFT JOIN agents a ON a.id = c.agent_id
+         WHERE t.archived = 0 ORDER BY t.id"
+    ).map_err(status_operation_error)?;
+    let tasks: Vec<ImpactTask> = statement
+        .query_map([], |row| {
+            let agent_id = row.get::<_, Option<String>>(4)?;
+            let display_name = row.get::<_, Option<String>>(5)?;
+            let claimed_at = row.get::<_, Option<String>>(6)?;
+            Ok(ImpactTask {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                status_id: row.get(2)?,
+                completed: row.get(3)?,
+                claim: agent_id.map(|id| crate::task::TaskClaim {
+                    agent: crate::task::ClaimAgent {
+                        id,
+                        display_name: display_name.unwrap_or_default(),
+                    },
+                    claimed_at: claimed_at.unwrap_or_default(),
+                }),
+            })
+        })
+        .map_err(status_operation_error)?
+        .collect::<rusqlite::Result<_>>()
+        .map_err(status_operation_error)?;
+    drop(statement);
+    let by_id: BTreeMap<_, _> = tasks.iter().map(|task| (task.id.as_str(), task)).collect();
+    let mut dependency_statement = connection.prepare(
+        "SELECT downstream_task_id, upstream_task_id FROM task_dependencies ORDER BY downstream_task_id, upstream_task_id"
+    ).map_err(status_operation_error)?;
+    let dependencies: Vec<(String, String)> = dependency_statement
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(status_operation_error)?
+        .collect::<rusqlite::Result<_>>()
+        .map_err(status_operation_error)?;
+    let affected: BTreeSet<_> = tasks
+        .iter()
+        .filter(|task| task.status_id == status.id)
+        .map(|task| task.id.as_str())
+        .collect();
+    let unresolved = |task_id: &str, after: bool| -> Vec<String> {
+        dependencies
+            .iter()
+            .filter(|(downstream, _)| downstream == task_id)
+            .filter_map(|(_, upstream)| {
+                let task = by_id.get(upstream.as_str())?;
+                let completed = if after && task.status_id == status.id {
+                    proposed
+                } else {
+                    task.completed
+                };
+                (!completed).then(|| upstream.clone())
+            })
+            .collect()
+    };
+    let available = |task: &ImpactTask, after: bool| {
+        let completed = if after && task.status_id == status.id {
+            proposed
+        } else {
+            task.completed
+        };
+        !completed && task.claim.is_none() && unresolved(&task.id, after).is_empty()
+    };
+    let status_tasks = tasks
+        .iter()
+        .filter(|task| affected.contains(task.id.as_str()))
+        .map(|task| StatusTaskImpact {
+            task_id: task.id.clone(),
+            title: task.title.clone(),
+            claim: task.claim.clone(),
+            available_before: available(task, false),
+            available_after: available(task, true),
+        })
+        .collect();
+    let downstream_ids: BTreeSet<_> = dependencies
+        .iter()
+        .filter(|(_, upstream)| affected.contains(upstream.as_str()))
+        .map(|(downstream, _)| downstream.as_str())
+        .collect();
+    let downstream_tasks = downstream_ids
+        .into_iter()
+        .filter_map(|id| by_id.get(id).copied())
+        .filter(|task| {
+            let after_completed = if task.status_id == status.id {
+                proposed
+            } else {
+                task.completed
+            };
+            !task.completed || !after_completed
+        })
+        .map(|task| DownstreamTaskImpact {
+            task_id: task.id.clone(),
+            title: task.title.clone(),
+            claim: task.claim.clone(),
+            available_before: available(task, false),
+            available_after: available(task, true),
+            unresolved_upstream_task_ids_before: unresolved(&task.id, false),
+            unresolved_upstream_task_ids_after: unresolved(&task.id, true),
+        })
+        .collect();
+    Ok(StatusCompletionImpact {
+        status_tasks,
+        downstream_tasks,
+    })
 }
 
 pub fn list_statuses(current: &Path) -> Result<Vec<Status>, Error> {

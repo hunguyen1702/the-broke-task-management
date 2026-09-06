@@ -128,14 +128,14 @@ pub struct RelatedTaskStatus {
     pub completed: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskClaim {
     pub agent: ClaimAgent,
     pub claimed_at: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ClaimAgent {
     pub id: String,

@@ -91,6 +91,10 @@ pub enum Error {
     ArchivePermissionDenied,
     #[error("unarchive impact requires confirmation")]
     ConfirmationRequired { impact: task::UnarchiveImpact },
+    #[error("status completion impact requires confirmation")]
+    StatusCompletionConfirmationRequired {
+        impact: status::StatusCompletionImpact,
+    },
     #[error("task already claimed: {task_id}")]
     ClaimConflict {
         task_id: String,
@@ -223,6 +227,7 @@ impl Error {
             Self::TaskClaimed { .. } => "TASK_CLAIMED",
             Self::ArchivePermissionDenied => "PERMISSION_DENIED",
             Self::ConfirmationRequired { .. } => "CONFIRMATION_REQUIRED",
+            Self::StatusCompletionConfirmationRequired { .. } => "CONFIRMATION_REQUIRED",
             Self::ClaimConflict { .. } => "CLAIM_CONFLICT",
             Self::ClaimNotFound { .. } => "CLAIM_NOT_FOUND",
             Self::ClaimNotOwned { .. } => "CLAIM_NOT_OWNED",
@@ -361,6 +366,9 @@ impl Error {
             }),
             Self::ConfirmationRequired { impact } => {
                 serde_json::to_value(impact).expect("unarchive impact is serializable")
+            }
+            Self::StatusCompletionConfirmationRequired { impact } => {
+                serde_json::to_value(impact).expect("status completion impact is serializable")
             }
             Self::CommentNotFound {
                 task_id,
@@ -1566,6 +1574,7 @@ pub fn exit_code(error: &Error) -> i32 {
         | Error::InvalidStatusName { .. }
         | Error::InvalidStatusPosition { .. }
         | Error::ConfirmationRequired { .. }
+        | Error::StatusCompletionConfirmationRequired { .. }
         | Error::TaskNotAvailable { .. }
         | Error::SelfDependency { .. }
         | Error::DependencyExists { .. }

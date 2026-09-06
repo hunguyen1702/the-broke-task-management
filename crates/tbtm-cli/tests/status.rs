@@ -201,7 +201,7 @@ fn status_help_has_required_placement_and_no_agent_authority() {
     let help = tbtm(tempdir().unwrap().path(), &["status", "--help"]);
     assert!(help.status.success());
     let text = String::from_utf8(help.stdout).unwrap();
-    for command in ["list", "create", "rename", "move"] {
+    for command in ["list", "create", "rename", "move", "set-completed"] {
         assert!(text.contains(command));
     }
     assert!(!text.contains("--agent"));
@@ -289,4 +289,174 @@ fn migration_name_collision_rolls_back_and_valid_noops_do_not_write() {
         .success()
     );
     assert_eq!(std::fs::read(database).unwrap(), before);
+}
+
+fn create_task(current: &std::path::Path, title: &str, status: &str) -> String {
+    let output = tbtm(
+        current,
+        &[
+            "task", "create", "--title", title, "--type", "task", "--status", status, "--json",
+        ],
+    );
+    assert!(output.status.success());
+    json(&output)["data"]["id"].as_str().unwrap().to_owned()
+}
+
+#[test]
+fn set_completed_reports_exact_impact_requires_confirmation_and_changes_semantics() {
+    let temp = tempdir().unwrap();
+    initialize(temp.path());
+    let upstream = create_task(temp.path(), "Review work", "in_progress");
+    let downstream = create_task(temp.path(), "Ship work", "to_do");
+    assert!(
+        tbtm(
+            temp.path(),
+            &[
+                "task",
+                "dependency",
+                "add",
+                &downstream,
+                "--depends-on",
+                &upstream,
+                "--json"
+            ]
+        )
+        .status
+        .success()
+    );
+
+    let unconfirmed = tbtm(
+        temp.path(),
+        &[
+            "status",
+            "set-completed",
+            "in_progress",
+            "--completed",
+            "true",
+            "--json",
+        ],
+    );
+    assert_eq!(unconfirmed.status.code(), Some(2));
+    let error = json(&unconfirmed);
+    assert_eq!(error["error"]["code"], "CONFIRMATION_REQUIRED");
+    assert_eq!(
+        error["error"]["details"]["statusTasks"][0]["taskId"],
+        upstream
+    );
+    assert_eq!(
+        error["error"]["details"]["statusTasks"][0]["availableBefore"],
+        true
+    );
+    assert_eq!(
+        error["error"]["details"]["statusTasks"][0]["availableAfter"],
+        false
+    );
+    assert_eq!(
+        error["error"]["details"]["downstreamTasks"][0]["taskId"],
+        downstream
+    );
+    assert_eq!(
+        error["error"]["details"]["downstreamTasks"][0]["unresolvedUpstreamTaskIdsBefore"],
+        serde_json::json!([upstream])
+    );
+    assert_eq!(
+        error["error"]["details"]["downstreamTasks"][0]["unresolvedUpstreamTaskIdsAfter"],
+        serde_json::json!([])
+    );
+
+    let changed = tbtm(
+        temp.path(),
+        &[
+            "status",
+            "set-completed",
+            "in_progress",
+            "--completed",
+            "true",
+            "--yes",
+            "--json",
+        ],
+    );
+    assert!(
+        changed.status.success(),
+        "{}",
+        String::from_utf8_lossy(&changed.stderr)
+    );
+    let changed = json(&changed);
+    assert_eq!(changed["data"]["status"]["completed"], true);
+    let available = json(&tbtm(temp.path(), &["task", "available", "--json"]))["data"].clone();
+    assert!(
+        available
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|task| task["id"] == downstream)
+    );
+
+    let database = temp.path().join(".tbtm/tbtm.db");
+    let before = std::fs::read(&database).unwrap();
+    let noop = tbtm(
+        temp.path(),
+        &[
+            "status",
+            "set-completed",
+            "in_progress",
+            "--completed",
+            "true",
+            "--json",
+        ],
+    );
+    assert!(noop.status.success());
+    assert_eq!(
+        json(&noop)["data"]["impact"],
+        serde_json::json!({"statusTasks":[],"downstreamTasks":[]})
+    );
+    assert_eq!(std::fs::read(database).unwrap(), before);
+}
+
+#[test]
+fn set_completed_supports_empty_impact_and_stable_input_errors() {
+    let temp = tempdir().unwrap();
+    initialize(temp.path());
+    let changed = tbtm(
+        temp.path(),
+        &[
+            "status",
+            "set-completed",
+            "in_progress",
+            "--completed",
+            "true",
+            "--json",
+        ],
+    );
+    assert!(changed.status.success());
+    assert_eq!(
+        json(&changed)["data"]["impact"],
+        serde_json::json!({"statusTasks":[],"downstreamTasks":[]})
+    );
+
+    let missing = tbtm(
+        temp.path(),
+        &[
+            "status",
+            "set-completed",
+            "missing",
+            "--completed",
+            "true",
+            "--json",
+        ],
+    );
+    assert_eq!(missing.status.code(), Some(3));
+    assert_eq!(
+        json(&missing)["error"]["details"],
+        serde_json::json!({"code":"missing","role":"source"})
+    );
+    assert_eq!(
+        tbtm(
+            temp.path(),
+            &["status", "set-completed", "done", "--completed", "maybe"]
+        )
+        .status
+        .code(),
+        Some(2)
+    );
 }

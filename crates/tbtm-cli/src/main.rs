@@ -14,8 +14,9 @@ use tbtm_core::{
     },
     exit_code, initialize, inspect_repository_health, register_agent,
     status::{
-        CreateStatusInput, MoveStatusResult, Placement, Status, create_status, list_statuses,
-        move_status, rename_status,
+        CreateStatusInput, MoveStatusResult, Placement, SetCompletedInput, SetCompletedResult,
+        Status, StatusCompletionImpact, create_status, list_statuses, move_status,
+        preview_set_completed, rename_status, set_completed,
     },
     task::{
         ArchiveScope, ArchiveTaskInput, AvailabilityReason, AvailableTasksInput,
@@ -78,6 +79,8 @@ enum StatusCommand {
     Rename(StatusRenameArgs),
     #[command(about = "Move a status in board order")]
     Move(StatusMoveArgs),
+    #[command(about = "Change whether a status represents completed work")]
+    SetCompleted(StatusSetCompletedArgs),
 }
 
 #[derive(Args)]
@@ -117,6 +120,17 @@ struct StatusMoveArgs {
     before: Option<String>,
     #[arg(long, conflicts_with = "before")]
     after: Option<String>,
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct StatusSetCompletedArgs {
+    code: String,
+    #[arg(long, action = clap::ArgAction::Set)]
+    completed: bool,
+    #[arg(long)]
+    yes: bool,
     #[arg(long)]
     json: bool,
 }
@@ -681,6 +695,40 @@ fn run() -> Result<(), (Error, bool)> {
                     .map_err(|error| (error, args.json))?;
                 render_status_move(&result, args.json);
             }
+            StatusCommand::SetCompleted(args) => {
+                let preview = preview_set_completed(&current, &args.code, args.completed)
+                    .map_err(|error| (error, args.json))?;
+                let mut confirmed = args.yes;
+                if preview.status.completed != args.completed
+                    && !preview.impact.is_empty()
+                    && !confirmed
+                    && !args.json
+                    && io::stdin().is_terminal()
+                {
+                    render_status_completion_impact(
+                        &preview.status,
+                        args.completed,
+                        &preview.impact,
+                        true,
+                    );
+                    confirmed = confirm("Change status completion semantics?")
+                        .map_err(|error| (Error::phase("CONFIRMATION_FAILED", error), args.json))?;
+                    if !confirmed {
+                        println!("Status completion change cancelled.");
+                        return Ok(());
+                    }
+                }
+                let result = set_completed(
+                    &current,
+                    SetCompletedInput {
+                        code: &args.code,
+                        completed: args.completed,
+                        confirmed,
+                    },
+                )
+                .map_err(|error| (error, args.json))?;
+                render_status_completion(&result, preview.status.completed, args.json);
+            }
         },
         Command::Task(args) => match args.command {
             TaskCommand::Create(args) => {
@@ -1118,6 +1166,7 @@ fn command_uses_json(command: &Command) -> bool {
             StatusCommand::Create(args) => args.json,
             StatusCommand::Rename(args) => args.json,
             StatusCommand::Move(args) => args.json,
+            StatusCommand::SetCompleted(args) => args.json,
         },
         Command::Task(args) => match &args.command {
             TaskCommand::Create(args) => args.json,
@@ -1206,6 +1255,90 @@ fn render_status_move(result: &MoveStatusResult, json: bool) {
             render_status_line(status);
         }
     }
+}
+
+fn render_status_completion(result: &SetCompletedResult, before: bool, json: bool) {
+    if json {
+        render_success(result, true);
+    } else {
+        render_status_completion_impact(
+            &result.status,
+            result.status.completed,
+            &result.impact,
+            false,
+        );
+        println!(
+            "Completion: {} -> {}",
+            if before { "completed" } else { "incomplete" },
+            if result.status.completed {
+                "completed"
+            } else {
+                "incomplete"
+            }
+        );
+    }
+}
+
+fn render_status_completion_impact(
+    status: &Status,
+    proposed: bool,
+    impact: &StatusCompletionImpact,
+    warning: bool,
+) {
+    println!("Status: {} ({})", status.name, status.code);
+    if warning {
+        println!(
+            "Proposed completion: {} -> {}",
+            if status.completed {
+                "completed"
+            } else {
+                "incomplete"
+            },
+            if proposed { "completed" } else { "incomplete" }
+        );
+    }
+    println!("Status tasks:");
+    if impact.status_tasks.is_empty() {
+        println!("  —");
+    }
+    for item in &impact.status_tasks {
+        println!(
+            "- {} {}; claim: {}; available: {} -> {}",
+            item.task_id,
+            item.title,
+            display_claim(item.claim.as_ref()),
+            item.available_before,
+            item.available_after
+        );
+    }
+    println!("Direct downstream tasks:");
+    if impact.downstream_tasks.is_empty() {
+        println!("  —");
+    }
+    for item in &impact.downstream_tasks {
+        println!(
+            "- {} {}; claim: {}; available: {} -> {}; unresolved upstreams: {} -> {}",
+            item.task_id,
+            item.title,
+            display_claim(item.claim.as_ref()),
+            item.available_before,
+            item.available_after,
+            display_values(&item.unresolved_upstream_task_ids_before),
+            display_values(&item.unresolved_upstream_task_ids_after)
+        );
+    }
+}
+
+fn display_claim(claim: Option<&tbtm_core::task::TaskClaim>) -> String {
+    claim.map_or_else(
+        || "none".to_owned(),
+        |claim| {
+            format!(
+                "{} ({}) since {}",
+                claim.agent.display_name, claim.agent.id, claim.claimed_at
+            )
+        },
+    )
 }
 
 fn render_comment(comment: &TaskComment, json: bool) {
@@ -1959,6 +2092,27 @@ fn render_error(error: &Error, json: bool) {
                         item.task_id, item.title, blockers
                     );
                 }
+            }
+        }
+        if let Error::StatusCompletionConfirmationRequired { impact } = error {
+            eprintln!("Status tasks:");
+            for item in &impact.status_tasks {
+                eprintln!(
+                    "- {} {}; available: {} -> {}",
+                    item.task_id, item.title, item.available_before, item.available_after
+                );
+            }
+            eprintln!("Direct downstream tasks:");
+            for item in &impact.downstream_tasks {
+                eprintln!(
+                    "- {} {}; available: {} -> {}; unresolved upstreams: {} -> {}",
+                    item.task_id,
+                    item.title,
+                    item.available_before,
+                    item.available_after,
+                    display_values(&item.unresolved_upstream_task_ids_before),
+                    display_values(&item.unresolved_upstream_task_ids_after)
+                );
             }
         }
         if let Some(suggestion) = error.suggestion() {

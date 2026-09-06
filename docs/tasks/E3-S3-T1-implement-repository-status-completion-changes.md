@@ -2,7 +2,7 @@
 id: E3-S3-T1
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - E3-S2-T1
   - E4-S3-T1
@@ -156,6 +156,10 @@ mise run test
 ```
 
 Smoke-test two temporary repositories plus a linked worktree. Build affected source tasks, overlapping direct dependents, claims, and alternate blockers; exercise both completion directions in human and JSON modes and compare task availability/blocking before and after.
+
+## Acceptance scenario impact
+
+`add`: E3-S3 introduces the public `status set-completed` workflow, confirmation behavior, and user-visible task/dependency impact. A separate acceptance-scenario workflow should cover its common success and likely user-error paths.
 
 ## Definition of done
 
