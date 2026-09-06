@@ -110,6 +110,9 @@ Story đã hoàn tất planning:
 - **E7-S3: Expose planning relationships and status operations**
   - [Epic plan](../epics/E7-S3-expose-planning-relationships-and-status-operations.md)
   - [Implementation task](../tasks/E7-S3-T1-harden-planning-relationship-and-status-cli-surface.md)
+- **E7-S5: Expose comment operations**
+  - [Epic plan](../epics/E7-S5-expose-comment-operations.md)
+  - [Implementation task](../tasks/E7-S5-T1-harden-comment-cli-surface.md)
 - **E9-S1: Verify concurrent claim safety**
   - [Epic plan](../epics/E9-S1-verify-concurrent-claim-safety.md)
   - [Implementation task](../tasks/E9-S1-T1-harden-concurrent-claim-verification.md)
@@ -149,6 +152,8 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, 
 **E7-S2-T1** đã implementation và verification xong với command/help inventory, actor-boundary checks và canonical-store lifecycle qua main/linked worktrees.
 
 **E7-S3-T1** đã planning xong và sẵn sàng implementation. Task audit, chuẩn hóa help/wiring và regression-test command surface cho status, parent/dependency mutations, hierarchy và relationship maps; availability/blockers/claims thuộc E7-S4. Dependency cross-check đã đọc lại E3-S1–E3-S4, E4-S1–E4-S5, E4-S5-T2, E7-S1 và các implementation task trực tiếp, kết luận `NO CONFLICT`. Decision review và direct document review đều kết luận `READY`.
+
+**E7-S5-T1** đã planning xong và sẵn sàng implementation. Task audit, chuẩn hóa help/wiring và regression-test exact `task comment add/list/delete` surface, actor placement, immutability guidance, active/archived parity và E7-S1 transport; không thêm alias, edit operation, alternate input, payload, migration hay persistence. Dependency cross-check đã đọc lại E6-S1–E6-S3, E7-S1 và các implementation task trực tiếp, kết luận `NO CONFLICT`. Decision review và direct document review đều kết luận `READY`.
 
 **E9-S1-T1** đã implementation và verification xong với deterministic gated child-process races cho specified claim và claim-next qua main/linked worktrees; không đổi production behavior.
 
@@ -282,6 +287,10 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, 
 - Chốt JSON và non-TTY không prompt; operation có confirmation dùng explicit `--yes` hoặc error exit `2`, còn human TTY cancellation là success exit `0`.
 - Chốt partial uninstall chỉ phát một error envelope và chuyển toàn bộ `UninstallResult` hiện hữu vào `error.details`, giữ failure code, exit precedence, committed effects và recovery information.
 - Viết epic/task E7-S1; decision review và direct document review đều kết luận READY. Đọc lại E1-S1/E1-S1-T1 và cross-check terminology, ownership boundary, output/error, confirmation, filesystem semantics cùng dependency type kết luận `NO CONFLICT`.
+- Chốt E7-S5 giữ exact nested `task comment add/list/delete` surface, không có top-level alias, alternate content input hoặc edit-like operation; actor placement và ownership kế thừa E6-S1/E6-S2.
+- Chốt comment-group help nêu immutable delete-then-add correction là hai operation độc lập; leaf help chỉ tập trung vào invocation, required values và actor selector.
+- Chốt active/archived parity, comment shape, ordering, empty success, hard-delete result, errors và task invariants giữ nguyên theo E6-S1–S3; toàn bộ command kế thừa E7-S1 transport.
+- Chốt E7-S5 là audit/hardening story; help-and-test-only implementation hợp lệ nếu không tìm thấy production gap. Viết epic/task, review quyết định và tài liệu đều kết luận READY; dependency cross-check E6-S1–S3/E7-S1 kết luận `NO CONFLICT`.
 
 ## Quy tắc planning cho mỗi story
 
@@ -397,7 +406,7 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. Xem [status dashboard](../STATUS.md) để chọn task implementation đã planned và `ready`; E7-S3-T1 hiện sẵn sàng.
+1. Xem [status dashboard](../STATUS.md) để chọn task implementation đã planned và `ready`; E7-S3-T1 và E7-S5-T1 hiện sẵn sàng.
 
 Nếu tiếp tục planning:
 

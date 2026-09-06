@@ -174,7 +174,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E7-S3](epics/E7-S3-expose-planning-relationships-and-status-operations.md) | done | ready | E3-S1, E3-S2, E3-S3, E3-S4, E4-S1, E4-S2, E4-S3, E4-S4, E4-S5, E7-S1 |
 | [E7-S3-T1](tasks/E7-S3-T1-harden-planning-relationship-and-status-cli-surface.md) | done | ready | E3-S1-T1, E3-S2-T1, E3-S3-T1, E3-S4-T1, E4-S1-T1, E4-S2-T1, E4-S3-T1, E4-S4-T1, E4-S5-T1, E4-S5-T2, E7-S1-T1 |
 | E7-S4 Expose availability and claim operations | needed | not_planned | E4-S3, E4-S4, E5-S1, E5-S2, E5-S3, E5-S4, E5-S5, E7-S1 |
-| E7-S5 Expose comment operations | needed | not_planned | E6-S1, E6-S2, E6-S3, E7-S1 |
+| [E7-S5](epics/E7-S5-expose-comment-operations.md) | done | ready | E6-S1, E6-S2, E6-S3, E7-S1 |
+| [E7-S5-T1](tasks/E7-S5-T1-harden-comment-cli-surface.md) | done | ready | E6-S1-T1, E6-S2-T1, E6-S3-T1, E7-S1-T1 |
 
 ## E8 — Visual Studio Code scrum experience
 
