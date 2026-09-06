@@ -70,6 +70,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E6-S1-T1 is implemented and verified with durable actor-attributed comments, deterministic read-only listing, collision handling, migration coverage, and linked-worktree concurrency coverage.
 - E6-S2-T1 is implemented and verified with ownership-aware atomic hard deletion, stable errors, rollback coverage, and linked-worktree concurrency coverage.
 - E6-S3-T1 is implemented and verified with insert/list/delete architectural guards, immutable-field regression coverage, non-atomic correction boundaries, active/archived lifecycle parity, and linked-worktree coverage. Acceptance impact `add` is queued for the separate scenario workflow.
+- E7-S1 planning is complete; E7-S1-T1 is ready to standardize global JSON mode, one-envelope transport, parse-error handling, stream discipline, and non-interactive behavior without changing domain payloads.
 
 ## E1 — Repository foundation and identity
 
@@ -163,7 +164,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 | Story | Planning | Implementation | Contract depends on |
 |---|---|---|---|
-| E7-S1 Provide consistent command output | needed | not_planned | E1-S1 |
+| [E7-S1](epics/E7-S1-provide-consistent-command-output.md) | done | ready | E1-S1 |
+| [E7-S1-T1](tasks/E7-S1-T1-standardize-cli-output-boundary.md) | done | ready | E1-S1-T1 |
 | E7-S2 Expose repository, agent, and task operations | needed | not_planned | E1-S1, E1-S2, E1-S3, E1-S4, E1-S5, E2-S1, E2-S2, E2-S3, E2-S4, E2-S5, E2-S6, E7-S1 |
 | E7-S3 Expose planning relationships and status operations | needed | not_planned | E3-S1, E3-S2, E3-S3, E3-S4, E4-S1, E4-S2, E4-S3, E4-S4, E4-S5, E7-S1 |
 | E7-S4 Expose availability and claim operations | needed | not_planned | E4-S3, E4-S4, E5-S1, E5-S2, E5-S3, E5-S4, E5-S5, E7-S1 |

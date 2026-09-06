@@ -101,10 +101,13 @@ Story đã hoàn tất planning:
 - **E6-S3: Keep comments immutable**
   - [Epic plan](../epics/E6-S3-keep-comments-immutable.md)
   - [Implementation task](../tasks/E6-S3-T1-harden-comment-immutability.md)
+- **E7-S1: Provide consistent command output**
+  - [Epic plan](../epics/E7-S1-provide-consistent-command-output.md)
+  - [Implementation task](../tasks/E7-S1-T1-standardize-cli-output-boundary.md)
 
 Story tiếp theo nếu tiếp tục planning:
 
-- **E9-S1: Verify concurrent claim safety** — đủ contract dependency và chưa bị session khác claim; E7-S1 hiện đang `in_progress` ở session khác.
+- **E7-S2: Expose repository, agent, and task operations** — kế thừa output boundary E7-S1 và hợp nhất command-surface contract cho các operation đã được E1/E2 định nghĩa.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -130,7 +133,9 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, 
 
 **E6-S3-T1** đã planning xong và sẵn sàng implementation. Task này khóa comment immutability bằng regression coverage, không thêm edit command hay migration; correction là hai operation delete rồi add độc lập.
 
-**E3-S4-T1** đã planning xong và sẵn sàng implementation trên E3-S2-T1 và E2-S1-T1. Dependency cross-check đã đọc lại E3-S2/E3-S2-T1 và E2-S1/E2-S1-T1, kết luận `NO CONFLICT`.
+**E3-S4-T1** đã implementation và verification xong với atomic unused-status deletion, active/archived usage guard, order compaction và linked-worktree concurrency coverage. Dependency cross-check đã đọc lại E3-S2/E3-S2-T1 và E2-S1/E2-S1-T1, kết luận `NO CONFLICT`.
+
+**E7-S1-T1** đã planning xong và sẵn sàng implementation trên E1-S1-T1. Task chuẩn hóa global/idempotent `--json`, một response envelope, JSON-aware parse errors, stdout/stderr, exit taxonomy, non-interactive confirmation và partial-uninstall reporting; không đổi domain payload hay persistence. Dependency cross-check đã đọc lại E1-S1/E1-S1-T1 và kết luận `NO CONFLICT`.
 
 ## Việc đã làm
 
@@ -257,6 +262,11 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, 
 - Chốt correction là hai operation E6-S2 delete rồi E6-S1 add độc lập, không atomic compensation; comment mới luôn có UUID mới và capture timestamp riêng nhưng timestamp value không bắt buộc khác comment cũ.
 - Chốt focused architecture guard cho public core comment operations và production `UPDATE task_comments`, cùng CLI surface tests; E8-S6 UI phải kế thừa immutable core boundary.
 - Phân loại acceptance impact E6-S3 là `add` cho combined correction journey `AT-E6-S3-001`; hai independent reviews sau chỉnh sửa đều kết luận READY.
+- Chốt E7-S1 là output-boundary hardening trên contract E1-S1: một global/idempotent `--json`, một compact envelope trên stdout, stderr rỗng trong JSON mode, human errors trên stderr và giữ nguyên payload/error domain hiện hữu.
+- Chốt exact argv token `--json` làm parse-error mode signal; unknown/missing/invalid arguments trả JSON exit `2`, typo không được suy đoán. Root/nested help và version luôn giữ Clap text cùng exit `0`, kể cả khi có `--json`.
+- Chốt JSON và non-TTY không prompt; operation có confirmation dùng explicit `--yes` hoặc error exit `2`, còn human TTY cancellation là success exit `0`.
+- Chốt partial uninstall chỉ phát một error envelope và chuyển toàn bộ `UninstallResult` hiện hữu vào `error.details`, giữ failure code, exit precedence, committed effects và recovery information.
+- Viết epic/task E7-S1; decision review và direct document review đều kết luận READY. Đọc lại E1-S1/E1-S1-T1 và cross-check terminology, ownership boundary, output/error, confirmation, filesystem semantics cùng dependency type kết luận `NO CONFLICT`.
 
 ## Quy tắc planning cho mỗi story
 
@@ -372,12 +382,12 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. Xem [status dashboard](../STATUS.md) để chọn task implementation đã planned và `ready`; E3-S4-T1 hiện sẵn sàng.
+1. Xem [status dashboard](../STATUS.md) để chọn task implementation đã planned và `ready`; E7-S1-T1 hiện sẵn sàng.
 
 Nếu tiếp tục planning:
 
-1. Chọn story `needed` đủ contract dependency và chưa bị session khác claim trong `docs/STATUS.md`; E9-S1 hiện là ứng viên tiếp theo.
-2. Đọc story, các domain/dependency section trong PRD, và toàn bộ direct dependency contracts.
-3. Kế thừa source of truth hiện hành thay vì tạo model cạnh tranh.
+1. Chọn story `needed` đủ contract dependency và chưa bị session khác claim trong `docs/STATUS.md`; E7-S2 là ứng viên tiếp theo theo thứ tự dashboard.
+2. Đọc E1-S1–E1-S5, E2-S1–E2-S6 và E7-S1 cùng implementation tasks tương ứng.
+3. Kế thừa global output boundary của E7-S1 và các domain command contracts hiện hữu thay vì định nghĩa payload hoặc source of truth cạnh tranh.
 4. Chỉ spawn review agent sau một vòng quyết định đã được người dùng xác nhận; không review trong lúc người dùng còn hỏi hoặc khám phá requirement.
 5. Khi READY, tạo epic và technical task, review file, cập nhật danh sách trong handoff này.
