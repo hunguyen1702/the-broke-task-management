@@ -2,7 +2,7 @@
 id: E7-S2-T1
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - E1-S1-T1
   - E1-S1-T2
@@ -153,6 +153,10 @@ rtk mise run test
 ```
 
 Smoke-test the owned command inventory and one full lifecycle from both the main worktree and a linked worktree.
+
+## Acceptance scenario impact
+
+`none`. The audit found no public behavior change: implementation adds only automated regression coverage for the already-approved E1/E2/E7-S1 command contracts. No files under `docs/testing/` were changed, reviewed, or executed.
 
 ## Definition of done
 
