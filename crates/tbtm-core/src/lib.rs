@@ -180,6 +180,11 @@ pub enum Error {
         phase: &'static str,
         message: String,
     },
+    #[error("partial uninstall cleanup failure")]
+    PartialUninstall {
+        result: UninstallResult,
+        permission_failure: bool,
+    },
     #[error("{phase}: {source}")]
     Phase {
         phase: &'static str,
@@ -255,6 +260,11 @@ impl Error {
             Self::DatabaseUnavailable { .. } => "DATABASE_UNAVAILABLE",
             Self::PermissionDenied { .. } => "PERMISSION_DENIED",
             Self::RepositoryUnavailable { .. } => "REPOSITORY_UNAVAILABLE",
+            Self::PartialUninstall {
+                permission_failure: true,
+                ..
+            } => "UNINSTALL_PERMISSION_FAILED",
+            Self::PartialUninstall { .. } => "UNINSTALL_FAILED",
             Self::Phase { phase, .. } => phase,
         }
     }
@@ -422,6 +432,9 @@ impl Error {
                 "phase": phase,
                 "suggestion": "Repair the Git worktree metadata or run the command from a usable non-bare worktree."
             }),
+            Self::PartialUninstall { result, .. } => {
+                serde_json::to_value(result).expect("uninstall result is serializable")
+            }
             _ => serde_json::json!({}),
         }
     }
@@ -1561,6 +1574,11 @@ pub fn exit_code(error: &Error) -> i32 {
         Error::InvalidConfiguration { .. } => 2,
         Error::RepositoryNotInitialized { .. } => 3,
         Error::PermissionDenied { .. } => 5,
+        Error::PartialUninstall {
+            permission_failure: true,
+            ..
+        } => 5,
+        Error::PartialUninstall { .. } => 1,
         Error::InvalidPrefix
         | Error::InvalidAgentName { .. }
         | Error::InvalidTaskTitle

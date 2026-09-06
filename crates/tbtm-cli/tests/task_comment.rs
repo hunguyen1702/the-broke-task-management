@@ -671,7 +671,10 @@ fn delete_validates_actor_task_and_scoped_comment_in_order() {
     ] {
         let malformed = tbtm(temp.path(), &arguments);
         assert_eq!(malformed.status.code(), Some(2));
-        assert!(malformed.stdout.is_empty());
+        assert!(malformed.stderr.is_empty());
+        let response: Value = serde_json::from_slice(&malformed.stdout).unwrap();
+        assert_eq!(response["ok"], false);
+        assert_eq!(response["error"]["code"], "INVALID_ARGUMENTS");
     }
 }
 

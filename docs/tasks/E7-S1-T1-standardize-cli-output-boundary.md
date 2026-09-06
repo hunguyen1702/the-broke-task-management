@@ -2,7 +2,7 @@
 id: E7-S1-T1
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - E1-S1-T1
 implements:
@@ -180,7 +180,7 @@ Smoke-test global/repeated JSON flags, JSON parse errors, one representative com
 
 ## Acceptance scenario impact
 
-Classify as `none`, `revalidate`, `add`, or `supersede` only after implementation from the actual public behavior changed. A non-`none` result is a handoff to the separate acceptance-scenario workflow; do not edit or execute scenario files here.
+`add` for E7-S1. The implementation introduces the story's new global JSON and parse-error behavior; scenario creation is handed off to the separate acceptance-scenario workflow. No files under `docs/testing/` were changed or executed here.
 
 ## Definition of done
 

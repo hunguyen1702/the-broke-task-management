@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, error::ErrorKind};
 use serde::Serialize;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -35,8 +35,15 @@ use tbtm_core::{
 };
 
 #[derive(Parser)]
-#[command(name = "tbtm", version, about = "Repository-local task management")]
+#[command(
+    name = "tbtm",
+    version,
+    about = "Repository-local task management",
+    args_override_self = true
+)]
 struct Cli {
+    #[arg(long, global = true)]
+    json: bool,
     #[command(subcommand)]
     command: Command,
 }
@@ -86,10 +93,7 @@ enum StatusCommand {
 }
 
 #[derive(Args)]
-struct StatusListArgs {
-    #[arg(long)]
-    json: bool,
-}
+struct StatusListArgs {}
 
 #[derive(Args)]
 struct StatusCreateArgs {
@@ -101,8 +105,6 @@ struct StatusCreateArgs {
     before: Option<String>,
     #[arg(long, conflicts_with = "before")]
     after: Option<String>,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -110,15 +112,11 @@ struct StatusRenameArgs {
     code: String,
     #[arg(long)]
     name: String,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
 struct StatusDeleteArgs {
     code: String,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -129,8 +127,6 @@ struct StatusMoveArgs {
     before: Option<String>,
     #[arg(long, conflicts_with = "before")]
     after: Option<String>,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -140,8 +136,6 @@ struct StatusSetCompletedArgs {
     completed: bool,
     #[arg(long)]
     yes: bool,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -209,15 +203,11 @@ struct TaskCommentAddArgs {
     content: String,
     #[arg(long)]
     agent: Option<uuid::Uuid>,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
 struct TaskCommentListArgs {
     task_id: String,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -229,15 +219,11 @@ struct TaskCommentDeleteArgs {
         help = "Act as this registered agent; omission selects logical-user authority"
     )]
     agent: Option<uuid::Uuid>,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
 struct TaskBlockersArgs {
     task_id: String,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -251,8 +237,6 @@ struct TaskArchiveArgs {
     force: bool,
     #[arg(long)]
     yes: bool,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -260,8 +244,6 @@ struct TaskUnarchiveArgs {
     id: String,
     #[arg(long)]
     yes: bool,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -269,8 +251,6 @@ struct TaskClaimArgs {
     task_id: String,
     #[arg(long)]
     agent: uuid::Uuid,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -283,8 +263,6 @@ struct TaskClaimNextArgs {
     task_types: Vec<String>,
     #[arg(long = "tag")]
     tags: Vec<String>,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -296,8 +274,6 @@ struct TaskUnclaimArgs {
     force: bool,
     #[arg(long)]
     yes: bool,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -321,8 +297,6 @@ struct DependencyMutationArgs {
     depends_on: String,
     #[arg(long)]
     agent: Option<uuid::Uuid>,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -346,8 +320,6 @@ struct ParentSetArgs {
     parent: String,
     #[arg(long)]
     agent: Option<uuid::Uuid>,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -355,8 +327,6 @@ struct ParentRemoveArgs {
     task_id: String,
     #[arg(long)]
     agent: Option<uuid::Uuid>,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -364,8 +334,6 @@ struct TaskHierarchyArgs {
     task_id: String,
     #[arg(long)]
     recursive: bool,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -377,8 +345,6 @@ struct TaskMapArgs {
         value_parser = ["upstream", "downstream", "parent", "child", "all"]
     )]
     direction: String,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -416,15 +382,11 @@ struct TaskUpdateArgs {
     clear_code_refs: bool,
     #[arg(long)]
     agent: Option<uuid::Uuid>,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
 struct TaskViewArgs {
     id: String,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -439,8 +401,6 @@ struct TaskListArgs {
     task_types: Vec<String>,
     #[arg(long = "tag")]
     tags: Vec<String>,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -451,8 +411,6 @@ struct TaskAvailableArgs {
     task_types: Vec<String>,
     #[arg(long = "tag")]
     tags: Vec<String>,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -481,8 +439,6 @@ struct TaskCreateArgs {
     code_references: Vec<String>,
     #[arg(long)]
     agent: Option<uuid::Uuid>,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -502,15 +458,10 @@ enum AgentCommand {
 #[derive(Args)]
 struct AgentRegisterArgs {
     base_name: String,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
-struct AgentListArgs {
-    #[arg(long)]
-    json: bool,
-}
+struct AgentListArgs {}
 
 #[derive(Args)]
 struct RepoArgs {
@@ -525,10 +476,7 @@ enum RepoCommand {
 }
 
 #[derive(Args)]
-struct RepoStatusArgs {
-    #[arg(long)]
-    json: bool,
-}
+struct RepoStatusArgs {}
 
 #[derive(Args)]
 struct InitArgs {
@@ -543,8 +491,6 @@ struct InitArgs {
     force: bool,
     #[arg(long, help = "Skip required confirmation")]
     yes: bool,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Args)]
@@ -553,8 +499,6 @@ struct UninstallArgs {
     yes: bool,
     #[arg(long)]
     dry_run: bool,
-    #[arg(long)]
-    json: bool,
 }
 
 #[derive(Serialize)]
@@ -572,7 +516,34 @@ struct ApiError {
 }
 
 fn main() -> ExitCode {
-    match run() {
+    let argv: Vec<_> = std::env::args_os().collect();
+    let json_requested = argv.iter().any(|value| value == "--json");
+    let cli = match Cli::try_parse_from(argv) {
+        Ok(cli) => cli,
+        Err(error)
+            if matches!(
+                error.kind(),
+                ErrorKind::DisplayHelp | ErrorKind::DisplayVersion
+            ) =>
+        {
+            let _ = error.print();
+            return ExitCode::SUCCESS;
+        }
+        Err(error) if json_requested => {
+            render_api_error(
+                "INVALID_ARGUMENTS",
+                error.to_string().trim_end(),
+                serde_json::json!({}),
+            );
+            return ExitCode::from(2);
+        }
+        Err(error) => {
+            let code = error.exit_code();
+            let _ = error.print();
+            return ExitCode::from(code as u8);
+        }
+    };
+    match run(cli) {
         Ok(()) => ExitCode::SUCCESS,
         Err((error, json)) => {
             render_error(&error, json);
@@ -581,9 +552,8 @@ fn main() -> ExitCode {
     }
 }
 
-fn run() -> Result<(), (Error, bool)> {
-    let cli = Cli::parse();
-    let json = command_uses_json(&cli.command);
+fn run(cli: Cli) -> Result<(), (Error, bool)> {
+    let json = cli.json;
     let current = std::env::current_dir()
         .map_err(|error| (Error::phase("REPOSITORY_DISCOVERY_FAILED", error), json))?;
     match cli.command {
@@ -597,12 +567,12 @@ fn run() -> Result<(), (Error, bool)> {
             );
             let result = match initial {
                 Ok(result) => result,
-                Err(error) if error.code() == "FORCE_CONFIRMATION_REQUIRED" && !args.json => {
+                Err(error) if error.code() == "FORCE_CONFIRMATION_REQUIRED" && !json => {
                     let confirmed =
                         confirm("Force initialization moves the main worktree's existing .tbtm to a backup. Continue?")
-                            .map_err(|e| (Error::phase("CONFIRMATION_FAILED", e), args.json))?;
+                            .map_err(|e| (Error::phase("CONFIRMATION_FAILED", e), json))?;
                     if !confirmed {
-                        render_success(&serde_json::json!({"cancelled": true}), args.json);
+                        render_success(&serde_json::json!({"cancelled": true}), json);
                         return Ok(());
                     }
                     initialize(
@@ -612,72 +582,67 @@ fn run() -> Result<(), (Error, bool)> {
                         args.force,
                         true,
                     )
-                    .map_err(|error| (error, args.json))?
+                    .map_err(|error| (error, json))?
                 }
-                Err(error) => return Err((error, args.json)),
+                Err(error) => return Err((error, json)),
             };
-            render_success(&result, args.json);
+            render_success(&result, json);
         }
         Command::Uninstall(args) => {
-            if !args.dry_run && !args.yes && (args.json || !io::stdin().is_terminal()) {
+            if !args.dry_run && !args.yes && (json || !io::stdin().is_terminal()) {
                 return Err((
                     Error::phase(
                         "CONFIRMATION_REQUIRED",
                         io::Error::other("pass --yes for non-interactive uninstall"),
                     ),
-                    args.json,
+                    json,
                 ));
             }
             if !args.dry_run
                 && !args.yes
                 && !confirm("Uninstall removes TBTM files from the main worktree. Continue?")
-                    .map_err(|e| (Error::phase("CONFIRMATION_FAILED", e), args.json))?
+                    .map_err(|e| (Error::phase("CONFIRMATION_FAILED", e), json))?
             {
-                render_success(&serde_json::json!({"cancelled": true}), args.json);
+                render_success(&serde_json::json!({"cancelled": true}), json);
                 return Ok(());
             }
-            let result = uninstall(&current, args.dry_run).map_err(|error| (error, args.json))?;
+            let result = uninstall(&current, args.dry_run).map_err(|error| (error, json))?;
             let permission_failure = result
                 .failed
                 .iter()
                 .any(|failure| failure.contains("Permission denied"));
-            render_success(&result, args.json);
             if !result.failed.is_empty() {
                 return Err((
-                    Error::phase(
-                        if permission_failure {
-                            "UNINSTALL_PERMISSION_FAILED"
-                        } else {
-                            "UNINSTALL_FAILED"
-                        },
-                        io::Error::other("partial cleanup failure"),
-                    ),
-                    args.json,
+                    Error::PartialUninstall {
+                        result,
+                        permission_failure,
+                    },
+                    json,
                 ));
             }
+            render_success(&result, json);
         }
         Command::Repo(args) => match args.command {
-            RepoCommand::Status(args) => {
-                let result =
-                    inspect_repository_health(&current).map_err(|error| (error, args.json))?;
-                render_repository_health(&result, args.json);
+            RepoCommand::Status(_args) => {
+                let result = inspect_repository_health(&current).map_err(|error| (error, json))?;
+                render_repository_health(&result, json);
             }
         },
         Command::Agent(args) => match args.command {
             AgentCommand::Register(args) => {
-                let result = register_agent(&current, &args.base_name)
-                    .map_err(|error| (error, args.json))?;
-                render_agent_registration(&result, args.json);
+                let result =
+                    register_agent(&current, &args.base_name).map_err(|error| (error, json))?;
+                render_agent_registration(&result, json);
             }
-            AgentCommand::List(args) => {
-                let result = list_agents(&current).map_err(|error| (error, args.json))?;
-                render_agent_list(&result, args.json);
+            AgentCommand::List(_args) => {
+                let result = list_agents(&current).map_err(|error| (error, json))?;
+                render_agent_list(&result, json);
             }
         },
         Command::Status(args) => match args.command {
-            StatusCommand::List(args) => {
-                let result = list_statuses(&current).map_err(|error| (error, args.json))?;
-                render_status_list(&result, args.json);
+            StatusCommand::List(_args) => {
+                let result = list_statuses(&current).map_err(|error| (error, json))?;
+                render_status_list(&result, json);
             }
             StatusCommand::Create(args) => {
                 let placement = placement(args.before.as_deref(), args.after.as_deref());
@@ -689,34 +654,33 @@ fn run() -> Result<(), (Error, bool)> {
                         placement,
                     },
                 )
-                .map_err(|error| (error, args.json))?;
-                render_status_mutation("Created", &result, args.json);
+                .map_err(|error| (error, json))?;
+                render_status_mutation("Created", &result, json);
             }
             StatusCommand::Rename(args) => {
                 let result = rename_status(&current, &args.code, &args.name)
-                    .map_err(|error| (error, args.json))?;
-                render_status_mutation("Renamed", &result, args.json);
+                    .map_err(|error| (error, json))?;
+                render_status_mutation("Renamed", &result, json);
             }
             StatusCommand::Move(args) => {
                 let placement = placement(args.before.as_deref(), args.after.as_deref())
                     .expect("clap requires a placement");
-                let result = move_status(&current, &args.code, placement)
-                    .map_err(|error| (error, args.json))?;
-                render_status_move(&result, args.json);
+                let result =
+                    move_status(&current, &args.code, placement).map_err(|error| (error, json))?;
+                render_status_move(&result, json);
             }
             StatusCommand::Delete(args) => {
-                let result =
-                    delete_status(&current, &args.code).map_err(|error| (error, args.json))?;
-                render_status_delete(&result, args.json);
+                let result = delete_status(&current, &args.code).map_err(|error| (error, json))?;
+                render_status_delete(&result, json);
             }
             StatusCommand::SetCompleted(args) => {
                 let preview = preview_set_completed(&current, &args.code, args.completed)
-                    .map_err(|error| (error, args.json))?;
+                    .map_err(|error| (error, json))?;
                 let mut confirmed = args.yes;
                 if preview.status.completed != args.completed
                     && !preview.impact.is_empty()
                     && !confirmed
-                    && !args.json
+                    && !json
                     && io::stdin().is_terminal()
                 {
                     render_status_completion_impact(
@@ -726,7 +690,7 @@ fn run() -> Result<(), (Error, bool)> {
                         true,
                     );
                     confirmed = confirm("Change status completion semantics?")
-                        .map_err(|error| (Error::phase("CONFIRMATION_FAILED", error), args.json))?;
+                        .map_err(|error| (Error::phase("CONFIRMATION_FAILED", error), json))?;
                     if !confirmed {
                         println!("Status completion change cancelled.");
                         return Ok(());
@@ -740,20 +704,19 @@ fn run() -> Result<(), (Error, bool)> {
                         confirmed,
                     },
                 )
-                .map_err(|error| (error, args.json))?;
-                render_status_completion(&result, preview.status.completed, args.json);
+                .map_err(|error| (error, json))?;
+                render_status_completion(&result, preview.status.completed, json);
             }
         },
         Command::Task(args) => match args.command {
             TaskCommand::Create(args) => {
-                let task_type =
-                    TaskType::parse(&args.task_type).map_err(|error| (error, args.json))?;
+                let task_type = TaskType::parse(&args.task_type).map_err(|error| (error, json))?;
                 let code_references = args
                     .code_references
                     .iter()
                     .map(|value| parse_code_reference(value))
                     .collect::<Result<Vec<_>, _>>()
-                    .map_err(|error| (error, args.json))?;
+                    .map_err(|error| (error, json))?;
                 let result = create_task(
                     &current,
                     CreateTaskInput {
@@ -771,23 +734,23 @@ fn run() -> Result<(), (Error, bool)> {
                         agent_id: args.agent,
                     },
                 )
-                .map_err(|error| (error, args.json))?;
-                render_created_task(&result, args.json);
+                .map_err(|error| (error, json))?;
+                render_created_task(&result, json);
             }
             TaskCommand::View(args) => {
-                let result = view_task(&current, &args.id).map_err(|error| (error, args.json))?;
-                render_task_detail(&result, args.json);
+                let result = view_task(&current, &args.id).map_err(|error| (error, json))?;
+                render_task_detail(&result, json);
             }
             TaskCommand::List(args) => {
                 if args.archived && args.all {
-                    return Err((Error::ConflictingArguments, args.json));
+                    return Err((Error::ConflictingArguments, json));
                 }
                 let task_types = args
                     .task_types
                     .iter()
                     .map(|value| TaskType::parse(value))
                     .collect::<Result<Vec<_>, _>>()
-                    .map_err(|error| (error, args.json))?;
+                    .map_err(|error| (error, json))?;
                 let result = list_tasks(
                     &current,
                     &ListTasksInput {
@@ -803,8 +766,8 @@ fn run() -> Result<(), (Error, bool)> {
                         tags: args.tags,
                     },
                 )
-                .map_err(|error| (error, args.json))?;
-                render_task_list(&result, args.json);
+                .map_err(|error| (error, json))?;
+                render_task_list(&result, json);
             }
             TaskCommand::Available(args) => {
                 let task_types = args
@@ -812,7 +775,7 @@ fn run() -> Result<(), (Error, bool)> {
                     .iter()
                     .map(|value| TaskType::parse(value))
                     .collect::<Result<Vec<_>, _>>()
-                    .map_err(|error| (error, args.json))?;
+                    .map_err(|error| (error, json))?;
                 let result = available_tasks(
                     &current,
                     &AvailableTasksInput {
@@ -821,13 +784,13 @@ fn run() -> Result<(), (Error, bool)> {
                         tags: args.tags,
                     },
                 )
-                .map_err(|error| (error, args.json))?;
-                render_available_tasks(&result, args.json);
+                .map_err(|error| (error, json))?;
+                render_available_tasks(&result, json);
             }
             TaskCommand::Blockers(args) => {
                 let result = explain_task_blocking(&current, &args.task_id)
-                    .map_err(|error| (error, args.json))?;
-                render_task_blockers(&result, args.json);
+                    .map_err(|error| (error, json))?;
+                render_task_blockers(&result, json);
             }
             TaskCommand::Update(args) => {
                 if (args.estimate.is_some() && args.clear_estimate)
@@ -835,20 +798,20 @@ fn run() -> Result<(), (Error, bool)> {
                     || (!args.urls.is_empty() && args.clear_urls)
                     || (!args.code_references.is_empty() && args.clear_code_refs)
                 {
-                    return Err((Error::ConflictingArguments, args.json));
+                    return Err((Error::ConflictingArguments, json));
                 }
                 let references = args
                     .code_references
                     .iter()
                     .map(|value| parse_code_reference(value))
                     .collect::<Result<Vec<_>, _>>()
-                    .map_err(|error| (error, args.json))?;
+                    .map_err(|error| (error, json))?;
                 let task_type = args
                     .task_type
                     .as_deref()
                     .map(TaskType::parse)
                     .transpose()
-                    .map_err(|error| (error, args.json))?;
+                    .map_err(|error| (error, json))?;
                 let result = update_task(
                     &current,
                     &args.id,
@@ -867,8 +830,8 @@ fn run() -> Result<(), (Error, bool)> {
                         agent_id: args.agent,
                     },
                 )
-                .map_err(|error| (error, args.json))?;
-                render_task_detail(&result, args.json);
+                .map_err(|error| (error, json))?;
+                render_task_detail(&result, json);
             }
             TaskCommand::Dependency(args) => match args.command {
                 DependencyCommand::Add(args) => {
@@ -880,8 +843,8 @@ fn run() -> Result<(), (Error, bool)> {
                             agent_id: args.agent,
                         },
                     )
-                    .map_err(|error| (error, args.json))?;
-                    render_dependency(&result, true, args.json);
+                    .map_err(|error| (error, json))?;
+                    render_dependency(&result, true, json);
                 }
                 DependencyCommand::Remove(args) => {
                     let result = remove_dependency(
@@ -892,8 +855,8 @@ fn run() -> Result<(), (Error, bool)> {
                             agent_id: args.agent,
                         },
                     )
-                    .map_err(|error| (error, args.json))?;
-                    render_dependency(&result, false, args.json);
+                    .map_err(|error| (error, json))?;
+                    render_dependency(&result, false, json);
                 }
             },
             TaskCommand::Parent(args) => match args.command {
@@ -906,8 +869,8 @@ fn run() -> Result<(), (Error, bool)> {
                             agent_id: args.agent,
                         },
                     )
-                    .map_err(|error| (error, args.json))?;
-                    render_parent_mutation(&result, true, args.json);
+                    .map_err(|error| (error, json))?;
+                    render_parent_mutation(&result, true, json);
                 }
                 ParentCommand::Remove(args) => {
                     let result = remove_parent(
@@ -917,14 +880,14 @@ fn run() -> Result<(), (Error, bool)> {
                             agent_id: args.agent,
                         },
                     )
-                    .map_err(|error| (error, args.json))?;
-                    render_parent_mutation(&result, false, args.json);
+                    .map_err(|error| (error, json))?;
+                    render_parent_mutation(&result, false, json);
                 }
             },
             TaskCommand::Hierarchy(args) => {
                 let result = task_hierarchy(&current, &args.task_id, args.recursive)
-                    .map_err(|error| (error, args.json))?;
-                render_hierarchy(&result, args.json);
+                    .map_err(|error| (error, json))?;
+                render_hierarchy(&result, json);
             }
             TaskCommand::Map(args) => {
                 let direction = match args.direction.as_str() {
@@ -936,8 +899,8 @@ fn run() -> Result<(), (Error, bool)> {
                     _ => unreachable!("direction is validated by clap"),
                 };
                 let result = task_relationship_map(&current, &args.task_id, direction)
-                    .map_err(|error| (error, args.json))?;
-                render_relationship_map(&result, args.json);
+                    .map_err(|error| (error, json))?;
+                render_relationship_map(&result, json);
             }
             TaskCommand::Claim(args) => {
                 let result = claim_task(
@@ -947,8 +910,8 @@ fn run() -> Result<(), (Error, bool)> {
                         agent_id: args.agent,
                     },
                 )
-                .map_err(|error| (error, args.json))?;
-                render_claim(&result, args.json);
+                .map_err(|error| (error, json))?;
+                render_claim(&result, json);
             }
             TaskCommand::ClaimNext(args) => {
                 let task_types = args
@@ -956,7 +919,7 @@ fn run() -> Result<(), (Error, bool)> {
                     .iter()
                     .map(|value| TaskType::parse(value))
                     .collect::<Result<Vec<_>, _>>()
-                    .map_err(|error| (error, args.json))?;
+                    .map_err(|error| (error, json))?;
                 let result = claim_next_task(
                     &current,
                     ClaimNextTaskInput {
@@ -966,34 +929,34 @@ fn run() -> Result<(), (Error, bool)> {
                         tags: args.tags,
                     },
                 )
-                .map_err(|error| (error, args.json))?;
-                render_claim_next(result.as_ref(), args.json);
+                .map_err(|error| (error, json))?;
+                render_claim_next(result.as_ref(), json);
             }
             TaskCommand::Unclaim(args) => {
                 if args.agent.is_some() == args.force || (args.yes && !args.force) {
-                    return Err((Error::ConflictingArguments, args.json));
+                    return Err((Error::ConflictingArguments, json));
                 }
                 if args.force {
-                    if !args.yes && (args.json || !io::stdin().is_terminal()) {
+                    if !args.yes && (json || !io::stdin().is_terminal()) {
                         return Err((
                             Error::phase(
                                 "CONFIRMATION_REQUIRED",
                                 io::Error::other("pass --yes for non-interactive force unclaim"),
                             ),
-                            args.json,
+                            json,
                         ));
                     }
                     let observed_claim = if args.yes {
                         None
                     } else {
-                        let task = view_task(&current, &args.task_id)
-                            .map_err(|error| (error, args.json))?;
+                        let task =
+                            view_task(&current, &args.task_id).map_err(|error| (error, json))?;
                         let claim = task.claim.ok_or_else(|| {
                             (
                                 Error::ClaimNotFound {
                                     task_id: args.task_id.clone(),
                                 },
-                                args.json,
+                                json,
                             )
                         })?;
                         let prompt = format!(
@@ -1003,9 +966,9 @@ fn run() -> Result<(), (Error, bool)> {
                             claim.agent.id,
                             claim.claimed_at
                         );
-                        if !confirm(&prompt).map_err(|error| {
-                            (Error::phase("CONFIRMATION_FAILED", error), args.json)
-                        })? {
+                        if !confirm(&prompt)
+                            .map_err(|error| (Error::phase("CONFIRMATION_FAILED", error), json))?
+                        {
                             println!("Unclaim cancelled.");
                             return Ok(());
                         }
@@ -1021,8 +984,8 @@ fn run() -> Result<(), (Error, bool)> {
                             observed_claim,
                         },
                     )
-                    .map_err(|error| (error, args.json))?;
-                    render_force_unclaim(&result, args.json);
+                    .map_err(|error| (error, json))?;
+                    render_force_unclaim(&result, json);
                 } else {
                     let result = unclaim_task(
                         &current,
@@ -1031,31 +994,31 @@ fn run() -> Result<(), (Error, bool)> {
                             agent_id: args.agent.expect("validated owner path"),
                         },
                     )
-                    .map_err(|error| (error, args.json))?;
-                    render_unclaim(&result, args.json);
+                    .map_err(|error| (error, json))?;
+                    render_unclaim(&result, json);
                 }
             }
             TaskCommand::Archive(args) => {
                 if args.yes && !args.force {
-                    return Err((Error::ConflictingArguments, args.json));
+                    return Err((Error::ConflictingArguments, json));
                 }
                 if args.reason.trim().is_empty() {
-                    return Err((Error::InvalidArchiveReason, args.json));
+                    return Err((Error::InvalidArchiveReason, json));
                 }
                 if args.force && args.agent.is_some() {
-                    return Err((Error::ArchivePermissionDenied, args.json));
+                    return Err((Error::ArchivePermissionDenied, json));
                 }
-                if args.force && !args.yes && (args.json || !io::stdin().is_terminal()) {
+                if args.force && !args.yes && (json || !io::stdin().is_terminal()) {
                     return Err((
                         Error::phase(
                             "CONFIRMATION_REQUIRED",
                             io::Error::other("pass --yes for non-interactive force archive"),
                         ),
-                        args.json,
+                        json,
                     ));
                 }
                 let observed_task = if args.force {
-                    Some(view_task(&current, &args.id).map_err(|error| (error, args.json))?)
+                    Some(view_task(&current, &args.id).map_err(|error| (error, json))?)
                 } else {
                     None
                 };
@@ -1078,7 +1041,7 @@ fn run() -> Result<(), (Error, bool)> {
                         args.reason
                     );
                     if !confirm(&prompt)
-                        .map_err(|error| (Error::phase("CONFIRMATION_FAILED", error), args.json))?
+                        .map_err(|error| (Error::phase("CONFIRMATION_FAILED", error), json))?
                     {
                         println!("Archive cancelled.");
                         return Ok(());
@@ -1094,25 +1057,21 @@ fn run() -> Result<(), (Error, bool)> {
                         observed_claim,
                     },
                 )
-                .map_err(|error| (error, args.json))?;
-                render_task_detail(&result, args.json);
+                .map_err(|error| (error, json))?;
+                render_task_detail(&result, json);
             }
             TaskCommand::Unarchive(args) => {
                 let preview =
-                    preview_unarchive(&current, &args.id).map_err(|error| (error, args.json))?;
+                    preview_unarchive(&current, &args.id).map_err(|error| (error, json))?;
                 if !preview.task.archived {
-                    render_unarchive(&preview, args.json);
+                    render_unarchive(&preview, json);
                     return Ok(());
                 }
                 let mut confirmed = args.yes;
-                if !preview.impact.is_empty()
-                    && !confirmed
-                    && !args.json
-                    && io::stdin().is_terminal()
-                {
+                if !preview.impact.is_empty() && !confirmed && !json && io::stdin().is_terminal() {
                     render_unarchive_impact(&preview.impact, true);
                     confirmed = confirm(&format!("Unarchive task {}?", args.id))
-                        .map_err(|error| (Error::phase("CONFIRMATION_FAILED", error), args.json))?;
+                        .map_err(|error| (Error::phase("CONFIRMATION_FAILED", error), json))?;
                     if !confirmed {
                         println!("Unarchive cancelled.");
                         return Ok(());
@@ -1125,8 +1084,8 @@ fn run() -> Result<(), (Error, bool)> {
                         confirmed,
                     },
                 )
-                .map_err(|error| (error, args.json))?;
-                render_unarchive(&result, args.json);
+                .map_err(|error| (error, json))?;
+                render_unarchive(&result, json);
             }
             TaskCommand::Comment(args) => match args.command {
                 TaskCommentCommand::Add(args) => {
@@ -1138,13 +1097,13 @@ fn run() -> Result<(), (Error, bool)> {
                             agent_id: args.agent,
                         },
                     )
-                    .map_err(|error| (error, args.json))?;
-                    render_comment(&result, args.json);
+                    .map_err(|error| (error, json))?;
+                    render_comment(&result, json);
                 }
                 TaskCommentCommand::List(args) => {
-                    let result = list_comments(&current, &args.task_id)
-                        .map_err(|error| (error, args.json))?;
-                    render_comment_list(&result, args.json);
+                    let result =
+                        list_comments(&current, &args.task_id).map_err(|error| (error, json))?;
+                    render_comment_list(&result, json);
                 }
                 TaskCommentCommand::Delete(args) => {
                     let result = delete_comment(
@@ -1155,62 +1114,13 @@ fn run() -> Result<(), (Error, bool)> {
                             agent_id: args.agent,
                         },
                     )
-                    .map_err(|error| (error, args.json))?;
-                    render_deleted_comment(&result, args.json);
+                    .map_err(|error| (error, json))?;
+                    render_deleted_comment(&result, json);
                 }
             },
         },
     }
     Ok(())
-}
-
-fn command_uses_json(command: &Command) -> bool {
-    match command {
-        Command::Init(args) => args.json,
-        Command::Uninstall(args) => args.json,
-        Command::Repo(RepoArgs {
-            command: RepoCommand::Status(args),
-        }) => args.json,
-        Command::Agent(AgentArgs { command }) => match command {
-            AgentCommand::Register(args) => args.json,
-            AgentCommand::List(args) => args.json,
-        },
-        Command::Status(StatusArgs { command }) => match command {
-            StatusCommand::List(args) => args.json,
-            StatusCommand::Create(args) => args.json,
-            StatusCommand::Rename(args) => args.json,
-            StatusCommand::Move(args) => args.json,
-            StatusCommand::Delete(args) => args.json,
-            StatusCommand::SetCompleted(args) => args.json,
-        },
-        Command::Task(args) => match &args.command {
-            TaskCommand::Create(args) => args.json,
-            TaskCommand::View(args) => args.json,
-            TaskCommand::List(args) => args.json,
-            TaskCommand::Available(args) => args.json,
-            TaskCommand::Blockers(args) => args.json,
-            TaskCommand::Update(args) => args.json,
-            TaskCommand::Dependency(args) => match &args.command {
-                DependencyCommand::Add(args) | DependencyCommand::Remove(args) => args.json,
-            },
-            TaskCommand::Parent(args) => match &args.command {
-                ParentCommand::Set(args) => args.json,
-                ParentCommand::Remove(args) => args.json,
-            },
-            TaskCommand::Hierarchy(args) => args.json,
-            TaskCommand::Map(args) => args.json,
-            TaskCommand::Claim(args) => args.json,
-            TaskCommand::ClaimNext(args) => args.json,
-            TaskCommand::Unclaim(args) => args.json,
-            TaskCommand::Archive(args) => args.json,
-            TaskCommand::Unarchive(args) => args.json,
-            TaskCommand::Comment(args) => match &args.command {
-                TaskCommentCommand::Add(args) => args.json,
-                TaskCommentCommand::List(args) => args.json,
-                TaskCommentCommand::Delete(args) => args.json,
-            },
-        },
-    }
 }
 
 fn placement<'a>(before: Option<&'a str>, after: Option<&'a str>) -> Option<Placement<'a>> {
@@ -2007,21 +1917,24 @@ fn confirm(prompt: &str) -> io::Result<bool> {
 }
 
 fn render_success<T: Serialize>(data: &T, json: bool) {
-    if json {
-        println!(
-            "{}",
-            serde_json::to_string(&Envelope {
-                ok: true,
-                data: Some(data),
-                error: None
-            })
-            .expect("serializable response")
-        );
+    let serialized = if json {
+        serde_json::to_string(&Envelope {
+            ok: true,
+            data: Some(data),
+            error: None,
+        })
     } else {
-        println!(
-            "{}",
-            serde_json::to_string_pretty(data).expect("serializable response")
+        serde_json::to_string_pretty(data)
+    };
+    if let Ok(document) = serialized {
+        println!("{document}");
+    } else {
+        render_api_error(
+            "RESPONSE_SERIALIZATION_FAILED",
+            "failed to serialize the command response",
+            serde_json::json!({}),
         );
+        std::process::exit(1);
     }
 }
 
@@ -2078,21 +1991,18 @@ fn render_agent_list(result: &AgentList, json: bool) {
 
 fn render_error(error: &Error, json: bool) {
     if json {
-        println!(
-            "{}",
-            serde_json::to_string(&Envelope::<serde_json::Value> {
-                ok: false,
-                data: None,
-                error: Some(ApiError {
-                    code: error.code().to_owned(),
-                    message: error.to_string(),
-                    details: error.details()
-                })
-            })
-            .expect("serializable response")
-        );
+        render_api_error(error.code(), &error.to_string(), error.details());
     } else {
         eprintln!("{}: {error}", error.code());
+        if let Error::PartialUninstall { result, .. } = error {
+            eprintln!("Planned: {}", result.planned.len());
+            eprintln!("Removed: {}", result.removed.len());
+            eprintln!("Failed:");
+            for failure in &result.failed {
+                eprintln!("- {failure}");
+            }
+            eprintln!("Next step: fix the reported paths and run `tbtm uninstall --yes` again.");
+        }
         if let Error::ConfirmationRequired { impact } = error {
             eprintln!("Downstream impact:");
             for (heading, items) in [
@@ -2141,5 +2051,24 @@ fn render_error(error: &Error, json: bool) {
         if let Some(suggestion) = error.suggestion() {
             eprintln!("Next step: {suggestion}");
         }
+    }
+}
+
+fn render_api_error(code: &str, message: &str, details: serde_json::Value) {
+    let envelope = Envelope::<serde_json::Value> {
+        ok: false,
+        data: None,
+        error: Some(ApiError {
+            code: code.to_owned(),
+            message: message.to_owned(),
+            details,
+        }),
+    };
+    match serde_json::to_string(&envelope) {
+        Ok(document) => println!("{document}"),
+        Err(error) => println!(
+            "{{\"ok\":false,\"data\":null,\"error\":{{\"code\":\"SERIALIZATION_FAILED\",\"message\":{},\"details\":{{}}}}}}",
+            serde_json::Value::String(error.to_string())
+        ),
     }
 }
