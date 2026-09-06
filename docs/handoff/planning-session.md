@@ -104,6 +104,9 @@ Story đã hoàn tất planning:
 - **E7-S1: Provide consistent command output**
   - [Epic plan](../epics/E7-S1-provide-consistent-command-output.md)
   - [Implementation task](../tasks/E7-S1-T1-standardize-cli-output-boundary.md)
+- **E9-S1: Verify concurrent claim safety**
+  - [Epic plan](../epics/E9-S1-verify-concurrent-claim-safety.md)
+  - [Implementation task](../tasks/E9-S1-T1-harden-concurrent-claim-verification.md)
 
 Story tiếp theo nếu tiếp tục planning:
 
@@ -136,6 +139,8 @@ E2-S5-T1, E2-S6-T1, E4-S1-T1, E4-S4-T1, E4-S5-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, 
 **E3-S4-T1** đã implementation và verification xong với atomic unused-status deletion, active/archived usage guard, order compaction và linked-worktree concurrency coverage. Dependency cross-check đã đọc lại E3-S2/E3-S2-T1 và E2-S1/E2-S1-T1, kết luận `NO CONFLICT`.
 
 **E7-S1-T1** đã planning xong và sẵn sàng implementation trên E1-S1-T1. Task chuẩn hóa global/idempotent `--json`, một response envelope, JSON-aware parse errors, stdout/stderr, exit taxonomy, non-interactive confirmation và partial-uninstall reporting; không đổi domain payload hay persistence. Dependency cross-check đã đọc lại E1-S1/E1-S1-T1 và kết luận `NO CONFLICT`.
+
+**E9-S1-T1** đã planning xong và sẵn sàng implementation. Task bổ sung deterministic gated child-process races cho specified claim và claim-next qua main/linked worktrees; không đổi production behavior. Dependency cross-check đã đọc lại E1-S5/E1-S5-T1, E5-S1/E5-S1-T1 và E5-S2/E5-S2-T1, kết luận `NO CONFLICT`.
 
 ## Việc đã làm
 
