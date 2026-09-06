@@ -2,7 +2,7 @@
 id: E7-S5-T1
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - E6-S1-T1
   - E6-S2-T1
@@ -157,7 +157,10 @@ Smoke-test the three-leaf inventory, one logical-user journey, one agent ownersh
 
 ## Acceptance scenario impact
 
-Classify as `none`, `revalidate`, `add`, or `supersede` only after implementation from the actual public behavior changed. A non-`none` result is a handoff to the separate acceptance-scenario workflow; do not edit or execute scenario files here.
+`add` for E7-S5. The implementation adds public immutable-comment correction guidance
+to the comment-group help, so that discoverability behavior should receive focused
+acceptance coverage in the separate acceptance-scenario workflow. No files under
+`docs/testing/` were changed, reviewed, or executed.
 
 ## Definition of done
 

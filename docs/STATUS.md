@@ -74,7 +74,7 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E7-S2-T1 is implemented and verified with command/help inventory, actor-boundary checks, and a canonical-store lifecycle across main and linked worktrees. Acceptance impact `none`.
 - E7-S3-T1 is implemented and verified with explicit help for status confirmation and relationship roles, actor/confirmation boundary coverage, all five map directions, and a canonical-store journey across main and linked worktrees. Acceptance impact `revalidate` is queued for the separate scenario workflow.
 - E7-S4-T1 is implemented and verified with availability/acquisition help, actor/force boundary coverage, claim conflict and empty-result checks, and a canonical-store lifecycle across main and linked worktrees. Acceptance impact is `none` because the audit found no user-visible behavior change.
-- E7-S5 planning is complete; E7-S5-T1 is ready to audit and harden the immutable add/list/delete comment CLI surface without changing E6 domain behavior.
+- E7-S5-T1 is implemented and verified with immutable correction help, exact command/actor/input boundary checks, repeatable JSON transport coverage, and a canonical-store add/list/delete journey across main and linked worktrees. Acceptance impact `add` for E7-S5 is queued for the separate scenario workflow.
 - E9-S1-T1 is implemented and verified with a deterministic process gate, 120 repeated race rounds across main-to-linked and linked-to-linked worktrees, exact command and canonical-row assertions, and SQLite integrity checks. Acceptance impact is `none`.
 
 ## E1 — Repository foundation and identity
@@ -177,8 +177,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 | [E7-S3-T1](tasks/E7-S3-T1-harden-planning-relationship-and-status-cli-surface.md) | done | done | E3-S1-T1, E3-S2-T1, E3-S3-T1, E3-S4-T1, E4-S1-T1, E4-S2-T1, E4-S3-T1, E4-S4-T1, E4-S5-T1, E4-S5-T2, E7-S1-T1 |
 | [E7-S4](epics/E7-S4-expose-availability-and-claim-operations.md) | done | done | E4-S3, E4-S4, E5-S1, E5-S2, E5-S3, E5-S4, E5-S5, E7-S1 |
 | [E7-S4-T1](tasks/E7-S4-T1-harden-availability-and-claim-cli-surface.md) | done | done | E4-S3-T1, E4-S4-T1, E5-S1-T1, E5-S2-T1, E5-S3-T1, E5-S4-T1, E5-S5-T1, E7-S1-T1 |
-| [E7-S5](epics/E7-S5-expose-comment-operations.md) | done | ready | E6-S1, E6-S2, E6-S3, E7-S1 |
-| [E7-S5-T1](tasks/E7-S5-T1-harden-comment-cli-surface.md) | done | ready | E6-S1-T1, E6-S2-T1, E6-S3-T1, E7-S1-T1 |
+| [E7-S5](epics/E7-S5-expose-comment-operations.md) | done | done | E6-S1, E6-S2, E6-S3, E7-S1 |
+| [E7-S5-T1](tasks/E7-S5-T1-harden-comment-cli-surface.md) | done | done | E6-S1-T1, E6-S2-T1, E6-S3-T1, E7-S1-T1 |
 
 ## E8 — Visual Studio Code scrum experience
 

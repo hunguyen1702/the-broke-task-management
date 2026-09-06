@@ -177,7 +177,10 @@ enum TaskCommand {
     Archive(TaskArchiveArgs),
     #[command(about = "Return an archived task to active planning")]
     Unarchive(TaskUnarchiveArgs),
-    #[command(about = "Add, list, and delete task comments")]
+    #[command(
+        about = "Add, list, and delete immutable task comments",
+        long_about = "Add, list, and delete immutable task comments. To correct a comment, delete it and then add a new comment; these are two independent operations."
+    )]
     Comment(TaskCommentArgs),
 }
 
@@ -199,21 +202,28 @@ enum TaskCommentCommand {
 
 #[derive(Args)]
 struct TaskCommentAddArgs {
+    #[arg(help = "Task receiving the comment")]
     task_id: String,
-    #[arg(long)]
+    #[arg(long, help = "Markdown comment content")]
     content: String,
-    #[arg(long)]
+    #[arg(
+        long,
+        help = "Act as this registered agent; omission selects the logical user"
+    )]
     agent: Option<uuid::Uuid>,
 }
 
 #[derive(Args)]
 struct TaskCommentListArgs {
+    #[arg(help = "Task whose comments to list")]
     task_id: String,
 }
 
 #[derive(Args)]
 struct TaskCommentDeleteArgs {
+    #[arg(help = "Task owning the comment")]
     task_id: String,
+    #[arg(help = "Comment UUID to delete")]
     comment_id: uuid::Uuid,
     #[arg(
         long,

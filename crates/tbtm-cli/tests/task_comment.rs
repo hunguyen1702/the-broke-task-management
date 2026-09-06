@@ -937,7 +937,7 @@ fn correction_is_non_atomic_and_uses_a_new_identity_on_active_and_archived_tasks
 }
 
 #[test]
-fn linked_worktree_add_preserves_preexisting_comment_exactly() {
+fn linked_worktree_add_list_delete_share_the_canonical_store() {
     let (_temp, main, linked) = linked_worktree();
     initialize(&main);
     let task_id = create_task(&main);
@@ -952,4 +952,23 @@ fn linked_worktree_add_preserves_preexisting_comment_exactly() {
     assert_eq!(comments.len(), 2);
     assert!(comments.contains(&retained));
     assert!(comments.contains(&added));
+
+    let deleted = tbtm(
+        &linked,
+        &[
+            "task",
+            "comment",
+            "delete",
+            &task_id,
+            added["id"].as_str().unwrap(),
+            "--json",
+        ],
+    );
+    assert!(deleted.status.success());
+    let listed: Value = serde_json::from_slice(
+        &tbtm(&main, &["task", "comment", "list", &task_id, "--json"]).stdout,
+    )
+    .unwrap();
+    assert_eq!(listed["data"], serde_json::json!([retained]));
+    assert!(!linked.join(".tbtm").exists());
 }
