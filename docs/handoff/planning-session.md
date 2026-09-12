@@ -120,9 +120,13 @@ Story đã hoàn tất planning:
   - [Epic plan](../epics/E9-S1-verify-concurrent-claim-safety.md)
   - [Implementation task](../tasks/E9-S1-T1-harden-concurrent-claim-verification.md)
 
-Story tiếp theo nếu tiếp tục planning:
+Planning tiếp theo:
 
-- **E8-S1: Connect the extension to repository state** — story `needed` tiếp theo hiện chưa có claim.
+- **H1-T1: Constitution and harness architecture** — task `needed` đầu tiên
+  của engineering epic H1 và là ưu tiên trước mọi product-story plan.
+- Giữ **E8-S1: Connect the extension to repository state** ở trạng thái
+  `needed`; chưa planning E8 cho đến khi H1 hoàn tất hoặc người dùng đổi ưu
+  tiên rõ ràng.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -418,8 +422,13 @@ Nếu tiếp tục implementation:
 
 Nếu tiếp tục planning:
 
-1. Chọn story `needed` đủ contract dependency và chưa bị session khác claim trong `docs/STATUS.md`; E8-S1 hiện là ứng viên tiếp theo.
-2. Đọc E1-S2, E7-S1 và các implementation tasks tương ứng trước khi planning E8-S1.
-3. Kế thừa canonical repository resolution của E1-S2 và global output boundary của E7-S1 thay vì định nghĩa source of truth hoặc transport cạnh tranh.
-4. Chỉ spawn review agent sau một vòng quyết định đã được người dùng xác nhận; không review trong lúc người dùng còn hỏi hoặc khám phá requirement.
-5. Khi READY, tạo epic và technical task, review file, cập nhật danh sách trong handoff này.
+1. Claim và plan **H1-T1: Constitution and harness architecture** trước mọi
+   product-story plan; cập nhật H1 epic và dashboard khi claim bắt đầu.
+2. Plan từng H1 task theo dependency order và dùng quyết định của component đã
+   hoàn tất để constrain component tiếp theo; không pre-author speculative
+   implementation cho toàn bộ harness.
+3. Giữ toàn bộ story E8, bao gồm E8-S1, ở trạng thái `needed` cho đến khi H1
+   hoàn tất hoặc người dùng thay đổi ưu tiên rõ ràng.
+4. Khi quay lại E8, re-plan toàn bộ epic trước khi claim một story riêng lẻ;
+   xác định user journeys, VS Code surfaces, navigation, interaction/state
+   model, cross-cutting UI requirements và technical foundation dùng chung.
