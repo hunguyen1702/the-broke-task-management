@@ -122,8 +122,9 @@ Story đã hoàn tất planning:
 
 Planning tiếp theo:
 
-- **H1-T1: Constitution and harness architecture** — task `needed` đầu tiên
-  của engineering epic H1 và là ưu tiên trước mọi product-story plan.
+- **H1-T0: Validate lifecycle and workflow model** — task `needed` đầu tiên
+  của engineering epic H1. Task này xác thực work taxonomy, flow, stage,
+  transition và component boundary trước khi planning chi tiết H1-T1.
 - Giữ **E8-S1: Connect the extension to repository state** ở trạng thái
   `needed`; chưa planning E8 cho đến khi H1 hoàn tất hoặc người dùng đổi ưu
   tiên rõ ràng.
@@ -422,13 +423,15 @@ Nếu tiếp tục implementation:
 
 Nếu tiếp tục planning:
 
-1. Claim và plan **H1-T1: Constitution and harness architecture** trước mọi
+1. Claim và plan **H1-T0: Validate lifecycle and workflow model** trước mọi
    product-story plan; cập nhật H1 epic và dashboard khi claim bắt đầu.
-2. Plan từng H1 task theo dependency order và dùng quyết định của component đã
+2. Dùng kết quả H1-T0 để xác nhận hoặc sửa lifecycle, component boundary và
+   roadmap trước khi claim H1-T1.
+3. Plan từng H1 component task theo dependency order và dùng quyết định của component đã
    hoàn tất để constrain component tiếp theo; không pre-author speculative
    implementation cho toàn bộ harness.
-3. Giữ toàn bộ story E8, bao gồm E8-S1, ở trạng thái `needed` cho đến khi H1
+4. Giữ toàn bộ story E8, bao gồm E8-S1, ở trạng thái `needed` cho đến khi H1
    hoàn tất hoặc người dùng thay đổi ưu tiên rõ ràng.
-4. Khi quay lại E8, re-plan toàn bộ epic trước khi claim một story riêng lẻ;
+5. Khi quay lại E8, re-plan toàn bộ epic trước khi claim một story riêng lẻ;
    xác định user journeys, VS Code surfaces, navigation, interaction/state
    model, cross-cutting UI requirements và technical foundation dùng chung.

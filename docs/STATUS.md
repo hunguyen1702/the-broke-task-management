@@ -42,7 +42,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 ## Next work
 
 - **H1 is the first planning priority before all remaining product-story plans.**
-  Start with H1-T1; plan one harness component at a time. Do not begin E8
+  Start with H1-T0; validate the lifecycle and workflow model before planning
+  the component tasks. Do not begin E8
   planning until H1 is complete or the user explicitly changes the priority.
 - E1-S1-T2 is complete; repeat initialization now expects the authoritative
   exit `2`, and AT-E1-S1-001 passed its targeted rerun.
@@ -87,7 +88,8 @@ tasks are planned sequentially so each component can constrain the next.
 | ID | Kind | Planning | Implementation | Depends on |
 |---|---|---|---|---|
 | [H1](epics/H1-build-adaptive-repository-harness.md) | Engineering epic | done | not_planned | — |
-| H1-T1 Constitution and harness architecture | Task | needed | not_planned | — |
+| H1-T0 Validate lifecycle and workflow model | Task | needed | not_planned | — |
+| H1-T1 Constitution and harness architecture | Task | needed | not_planned | H1-T0 |
 | H1-T2 Sense and context assembly | Task | needed | not_planned | H1-T1 |
 | H1-T3 Intent and Risk Router | Task | needed | not_planned | H1-T1, H1-T2 |
 | H1-T4 Adaptive exploration and playbooks | Task | needed | not_planned | H1-T3 |

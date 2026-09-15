@@ -17,11 +17,11 @@ The harness runs as the repository's engineering operating layer. It does not ch
 
 ## Priority
 
-Plan and implement H1 before any remaining product-story planning, including E8. Plan one H1 task at a time so decisions from each component can constrain the next task without pre-authoring speculative implementation detail.
+Plan and implement H1 before any remaining product-story planning, including E8. Validate the lifecycle and workflow model in H1-T0 before planning the component tasks. Then plan one component at a time so decisions from each component can constrain the next task without pre-authoring speculative implementation detail.
 
 ## Adaptive lifecycle
 
-The complete lifecycle is:
+The working lifecycle to validate in H1-T0 is:
 
 ```text
 Sense → Route → Explore → Decide → Commit → Verify → Learn
@@ -61,7 +61,8 @@ The interactive [Adaptive Repository Harness visualization](../artifact/adaptive
 
 | Task | Component | Primary deliverable | Depends on |
 |---|---|---|---|
-| H1-T1 | Constitution and harness architecture | Canonical governance, authority, source-of-truth, and generic-versus-repository boundaries | — |
+| H1-T0 | Lifecycle and workflow-model validation | Work taxonomy, representative flows, mandatory and conditional stages, transition/reroute/stop rules, and validated component boundaries | — |
+| H1-T1 | Constitution and harness architecture | Canonical governance, authority, source-of-truth, and generic-versus-repository boundaries | H1-T0 |
 | H1-T2 | Sense and context assembly | Current truth, change delta, artifact graph, conflict discovery, and context capsule | H1-T1 |
 | H1-T3 | Intent and Risk Router | Observable routing signals, routes, rationale, and rerouting contract | H1-T1, H1-T2 |
 | H1-T4 | Adaptive exploration and playbooks | Composable direct, research, explore, spike, plan, and diagnosis playbooks | H1-T3 |
@@ -72,7 +73,7 @@ The interactive [Adaptive Repository Harness visualization](../artifact/adaptive
 | H1-T9 | Complete runtime integration | End-to-end state, handoffs, short paths, rerouting, recovery, and traceability | H1-T2–H1-T8 |
 | H1-T10 | Scenario validation and refinement | Contrasting scenario evaluation and evidence-based simplification | H1-T9 |
 
-Each task receives its own planning session and task contract before implementation. The roadmap fixes responsibility and dependency order but deliberately leaves file layout, schemas, commands, and automation choices to those sessions.
+Each task receives its own planning session and task contract before implementation. H1-T0 may confirm or revise the working lifecycle and component roadmap before H1-T1 is planned. After that validation, the roadmap fixes responsibility and dependency order but deliberately leaves file layout, schemas, commands, and automation choices to the component sessions.
 
 ## Completion criteria
 
@@ -99,5 +100,6 @@ Each task receives its own planning session and task contract before implementat
 ## Planning record
 
 - The user approved building the complete adaptive flow and applying the researched patterns through component tasks.
+- The user approved adding H1-T0 to validate the lifecycle, representative workflows, stage requirements, and component decomposition before detailed H1-T1 planning.
 - H1 is the first planning priority ahead of all remaining product-story plans.
 - The epic is approved only at the architecture and decomposition level. Every H1 task remains `planning_status: needed` until its dedicated planning session is completed.
