@@ -41,10 +41,11 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 ## Next work
 
-- **H1 is the first planning priority before all remaining product-story plans.**
-  Start with H1-T0; validate the lifecycle and workflow model before planning
-  the component tasks. Do not begin E8
-  planning until H1 is complete or the user explicitly changes the priority.
+- **H1 is the first priority before all remaining product-story plans.**
+  H1-T0 validated the node-first flow; H1-T1 Constitution is planned and
+  implementation-ready. Plan later nodes from that flow, not the archived
+  component roadmap. Do not begin E8 planning until H1 is complete or the
+  user explicitly changes the priority.
 - E1-S1-T2 is complete; repeat initialization now expects the authoritative
   exit `2`, and AT-E1-S1-001 passed its targeted rerun.
 - E4-S5-T2 is complete with focused core and CLI regression coverage for child
@@ -82,23 +83,31 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 ## H1 — Adaptive repository harness (first priority)
 
-H1 is an engineering-enablement epic outside the `tbtm` product contract. Its
-tasks are planned sequentially so each component can constrain the next.
+H1 is an engineering-enablement epic outside the `tbtm` product contract.
+H1-T0 validated the node-first flow; H1-T1 Constitution is planned and ready.
+H1-T11–H1-T24 are unplanned placeholders with no approved implementation
+contract. Former H1-T2–H1-T10 are
+[archived for reference](handoff/H1-archived-component-roadmap.md), not active tasks.
 
 | ID | Kind | Planning | Implementation | Depends on |
 |---|---|---|---|---|
 | [H1](epics/H1-build-adaptive-repository-harness.md) | Engineering epic | done | not_planned | — |
-| H1-T0 Validate lifecycle and workflow model | Task | needed | not_planned | — |
-| H1-T1 Constitution and harness architecture | Task | needed | not_planned | H1-T0 |
-| H1-T2 Sense and context assembly | Task | needed | not_planned | H1-T1 |
-| H1-T3 Intent and Risk Router | Task | needed | not_planned | H1-T1, H1-T2 |
-| H1-T4 Adaptive exploration and playbooks | Task | needed | not_planned | H1-T3 |
-| H1-T5 Decisions and risk gates | Task | needed | not_planned | H1-T2, H1-T3, H1-T4 |
-| H1-T6 Commitment and drift control | Task | needed | not_planned | H1-T1, H1-T5 |
-| H1-T7 Verification and proof of work | Task | needed | not_planned | H1-T3, H1-T6 |
-| H1-T8 Learning and promotion lifecycle | Task | needed | not_planned | H1-T7 |
-| H1-T9 Complete runtime integration | Task | needed | not_planned | H1-T2–H1-T8 |
-| H1-T10 Scenario validation and refinement | Task | needed | not_planned | H1-T9 |
+| [H1-T0](tasks/H1-T0-validate-working-flow.md) Validate working flow | Task | done | done | — |
+| [H1-T1](tasks/H1-T1-implement-constitution.md) Constitution | Task | done | ready | H1-T0 |
+| H1-T11 Current Truth | Node placeholder | needed | not_planned | — |
+| H1-T12 Intent | Node placeholder | needed | not_planned | — |
+| H1-T13 Risk Router | Node placeholder | needed | not_planned | — |
+| H1-T14 Direct path | Node placeholder | needed | not_planned | — |
+| H1-T15 Research | Node placeholder | needed | not_planned | — |
+| H1-T16 Explore | Node placeholder | needed | not_planned | — |
+| H1-T17 Spike | Node placeholder | needed | not_planned | — |
+| H1-T18 Plan | Node placeholder | needed | not_planned | — |
+| H1-T19 Commitment Gate | Node placeholder | needed | not_planned | — |
+| H1-T20 Execute | Node placeholder | needed | not_planned | — |
+| H1-T21 Proof of Work | Node placeholder | needed | not_planned | — |
+| H1-T22 Learning Promotion | Node placeholder | needed | not_planned | — |
+| H1-T23 Integrated flow validation | Checkpoint placeholder | needed | not_planned | — |
+| H1-T24 Manage Constitution rules | Deferred workflow placeholder | needed | not_planned | — |
 
 ## E1 — Repository foundation and identity
 

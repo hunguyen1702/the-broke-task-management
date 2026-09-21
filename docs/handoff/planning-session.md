@@ -122,9 +122,18 @@ Story đã hoàn tất planning:
 
 Planning tiếp theo:
 
-- **H1-T0: Validate lifecycle and workflow model** — task `needed` đầu tiên
-  của engineering epic H1. Task này xác thực work taxonomy, flow, stage,
-  transition và component boundary trước khi planning chi tiết H1-T1.
+- **H1-T0** đã xác nhận flow node-first và hoàn tất planning.
+- **H1-T1 Constitution** đã có [implementation plan](../tasks/H1-T1-implement-constitution.md)
+  và sẵn sàng implementation; chưa có source code nào được implement trong
+  planning. Năm điểm cuối (schema, exact revision references, approval của
+  framework ruleset, scope, validator CLI) đã được chốt trong task contract.
+  Các node khác chưa được ấn định layout hay shared schema.
+- Roadmap component H1-T2–H1-T10 cũ đã được
+  [lưu để tham khảo](H1-archived-component-roadmap.md), không còn là task active.
+  Backlog H1-T11–H1-T23 đi theo từng node của H1-T0; tên là placeholder,
+  chưa phê duyệt implementation contract. H1-T24 ghi nhận workflow quản lý
+  Constitution rule đã defer. Các điểm defer khác nằm trong
+  [H1 deferred-work register](H1-deferred-work.md).
 - Giữ **E8-S1: Connect the extension to repository state** ở trạng thái
   `needed`; chưa planning E8 cho đến khi H1 hoàn tất hoặc người dùng đổi ưu
   tiên rõ ràng.
@@ -419,19 +428,18 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. Xem [status dashboard](../STATUS.md) để chọn task implementation đã planned và `ready`; E7-S3-T1, E7-S4-T1 và E7-S5-T1 hiện sẵn sàng.
+1. Xem [status dashboard](../STATUS.md) để chọn task implementation `ready`; H1-T1 Constitution là ưu tiên H1 hiện tại. Claim task trước khi sửa source.
 
 Nếu tiếp tục planning:
 
-1. Claim và plan **H1-T0: Validate lifecycle and workflow model** trước mọi
-   product-story plan; cập nhật H1 epic và dashboard khi claim bắt đầu.
-2. Dùng kết quả H1-T0 để xác nhận hoặc sửa lifecycle, component boundary và
-   roadmap trước khi claim H1-T1.
-3. Plan từng H1 component task theo dependency order và dùng quyết định của component đã
-   hoàn tất để constrain component tiếp theo; không pre-author speculative
-   implementation cho toàn bộ harness.
-4. Giữ toàn bộ story E8, bao gồm E8-S1, ở trạng thái `needed` cho đến khi H1
+1. H1-T0 planning đã hoàn tất; H1-T1 Constitution planning đã hoàn tất và
+   implementation task đang `ready`. Claim H1-T1 trước khi thay đổi source.
+2. Chọn node tiếp theo từ flow H1-T0 và plan từ nhu cầu thực của node đó.
+   Xác định dependency khi planning, không dùng roadmap H1-T2–H1-T10 cũ hoặc
+   pre-author shared schema/component cho toàn bộ harness. Giữ các điểm defer
+   trong register cho đến khi được planning riêng.
+3. Giữ toàn bộ story E8, bao gồm E8-S1, ở trạng thái `needed` cho đến khi H1
    hoàn tất hoặc người dùng thay đổi ưu tiên rõ ràng.
-5. Khi quay lại E8, re-plan toàn bộ epic trước khi claim một story riêng lẻ;
+4. Khi quay lại E8, re-plan toàn bộ epic trước khi claim một story riêng lẻ;
    xác định user journeys, VS Code surfaces, navigation, interaction/state
    model, cross-cutting UI requirements và technical foundation dùng chung.

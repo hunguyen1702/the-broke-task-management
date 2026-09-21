@@ -17,35 +17,43 @@ The harness runs as the repository's engineering operating layer. It does not ch
 
 ## Priority
 
-Plan and implement H1 before any remaining product-story planning, including E8. Validate the lifecycle and workflow model in H1-T0 before planning the component tasks. Then plan one component at a time so decisions from each component can constrain the next task without pre-authoring speculative implementation detail.
+Plan and implement H1 before any remaining product-story planning, including E8. H1-T0 validated the working flow. Plan one node at a time so actual interfaces and needs constrain the next task without pre-authoring shared implementation detail.
 
 ## Adaptive lifecycle
 
-The working lifecycle to validate in H1-T0 is:
+The validated working flow for node-by-node development is:
 
 ```text
-Sense → Route → Explore → Decide → Commit → Verify → Learn
-          ↑________________ reroute as evidence changes ________________|
+Intent + Constitution + Current Truth → Risk Router
+  → Direct → Execute → Proof of Work → Learning Promotion
+  → Research / Explore / Spike → Context Capsule → Risk Router
+  → Plan → Commitment Gate → Execute → Proof of Work → Learning Promotion
+Learning Promotion may update Current Truth, Constitution, or checks through
+their respective authority boundaries.
 ```
 
 Simple work may take a short path through the lifecycle. The complete architecture must support every stage without forcing every request through every artifact, approval, review, or automation.
 
 ## Design artifact
 
-The interactive [Adaptive Repository Harness visualization](../artifact/adaptive-repository-harness.html) is the shared design aid for the lifecycle, categories, patterns, and candidate repository surfaces. It supports planning discussion but is not a canonical rule source; approved H1 task contracts and the resulting harness documents remain authoritative.
+The interactive [Adaptive Repository Harness visualization](../artifact/adaptive-repository-harness.html) records earlier exploration. Its old lifecycle and pattern map are historical, non-authoritative references; H1-T0 and subsequently approved node contracts govern the current direction.
 
 ## Design principles
 
 - Build the harness inside this repository, while separating reusable protocol from `tbtm`-specific policy and learned enforcement.
-- Use the adaptive lifecycle as the runtime backbone, patterns as composable capability modules, and categories as an architectural coverage check.
-- Apply every researched pattern only where it has a defined responsibility and runtime interface; a pattern does not require a dedicated file, script, hook, or mandatory gate.
+- Use the H1-T0 flow as the working backbone and plan each node from its actual inputs, decisions, actions, outputs, and return/stop conditions.
+- Treat researched patterns as optional design references, not mandatory components or a coverage checklist.
 - Let the router select the smallest credible route and reroute when risk, uncertainty, scope, or evidence changes.
 - Keep semantic rules canonical in human-readable contracts. Scripts enforce only deterministic projections of those rules and emit traceable evidence.
 - Start runtime checks ephemerally. Promote a check into a durable script, test, lint, hook, skill, or instruction only through the learning policy and supported evidence.
 - Preserve repository-specific authority, product-contract, implementation, acceptance-scenario, concurrency, and verification boundaries.
 - Introduce subagents only when independent context, evidence, or review materially improves the selected route.
 
-## Harness categories and patterns
+## Earlier design vocabulary
+
+The following is a reference to prior research, not a task breakdown or a
+requirement to create shared artifacts. Adopt a pattern only when an owning
+node demonstrates a concrete need.
 
 | Category | Patterns in scope |
 |---|---|
@@ -57,23 +65,44 @@ The interactive [Adaptive Repository Harness visualization](../artifact/adaptive
 | Verification | Proof-of-Work Contract, automated checks, runtime observation |
 | Learning | Learning Promotion, precedent, durable enforcement, stale-guidance retirement |
 
-## Component task roadmap
+## Active node-first roadmap
 
-| Task | Component | Primary deliverable | Depends on |
-|---|---|---|---|
-| H1-T0 | Lifecycle and workflow-model validation | Work taxonomy, representative flows, mandatory and conditional stages, transition/reroute/stop rules, and validated component boundaries | — |
-| H1-T1 | Constitution and harness architecture | Canonical governance, authority, source-of-truth, and generic-versus-repository boundaries | H1-T0 |
-| H1-T2 | Sense and context assembly | Current truth, change delta, artifact graph, conflict discovery, and context capsule | H1-T1 |
-| H1-T3 | Intent and Risk Router | Observable routing signals, routes, rationale, and rerouting contract | H1-T1, H1-T2 |
-| H1-T4 | Adaptive exploration and playbooks | Composable direct, research, explore, spike, plan, and diagnosis playbooks | H1-T3 |
-| H1-T5 | Decisions and risk gates | Decision artifacts, evidence ledger, contract delta, and proportional gates | H1-T2, H1-T3, H1-T4 |
-| H1-T6 | Commitment and drift control | Authorized scope, commitment boundary, stop conditions, and deterministic drift projections | H1-T1, H1-T5 |
-| H1-T7 | Verification and proof of work | Change classification, proof contracts, checks, observation, and evidence collection | H1-T3, H1-T6 |
-| H1-T8 | Learning and promotion lifecycle | Lesson classification, promotion/retirement criteria, and provenance | H1-T7 |
-| H1-T9 | Complete runtime integration | End-to-end state, handoffs, short paths, rerouting, recovery, and traceability | H1-T2–H1-T8 |
-| H1-T10 | Scenario validation and refinement | Contrasting scenario evaluation and evidence-based simplification | H1-T9 |
+| Task | Node or checkpoint | Planning state |
+|---|---|---|
+| H1-T0 | Validate the working flow and node-first boundary | done |
+| H1-T1 | Constitution | done; implementation ready |
+| H1-T11 | Current Truth | needed |
+| H1-T12 | Intent | needed |
+| H1-T13 | Risk Router | needed |
+| H1-T14 | Direct path | needed |
+| H1-T15 | Research | needed |
+| H1-T16 | Explore | needed |
+| H1-T17 | Spike | needed |
+| H1-T18 | Plan | needed |
+| H1-T19 | Commitment Gate | needed |
+| H1-T20 | Execute | needed |
+| H1-T21 | Proof of Work | needed |
+| H1-T22 | Learning Promotion | needed |
+| H1-T23 | Integrated flow validation | needed |
+| H1-T24 | Manage Constitution rules (deferred workflow) | needed |
 
-Each task receives its own planning session and task contract before implementation. H1-T0 may confirm or revise the working lifecycle and component roadmap before H1-T1 is planned. After that validation, the roadmap fixes responsibility and dependency order but deliberately leaves file layout, schemas, commands, and automation choices to the component sessions.
+H1-T11–H1-T24 are backlog placeholders, not approved implementation contracts.
+Their precise scope, sequence, and dependencies are decided when each node is
+planned. A Context Capsule is the candidate return output of Research, Explore,
+and Spike, not a preselected separate component. Tests, lints, and skills are
+possible Learning Promotion targets, not folders or systems prescribed here.
+Extract common mechanics only after concrete nodes demonstrate repeated need.
+The [former H1-T2–H1-T10 roadmap](../handoff/H1-archived-component-roadmap.md)
+is archived for reference and must not be claimed.
+
+## Deferred work
+
+- H1-T24 owns the future workflow for proposing, reviewing, approving,
+  activating, revising, superseding, and retiring Constitution rules. H1-T1
+  supplies the rule data contract and validator, not this operational workflow.
+- Framework ruleset upgrade/reinstall and review of project references are
+  deferred. They are recorded in the [deferred-work register](../handoff/H1-deferred-work.md)
+  but do not yet need implementation task IDs or a planned dependency graph.
 
 ## Completion criteria
 
@@ -99,7 +128,10 @@ Each task receives its own planning session and task contract before implementat
 
 ## Planning record
 
-- The user approved building the complete adaptive flow and applying the researched patterns through component tasks.
+- The user approved building the adaptive flow node by node; researched patterns remain optional references.
 - The user approved adding H1-T0 to validate the lifecycle, representative workflows, stage requirements, and component decomposition before detailed H1-T1 planning.
+- H1-T0 validated the user-approved working flow and node-first development boundary; Constitution is the first independently planned component.
+- H1-T1 Constitution planning is complete in `../tasks/H1-T1-implement-constitution.md`; its rule format and index apply to Constitution alone, with no preselected folder structure for other nodes. Dependency cross-check against H1-T0: NO CONFLICT.
+- The former H1-T2–H1-T10 component roadmap was archived; H1-T11–H1-T23 are node-first planning placeholders and H1-T24 tracks the deferred Constitution rule-management workflow. None has an approved implementation contract.
 - H1 is the first planning priority ahead of all remaining product-story plans.
-- The epic is approved only at the architecture and decomposition level. Every H1 task remains `planning_status: needed` until its dedicated planning session is completed.
+- The epic is approved only at the architecture and decomposition level. Each H1 task remains `planning_status: needed` until its dedicated planning session begins, then follows the normal `in_progress` and `done` planning lifecycle.
