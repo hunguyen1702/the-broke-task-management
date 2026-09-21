@@ -44,7 +44,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - **H1 is the first priority before all remaining product-story plans.**
   H1-T0 validated the node-first flow; H1-T1 Constitution is implemented and
   H1-T11 Current Truth is implemented and verified; acceptance impact is `none`.
-  Plan later nodes from that flow, not the archived
+  H1-T12 Intent is planned and ready for implementation. Plan later nodes from
+  that flow, not the archived
   component roadmap. Do not begin E8 planning until H1 is complete or the
   user explicitly changes the priority.
 - E1-S1-T2 is complete; repeat initialization now expects the authoritative
@@ -88,8 +89,9 @@ H1 is an engineering-enablement epic outside the `tbtm` product contract.
 H1-T0 validated the node-first flow; H1-T1 Constitution is implemented and
 verified. H1-T11 Current Truth is implemented as a generic Constitution workflow.
 Acceptance impact for both tasks is `none`.
-H1-T12–H1-T24 are unplanned placeholders with no approved implementation
-contract. Former H1-T2–H1-T10 are
+H1-T12 Intent planning is complete and implementation is ready. H1-T13–H1-T24
+are unplanned placeholders with no approved implementation contract. Former
+H1-T2–H1-T10 are
 [archived for reference](handoff/H1-archived-component-roadmap.md), not active tasks.
 
 | ID | Kind | Planning | Implementation | Depends on |
@@ -98,7 +100,7 @@ contract. Former H1-T2–H1-T10 are
 | [H1-T0](tasks/H1-T0-validate-working-flow.md) Validate working flow | Task | done | done | — |
 | [H1-T1](tasks/H1-T1-implement-constitution.md) Constitution | Task | done | done | H1-T0 |
 | [H1-T11](tasks/H1-T11-current-truth.md) Current Truth | Task | done | done | H1-T1 |
-| H1-T12 Intent | Node placeholder | needed | not_planned | — |
+| [H1-T12](tasks/H1-T12-intent.md) Intent | Task | done | ready | H1-T1, H1-T11 |
 | H1-T13 Risk Router | Node placeholder | needed | not_planned | — |
 | H1-T14 Direct path | Node placeholder | needed | not_planned | — |
 | H1-T15 Research | Node placeholder | needed | not_planned | — |

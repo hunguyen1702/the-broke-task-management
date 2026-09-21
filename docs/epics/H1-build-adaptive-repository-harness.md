@@ -32,7 +32,13 @@ Learning Promotion may update Current Truth, Constitution, or checks through
 their respective authority boundaries.
 ```
 
-Simple work may take a short path through the lifecycle. The complete architecture must support every stage without forcing every request through every artifact, approval, review, or automation.
+Simple work may take a short path through the lifecycle. Each new work intent
+first receives one explicit user confirmation of the agent's concise
+Context–Task–Format interpretation; this is a comprehension check, not the
+later Commitment Gate. Once confirmed, the complete architecture must support
+every stage without forcing every request through every other artifact,
+approval, review, or automation. Ordinary continuation keeps the confirmed
+intent; a new goal or material change starts Intent again.
 
 ## Design artifact
 
@@ -42,6 +48,12 @@ The interactive [Adaptive Repository Harness visualization](../artifact/adaptive
 
 - Build the harness inside this repository, while separating reusable protocol from `tbtm`-specific policy and learned enforcement.
 - Use the H1-T0 flow as the working backbone and plan each node from its actual inputs, decisions, actions, outputs, and return/stop conditions.
+- For new or substantively revised workflow nodes, write the workflow around a
+  flowchart that shows its entry,
+  decisions, handoffs, and stop or return paths. Keep the accompanying
+  explanation short and focused. Include paired bad/good examples for the
+  workflow's evaluation decisions and outputs so agents can distinguish a
+  correct application from a plausible but wrong one.
 - Treat researched patterns as optional design references, not mandatory components or a coverage checklist.
 - Let the router select the smallest credible route and reroute when risk, uncertainty, scope, or evidence changes.
 - Keep semantic rules canonical in human-readable contracts. Scripts enforce only deterministic projections of those rules and emit traceable evidence.
@@ -72,7 +84,7 @@ node demonstrates a concrete need.
 | H1-T0 | Validate the working flow and node-first boundary | done |
 | H1-T1 | Constitution | done; implementation done |
 | H1-T11 | Current Truth | done; implementation done |
-| H1-T12 | Intent | needed |
+| H1-T12 | Intent | done; implementation ready |
 | H1-T13 | Risk Router | needed |
 | H1-T14 | Direct path | needed |
 | H1-T15 | Research | needed |
@@ -86,7 +98,7 @@ node demonstrates a concrete need.
 | H1-T23 | Integrated flow validation | needed |
 | H1-T24 | Manage Constitution rules (deferred workflow) | needed |
 
-H1-T12–H1-T24 are backlog placeholders, not approved implementation contracts.
+H1-T13–H1-T24 are backlog placeholders, not approved implementation contracts.
 Their precise scope, sequence, and dependencies are decided when each node is
 planned. A Context Capsule is the candidate return output of Research, Explore,
 and Spike, not a preselected separate component. Tests, lints, and skills are
@@ -100,9 +112,11 @@ is archived for reference and must not be claimed.
 - H1-T24 owns the future workflow for proposing, reviewing, approving,
   activating, revising, superseding, and retiring Constitution rules. H1-T1
   supplies the rule data contract and validator, not this operational workflow.
-- Framework ruleset upgrade/reinstall and review of project references are
-  deferred. They are recorded in the [deferred-work register](../handoff/H1-deferred-work.md)
-  but do not yet need implementation task IDs or a planned dependency graph.
+- General framework ruleset upgrade/reinstall and review of project references
+  are deferred. Approved initial H1 node additions use the bounded construction
+  authorization above. General upgrade work is recorded in the
+  [deferred-work register](../handoff/H1-deferred-work.md) without an
+  implementation task ID or planned dependency graph yet.
 
 ## Completion criteria
 
@@ -135,6 +149,26 @@ is archived for reference and must not be claimed.
 - H1-T1 implementation is complete. The pinned Constitution validates locally; acceptance impact is `none`.
 - H1-T11 Current Truth planning is complete in `../tasks/H1-T11-current-truth.md`. Intent supplies a sufficiently specific information need; the node builds a sourced, ephemeral view or an unresolved result without selecting a route or creating a second ADR store. Dependency cross-check against H1-T0 and H1-T1: NO CONFLICT.
 - H1-T11 implementation is complete in `.harness/workflow/rule-current-truth-r1.md`. The generic Constitution workflow supplies a request-scoped, source-backed `ready` or `unresolved` handoff; acceptance impact is `none`.
-- The former H1-T2–H1-T10 component roadmap was archived; H1-T12–H1-T23 remain node-first planning placeholders and H1-T24 tracks the deferred Constitution rule-management workflow.
+- H1-T12 planning is complete in [its implementation task](../tasks/H1-T12-intent.md).
+  Intent is a workflow reached through an effective
+  Constitution entry rule. `AGENTS.md` remains a short pointer to rule lookup.
+  The user approved explicit confirmation of a Context–Task–Format
+  interpretation once for each new work intent, before downstream analysis or
+  action. The user also authorized adding necessary framework workflow rules
+  during initial H1 construction without a separate ruleset approval round per
+  node; each installed snapshot must still update its version, digest, index,
+  and provenance consistently and pass validation. This does not authorize
+  project-rule activation or unrelated governance changes.
+- H1-T12 decision reviews and final direct-document review: READY. After
+  drafting, H1-T0, H1-T1, and H1-T11 were re-read. H1-T12 consumes H1-T0's
+  node-first flow, H1-T1's rule lookup and bounded construction authorization,
+  and H1-T11's information-need handoff and `insufficient_query` return. It
+  owns interpretation and confirmation only. Dependency cross-check:
+  NO CONFLICT.
+- The user required new or substantively revised workflows to use a flowchart,
+  short focused explanations, and paired bad/good examples for evaluation
+  decisions and outputs. This is now a design principle for later nodes;
+  H1-T12 records its node-specific implementation and verification details.
+- The former H1-T2–H1-T10 component roadmap was archived; H1-T13–H1-T23 remain node-first planning placeholders and H1-T24 tracks the deferred Constitution rule-management workflow.
 - H1 is the first planning priority ahead of all remaining product-story plans.
 - The epic is approved at the architecture and decomposition level. Remaining H1 placeholders stay `planning_status: needed` until their dedicated planning sessions begin, then follow the normal `in_progress` and `done` planning lifecycle.

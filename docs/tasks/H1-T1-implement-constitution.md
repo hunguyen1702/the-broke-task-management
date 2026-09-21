@@ -29,6 +29,21 @@ initial empty workflow category describe the original 1.0.0 install, not the
 current 1.1.0 state. See
 [TD-0003](../decisions/TD-0003-flatten-constitution-rules.md).
 
+## Initial H1 construction authorization (2026-09-21)
+
+The user subsequently authorized adding framework workflow rules needed for
+approved H1 nodes during initial harness construction without a separate
+ruleset approval round for each node. This is a bounded revision to the
+specified-ruleset approval process below, not permission to mutate the 1.1.0
+snapshot in place. Each installed snapshot still receives a new
+`rulesetVersion`, matching framework-rule installation provenance, a
+recomputed `frameworkDigest` and derived index, and successful validation.
+Only approved H1 node work is covered. Project-rule activation, unrelated
+governance changes, and general upgrade/reinstall semantics remain outside
+this authorization; H1-T24 retains the project-rule lifecycle. The approval
+metadata records this user-authorized construction process, not a claim that
+the user reviewed every final rule byte.
+
 ## Outcome
 
 A newly installed harness has a usable, version-pinned, locally materialized
