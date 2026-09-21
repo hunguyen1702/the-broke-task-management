@@ -2,7 +2,7 @@
 id: H1-T11
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - H1-T1
 ---
@@ -40,26 +40,34 @@ If the question or scope is too vague to select sources responsibly, return
 needed by Intent. Do not start a broad speculative search or ask the user
 directly from this node.
 
+If Constitution validation fails, stop and notify the user with the diagnostic.
+If a validated, applicable rule conflicts with the request, stop and notify the
+user with the requested action and cited rule. Neither case proceeds to source
+assembly or routing until the cause is resolved by the proper authority.
+
 ## Workflow
 
 1. Check that the information need and scope are specific enough to choose
    relevant sources. Reject insufficient input to Intent.
-2. Select and read the smallest credible source set. Distinguish normative
+2. Validate the Constitution, inspect and read effective rules for all relevant
+   paths, and assess the request against them. Apply the two stop conditions
+   above before assembling the source set.
+3. Select and read the smallest credible source set. Distinguish normative
    contract/policy/ADR decisions from observed code, tests, command output,
    Git state, and planning/implementation status.
-3. Extract only claims needed to answer the information need. Attach a source
+4. Extract only claims needed to answer the information need. Attach a source
    reference to every consequential claim and identify when it was observed
    if freshness matters.
-4. Reconcile claims semantically. Apply source precedence only when an
+5. Reconcile claims semantically. Apply source precedence only when an
    applicable canonical rule explicitly defines it. Do not infer that code
    behavior overrides an approved contract, or that a passing structural
    check resolves a semantic disagreement.
-5. Mark unanswered questions, stale observations, and conflicts. If a missing
+6. Mark unanswered questions, stale observations, and conflicts. If a missing
    fact can be found by bounded in-scope inspection, continue that inspection
    before reporting an unresolved result. Use deterministic commands or
    scripts for objective predicates when useful; semantic reasoning owns
    relevance and reconciliation.
-6. Return a compact result. Re-query the affected sources when the request
+7. Return a compact result. Re-query the affected sources when the request
    scope or material repository state changes; do not present an old snapshot
    as current.
 
@@ -77,6 +85,9 @@ There are two top-level outcomes; neither requires a durable file per request.
   or another path is warranted. An authority-bound contract or governance
   conflict requires an explicit user decision. Current Truth describes these
   needs but does not itself choose the next route or claim user approval.
+  `invalid_constitution` and `rule_conflict` are stopping results reported
+  directly to the user with diagnostics or the applicable cited rule; they
+  are not sent onward for routing.
 
 The output is an ephemeral request-scoped snapshot by default. A later node
 may persist a Context Capsule for handoff, resume, or audit; this task does not
@@ -99,12 +110,16 @@ to them but must not duplicate or silently revise their rationale.
 
 ## Implementation guidance
 
-Implement the node as a concise agent workflow or guide using existing
-repository tools and H1-T1 Constitution lookup. Include a small, concrete
+Implement the node as a generic framework-origin Constitution rule under
+`.harness/workflow/`, using existing repository tools and H1-T1 Constitution
+lookup. Present its decisions as an embedded flowchart with short actionable
+steps. Include a small, concrete
 output template and examples for a ready result, ambiguous Intent, missing
 inspectable evidence, and conflicting canonical sources. Do not require a
 new parser, repository-wide index, persistent database, or script merely to
-give the node a tangible artifact. Add deterministic checks only for a stable,
+give the node a tangible artifact. Keep the workflow free of references to
+this repository's own task, epic, status, or decision files. Add deterministic
+checks only for a stable,
 objective predicate demonstrated by this node's needs.
 
 The workflow must remain usable from a dirty worktree and must preserve
@@ -119,6 +134,10 @@ refresh the affected claims before handing off the result.
   decisions from observed behavior and source-backed output.
 - Give an underspecified request; verify `insufficient_query` returns to
   Intent without broad extraction or direct user questioning.
+- Give an invalid Constitution; verify the workflow stops, reports the
+  diagnostic to the user, and does not continue to lookup or route selection.
+- Give a request that conflicts with an applicable rule; verify the workflow
+  stops and reports the specific request and rule to the user.
 - Give a missing but inspectable fact; verify bounded further inspection
   rather than an immediate user prompt.
 - Give contradictory approved sources without explicit precedence; verify
@@ -158,3 +177,35 @@ not generalize the Constitution index to other nodes. NO CONFLICT.
 Final direct-document review: READY after clarifying that Risk Router selects
 the next path for an evidence gap and that explicit precedence retains the
 lower-priority claim as a sourced observation.
+
+## Implementation result
+
+The [Current Truth workflow](../../.harness/workflow/rule-current-truth-r1.md) documents bounded
+source selection, Constitution lookup, claim provenance, semantic reconciliation,
+freshness checks, and `ready`/`unresolved` handoff. It includes examples for
+clear input, ambiguous Intent, inspectable gaps, and conflicting authorities.
+The workflow is an active framework-origin Constitution rule with an embedded
+flowchart and no repository-specific references. No product behavior,
+persistent truth store, or mandatory script was added.
+
+The user clarified two stop conditions: failed Constitution validation stops
+and reports its diagnostic to the user; a request conflicting with a validated
+applicable rule stops and reports the requested action and cited rule to the
+user. Neither result is routed onward.
+
+Manual workflow walkthrough on 2026-09-21: for “Is H1-T11 implemented?”, the
+task frontmatter and H1 status are work-state sources, TD-0003 is a decision
+source, and the live `inspect-effective` output is an observation. Initially
+missing index evidence was found by that bounded lookup. An unspecified “What
+is happening?” returns `insufficient_query` to Intent. A failed validator
+returns `invalid_constitution` to the user before lookup; a request to activate
+an unapproved project rule returns `rule_conflict` citing `rule-authority` and
+`rule-governance`. Two incompatible approved contracts without precedence
+remain `authority_conflict` with both sources; with an explicit applicable
+precedence rule, the lower-ranked claim remains a cited observation. Expanding
+the target path set triggers another `inspect-effective` call before handoff.
+
+Verification: Constitution validation, `git diff --check`,
+`rtk mise run format`, `rtk mise run lint`, and `rtk mise run test` passed on
+2026-09-21; links and examples were reviewed. Acceptance impact: `none`,
+because this workflow changes no user-facing product behavior.

@@ -12,7 +12,7 @@ class InvalidConstitution < StandardError; end
 class Constitution
   CATEGORIES = %w[governance authority safety workflow repository verification].freeze
   STATUSES = %w[draft active superseded retired].freeze
-  FIELDS = %w[schemaVersion kind id revision title category status scope createdOn createdBy extends supersedes approvedOn approvedBy installationApproval].freeze
+  FIELDS = %w[schemaVersion kind id revision title category status scope createdOn createdBy origin extends supersedes approvedOn approvedBy installationApproval].freeze
 
   def initialize(root)
     @root = File.expand_path(root)
@@ -45,7 +45,7 @@ class Constitution
 
   def load_inputs
     manifest_path = File.join(@base, 'manifest.yaml')
-    schema_path = File.join(@base, 'constitution/schema.yaml')
+    schema_path = File.join(@base, 'schema.yaml')
     @manifest = yaml_file(manifest_path)
     exact_keys(@manifest, %w[manifestVersion frameworkVersion rulesetVersion frameworkDigest script limits installationApproval], %w[manifestVersion frameworkVersion rulesetVersion frameworkDigest script limits installationApproval], manifest_path)
     fail_at(manifest_path, 'unsupported manifestVersion') unless @manifest['manifestVersion'] == 1
@@ -67,11 +67,11 @@ class Constitution
     fail_at(schema_path, 'invalid categories') unless @schema['categories'] == CATEGORIES
     fail_at(schema_path, 'invalid statuses') unless @schema['statuses'] == STATUSES
     fail_at(schema_path, 'invalid frontmatterFields') unless @schema['frontmatterFields'] == FIELDS
-    fail_at(schema_path, 'invalid requiredFields') unless @schema['requiredFields'] == %w[schemaVersion kind id revision title category status scope createdOn createdBy]
+    fail_at(schema_path, 'invalid requiredFields') unless @schema['requiredFields'] == %w[schemaVersion kind id revision title category status scope createdOn createdBy origin]
     fail_at(schema_path, 'invalid requiredSections') unless @schema['requiredSections'] == %w[Rule Rationale Application]
     fail_at(schema_path, 'unsupported scopeGlob') unless @schema['scopeGlob'] == 'segment-star-v1'
     scan
-    digest = tree_digest(File.join(@base, 'constitution/framework'))
+    digest = framework_digest
     fail_at(manifest_path, 'frameworkDigest drift') unless digest == @manifest['frameworkDigest']
     resolve
   end
@@ -83,34 +83,30 @@ class Constitution
     false
   end
 
-  def tree_digest(tree)
-    fail_at(tree, 'missing rule tree') unless File.directory?(tree) && !File.symlink?(tree)
-    files = Dir.glob(File.join(tree, '**/*'), File::FNM_DOTMATCH).select { |p| File.file?(p) || File.symlink?(p) }.sort
+  def framework_digest
+    files = @rules.select { |r| r[:source] == 'framework' }.map { |r| r[:path] }.sort
     digest = Digest::SHA256.new
     files.each do |path|
-      fail_at(path, 'symlink is not allowed') if File.symlink?(path)
-      name = path.delete_prefix("#{tree}/")
+      name = path.delete_prefix("#{@base}/")
       digest.update(name.b).update("\0").update(File.binread(path)).update("\0")
     end
     digest.hexdigest
   end
 
   def scan
-    %w[framework project].each do |source|
-      tree = File.join(@base, 'constitution', source)
-      fail_at(tree, 'missing rule tree') unless File.directory?(tree) && !File.symlink?(tree)
-      CATEGORIES.each do |category|
-        dir = File.join(tree, category)
-        fail_at(dir, 'missing category directory') unless File.directory?(dir) && !File.symlink?(dir)
-      end
-      Dir.glob(File.join(tree, '**/*'), File::FNM_DOTMATCH).sort.each do |path|
-        next if File.directory?(path) && !File.symlink?(path)
-        next if File.basename(path) == '.gitkeep' && CATEGORIES.include?(File.basename(File.dirname(path)))
+    CATEGORIES.each do |category|
+      dir = File.join(@base, category)
+      fail_at(dir, 'missing category directory') unless File.directory?(dir) && !File.symlink?(dir)
+      Dir.glob(File.join(dir, '*'), File::FNM_DOTMATCH).sort.each do |path|
+        next if File.directory?(path) && !File.symlink?(path) && %w[. ..].include?(File.basename(path))
+        next if File.basename(path) == '.gitkeep'
         fail_at(path, 'symlink is not allowed') if File.symlink?(path)
-        fail_at(path, 'unexpected file') unless File.file?(path) && path.end_with?('.md') && CATEGORIES.include?(File.basename(File.dirname(path)))
-        parse_rule(path, source)
+        fail_at(path, 'unexpected file') unless File.file?(path) && path.end_with?('.md')
+        parse_rule(path)
       end
     end
+    legacy = File.join(@base, 'constitution')
+    fail_at(legacy, 'legacy rule tree remains') if File.exist?(legacy)
     pairs = @rules.group_by { |r| [r[:data]['id'], r[:data]['revision']] }
     pairs.each_value { |items| fail_at(items.last[:path], 'duplicate id/revision', items.last[:data]['id']) if items.length > 1 }
     @by_pair = pairs.transform_values(&:first)
@@ -121,7 +117,7 @@ class Constitution
     end
   end
 
-  def parse_rule(path, source)
+  def parse_rule(path)
     bytes = File.binread(path)
     fail_at(path, 'invalid UTF-8') unless bytes.force_encoding('UTF-8').valid_encoding?
     match = bytes.match(/\A---\r?\n(.*?)\r?\n---\r?\n(.*)\z/m)
@@ -138,6 +134,8 @@ class Constitution
     fail_at(path, 'unsupported schemaVersion or kind', id) unless data['schemaVersion'] == @schema['schemaVersion'] && data['kind'] == @schema['kind']
     fail_at(path, 'invalid category', id) unless data['category'] == File.basename(File.dirname(path))
     fail_at(path, 'invalid status', id) unless STATUSES.include?(data['status'])
+    source = data['origin']
+    fail_at(path, 'invalid origin', id) unless %w[framework project].include?(source)
     %w[title createdBy].each { |key| fail_at(path, "invalid #{key}", id) unless data[key].is_a?(String) && !data[key].strip.empty? }
     fail_at(path, 'invalid createdOn', id) unless date?(data['createdOn'])
     validate_scope(path, id, data['scope'])
@@ -226,13 +224,13 @@ class Constitution
   end
 
   def check_index
-    path = File.join(@base, 'constitution/index.yaml')
+    path = File.join(@base, 'index.yaml')
     fail_at(path, 'missing index; run rebuild-index') unless File.file?(path)
     fail_at(path, 'stale index; run rebuild-index') unless yaml_file(path) == index
   end
 
   def rebuild
-    path = File.join(@base, 'constitution/index.yaml')
+    path = File.join(@base, 'index.yaml')
     tempfile = Tempfile.new('.index-', File.dirname(path))
     begin
       tempfile.write(YAML.dump(index))

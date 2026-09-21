@@ -71,7 +71,7 @@ node demonstrates a concrete need.
 |---|---|---|
 | H1-T0 | Validate the working flow and node-first boundary | done |
 | H1-T1 | Constitution | done; implementation done |
-| H1-T11 | Current Truth | done; implementation ready |
+| H1-T11 | Current Truth | done; implementation done |
 | H1-T12 | Intent | needed |
 | H1-T13 | Risk Router | needed |
 | H1-T14 | Direct path | needed |
@@ -134,6 +134,7 @@ is archived for reference and must not be claimed.
 - H1-T1 Constitution planning is complete in `../tasks/H1-T1-implement-constitution.md`; its rule format and index apply to Constitution alone, with no preselected folder structure for other nodes. Dependency cross-check against H1-T0: NO CONFLICT.
 - H1-T1 implementation is complete. The pinned Constitution validates locally; acceptance impact is `none`.
 - H1-T11 Current Truth planning is complete in `../tasks/H1-T11-current-truth.md`. Intent supplies a sufficiently specific information need; the node builds a sourced, ephemeral view or an unresolved result without selecting a route or creating a second ADR store. Dependency cross-check against H1-T0 and H1-T1: NO CONFLICT.
+- H1-T11 implementation is complete in `.harness/workflow/rule-current-truth-r1.md`. The generic Constitution workflow supplies a request-scoped, source-backed `ready` or `unresolved` handoff; acceptance impact is `none`.
 - The former H1-T2–H1-T10 component roadmap was archived; H1-T12–H1-T23 remain node-first planning placeholders and H1-T24 tracks the deferred Constitution rule-management workflow.
 - H1 is the first planning priority ahead of all remaining product-story plans.
 - The epic is approved at the architecture and decomposition level. Remaining H1 placeholders stay `planning_status: needed` until their dedicated planning sessions begin, then follow the normal `in_progress` and `done` planning lifecycle.

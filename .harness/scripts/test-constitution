@@ -25,12 +25,12 @@ class ConstitutionTest < Minitest::Test
   end
 
   def project_rule(id, status: 'draft', extra: '', scope: 'repository: true')
-    path = File.join(@temp, ".harness/constitution/project/repository/#{id}-r1.md")
+    path = File.join(@temp, ".harness/repository/#{id}-r1.md")
     front = [
       '---', 'schemaVersion: 1', 'kind: constitution-rule', "id: #{id}",
       'revision: 1', "title: #{id}", 'category: repository',
       "status: #{status}", 'scope:', "  #{scope}",
-      'createdOn: 2026-09-21', 'createdBy: user', extra.strip, '---'
+      'createdOn: 2026-09-21', 'createdBy: user', 'origin: project', extra.strip, '---'
     ].reject(&:empty?).join("\n")
     File.write(path, "#{front}\n## Rule\nDo the thing.\n\n## Rationale\nThere is a reason.\n\n## Application\nApply it.\n")
     path
@@ -38,12 +38,14 @@ class ConstitutionTest < Minitest::Test
 
   def test_clean_install_and_stable_rebuild
     assert_equal 0, run_script('validate')[2].exitstatus
-    index = File.binread(File.join(@temp, '.harness/constitution/index.yaml'))
+    index = File.binread(File.join(@temp, '.harness/index.yaml'))
     result = run_script('rebuild-index')
     assert_equal 0, result[2].exitstatus, result[1]
-    assert_equal index, File.binread(File.join(@temp, '.harness/constitution/index.yaml'))
+    assert_equal index, File.binread(File.join(@temp, '.harness/index.yaml'))
     out, = run_script('inspect-effective')
-    assert_equal 5, YAML.safe_load(out)['rules'].length
+    assert_equal 6, YAML.safe_load(out)['rules'].length
+    assert_includes out, '.harness/workflow/rule-current-truth-r1.md'
+    refute File.exist?(File.join(@temp, '.harness/current-truth.md'))
   end
 
   def test_draft_is_indexed_but_not_effective
@@ -52,7 +54,7 @@ class ConstitutionTest < Minitest::Test
     assert_equal 0, result[2].exitstatus, result[1]
     out, = run_script('inspect-effective')
     refute_includes out, 'project-draft'
-    assert_includes File.read(File.join(@temp, '.harness/constitution/index.yaml')), 'project-draft'
+    assert_includes File.read(File.join(@temp, '.harness/index.yaml')), 'project-draft'
   end
 
   def test_active_project_rule_needs_approval
@@ -76,7 +78,7 @@ class ConstitutionTest < Minitest::Test
   end
 
   def test_invalid_canonical_input_keeps_previous_index
-    index_path = File.join(@temp, '.harness/constitution/index.yaml')
+    index_path = File.join(@temp, '.harness/index.yaml')
     before = File.binread(index_path)
     project_rule('broken', extra: "supersedes: [{id: absent, revision: 1}]\n")
     assert_equal 1, run_script('rebuild-index')[2].exitstatus
@@ -84,17 +86,17 @@ class ConstitutionTest < Minitest::Test
   end
 
   def test_missing_schema_and_digest_drift
-    schema = File.join(@temp, '.harness/constitution/schema.yaml')
+    schema = File.join(@temp, '.harness/schema.yaml')
     File.delete(schema)
     assert_equal 1, run_script('validate')[2].exitstatus
-    FileUtils.cp(File.join(SOURCE, '.harness/constitution/schema.yaml'), schema)
-    rule = Dir[File.join(@temp, '.harness/constitution/framework/**/*.md')].first
+    FileUtils.cp(File.join(SOURCE, '.harness/schema.yaml'), schema)
+    rule = Dir[File.join(@temp, '.harness/authority/*.md')].first
     File.open(rule, 'a') { |f| f.puts 'extra' }
     assert_equal 1, run_script('validate')[2].exitstatus
   end
 
   def test_stale_and_missing_index
-    index = File.join(@temp, '.harness/constitution/index.yaml')
+    index = File.join(@temp, '.harness/index.yaml')
     File.open(index, 'a') { |f| f.puts 'unexpected: true' }
     assert_equal 1, run_script('validate')[2].exitstatus
     assert_equal 0, run_script('rebuild-index')[2].exitstatus
@@ -105,7 +107,7 @@ class ConstitutionTest < Minitest::Test
 
   def test_duplicate_and_cycle_references
     path = project_rule('project-one')
-    copy = File.join(@temp, '.harness/constitution/project/repository/duplicate-r1.md')
+    copy = File.join(@temp, '.harness/repository/duplicate-r1.md')
     FileUtils.cp(path, copy)
     assert_equal 1, run_script('rebuild-index')[2].exitstatus
     File.delete(copy)

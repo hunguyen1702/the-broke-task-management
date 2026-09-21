@@ -9,7 +9,8 @@ status: active
 scope: {repository: true}
 createdOn: 2026-09-21
 createdBy: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.0.0}
+origin: framework
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.1.0}
 ---
 ## Rule
 Require proof proportional to the change and report unverified limitations.

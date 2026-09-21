@@ -1,8 +1,0 @@
-schemaVersion: 1
-kind: constitution-rule
-categories: [governance, authority, safety, workflow, repository, verification]
-statuses: [draft, active, superseded, retired]
-frontmatterFields: [schemaVersion, kind, id, revision, title, category, status, scope, createdOn, createdBy, extends, supersedes, approvedOn, approvedBy, installationApproval]
-requiredFields: [schemaVersion, kind, id, revision, title, category, status, scope, createdOn, createdBy]
-requiredSections: [Rule, Rationale, Application]
-scopeGlob: segment-star-v1

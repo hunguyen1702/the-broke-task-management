@@ -16,6 +16,19 @@ H1-T0 is complete. This task implements the Constitution node alone; it does
 not implement Intent, Router, Current Truth, workflow guides, or a common data
 model for other nodes. H1 does not change the `tbtm` product contract or CLI.
 
+## Approved layout revision (2026-09-21)
+
+The user revised the installed Constitution after the original H1-T1 implementation.
+Canonical rules now share `.harness/<category>/` regardless of origin; `origin`
+frontmatter distinguishes framework and project rules. Schema and derived index
+live at `.harness/schema.yaml` and `.harness/index.yaml`. The pinned digest
+covers framework-origin rule files using their paths relative to `.harness/`.
+The user also authorized the generic Current Truth rule in `.harness/workflow/`.
+All future workflows belong there. Historical statements below about H1-T1's
+initial empty workflow category describe the original 1.0.0 install, not the
+current 1.1.0 state. See
+[TD-0003](../decisions/TD-0003-flatten-constitution-rules.md).
+
 ## Outcome
 
 A newly installed harness has a usable, version-pinned, locally materialized
@@ -26,7 +39,7 @@ can be added in the same layout without changing framework-owned files.
 ## Five resolved design decisions
 
 1. **Schema:** Keep one versioned, machine-readable
-   `.harness/constitution/schema.yaml` describing the allowed frontmatter,
+   `.harness/schema.yaml` describing the allowed frontmatter,
    required sections and per-category constraints. The validator implements
    deterministic cross-file checks not expressible there. Schema changes are
    framework-owned and versioned; do not silently introduce an unversioned
@@ -71,20 +84,18 @@ can be added in the same layout without changing framework-owned files.
 .harness/
   manifest.yaml
   scripts/validate-constitution
-  constitution/
-    schema.yaml
-    index.yaml
-    framework/{governance,authority,safety,workflow,repository,verification}/
-    project/{governance,authority,safety,workflow,repository,verification}/
+  schema.yaml
+  index.yaml
+  {governance,authority,safety,workflow,repository,verification}/
 ```
 
-The two trees share layout, not ownership. Rule files are canonical; one index
-is a derived, sorted projection of both trees, including IDs, revisions,
-source, category, status, effective state, path and file digest. Source is
-inferred from the tree. Framework files are immutable outside a later upgrade
+Rule files are canonical; one index is a derived, sorted projection of all
+categories, including IDs, revisions, origin, category, status, effective
+state, path and file digest. Origin is explicit in frontmatter. Framework-origin
+files are immutable outside a later upgrade
 mechanism. Manifest pins framework version and ruleset version and a SHA-256
-digest of the framework rule tree using documented stable relative-path and
-file-byte ordering. Validator rejects digest drift. No SQLite. Entry-point
+digest of framework-origin rule files using paths relative to `.harness/` and
+documented file-byte ordering. Validator rejects digest drift. No SQLite. Entry-point
 `AGENTS.md` or equivalent gets only a short harness declaration and lookup
 instructions; preserve existing contents and never replace user guidance.
 
@@ -93,7 +104,7 @@ instructions; preserve existing contents and never replace user guidance.
 - Frontmatter: `schemaVersion`, `kind: constitution-rule`, stable `id`, positive
   `revision`, `title`, one category, status (`draft`, `active`, `superseded`,
   `retired`), scope, creation date/creator, optional exact `extends` and
-  `supersedes` references. Active project rules require approval date and
+  `supersedes` references, and required `origin`. Active project-origin rules require approval date and
   `approvedBy: user`; installed framework rules carry ruleset installation
   approval provenance. Dates use ISO 8601 date format. Rule filename embeds
   ID and revision; category matches the directory.
@@ -131,8 +142,8 @@ Write concise rules with the agreed common body structure:
 - Repository: follow applicable local instructions; keep one canonical source
   for each fact and derive projections.
 - Verification: require proportional proof; report unverified limitations.
-- Workflow: empty at install time. Do not invent node guides or routing
-  triggers in this task.
+- Workflow: H1-T1 originally left this category empty. H1-T11 now supplies
+  the generic Current Truth rule; later nodes add their own workflows here.
 
 ## Implementation sequence
 
@@ -155,7 +166,7 @@ Write concise rules with the agreed common body structure:
 
 ## Verification
 
-Exercise clean install, empty workflow category, project draft exclusion,
+Exercise clean install, effective Current Truth workflow, project draft exclusion,
 approved active addition, extension and replacement, revision replacement,
 path include/exclude, missing/invalid schema or manifest, invalid YAML,
 missing sections, limits (including Unicode and frontmatter exclusion),
@@ -196,7 +207,7 @@ NO CONFLICT.
 ## Implementation result
 
 The pinned Constitution is installed under `.harness/` with five active
-framework rules and an empty workflow category. Canonical rule files, the
+framework rules and a Current Truth workflow. Canonical rule files, the
 schema, manifest, derived index, and validator are covered by isolated
 temporary-repository tests. The rule-management workflow remains H1-T24.
 
