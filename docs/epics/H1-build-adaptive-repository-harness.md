@@ -71,7 +71,7 @@ node demonstrates a concrete need.
 |---|---|---|
 | H1-T0 | Validate the working flow and node-first boundary | done |
 | H1-T1 | Constitution | done; implementation done |
-| H1-T11 | Current Truth | needed |
+| H1-T11 | Current Truth | done; implementation ready |
 | H1-T12 | Intent | needed |
 | H1-T13 | Risk Router | needed |
 | H1-T14 | Direct path | needed |
@@ -86,7 +86,7 @@ node demonstrates a concrete need.
 | H1-T23 | Integrated flow validation | needed |
 | H1-T24 | Manage Constitution rules (deferred workflow) | needed |
 
-H1-T11–H1-T24 are backlog placeholders, not approved implementation contracts.
+H1-T12–H1-T24 are backlog placeholders, not approved implementation contracts.
 Their precise scope, sequence, and dependencies are decided when each node is
 planned. A Context Capsule is the candidate return output of Research, Explore,
 and Spike, not a preselected separate component. Tests, lints, and skills are
@@ -133,6 +133,7 @@ is archived for reference and must not be claimed.
 - H1-T0 validated the user-approved working flow and node-first development boundary; Constitution is the first independently planned component.
 - H1-T1 Constitution planning is complete in `../tasks/H1-T1-implement-constitution.md`; its rule format and index apply to Constitution alone, with no preselected folder structure for other nodes. Dependency cross-check against H1-T0: NO CONFLICT.
 - H1-T1 implementation is complete. The pinned Constitution validates locally; acceptance impact is `none`.
-- The former H1-T2–H1-T10 component roadmap was archived; H1-T11–H1-T23 are node-first planning placeholders and H1-T24 tracks the deferred Constitution rule-management workflow. None has an approved implementation contract.
+- H1-T11 Current Truth planning is complete in `../tasks/H1-T11-current-truth.md`. Intent supplies a sufficiently specific information need; the node builds a sourced, ephemeral view or an unresolved result without selecting a route or creating a second ADR store. Dependency cross-check against H1-T0 and H1-T1: NO CONFLICT.
+- The former H1-T2–H1-T10 component roadmap was archived; H1-T12–H1-T23 remain node-first planning placeholders and H1-T24 tracks the deferred Constitution rule-management workflow.
 - H1 is the first planning priority ahead of all remaining product-story plans.
-- The epic is approved only at the architecture and decomposition level. Each H1 task remains `planning_status: needed` until its dedicated planning session begins, then follows the normal `in_progress` and `done` planning lifecycle.
+- The epic is approved at the architecture and decomposition level. Remaining H1 placeholders stay `planning_status: needed` until their dedicated planning sessions begin, then follow the normal `in_progress` and `done` planning lifecycle.

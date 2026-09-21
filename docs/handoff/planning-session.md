@@ -124,13 +124,17 @@ Planning tiếp theo:
 
 - **H1-T0** đã xác nhận flow node-first và hoàn tất planning.
 - **H1-T1 Constitution** đã có [implementation plan](../tasks/H1-T1-implement-constitution.md)
-  và sẵn sàng implementation; chưa có source code nào được implement trong
-  planning. Năm điểm cuối (schema, exact revision references, approval của
-  framework ruleset, scope, validator CLI) đã được chốt trong task contract.
-  Các node khác chưa được ấn định layout hay shared schema.
+  và đã implementation xong. Năm điểm cuối (schema, exact revision references,
+  approval của framework ruleset, scope, validator CLI) được chốt trong task
+  contract; không áp schema đó cho các node khác.
+- **H1-T11 Current Truth** đã có [implementation plan](../tasks/H1-T11-current-truth.md)
+  và sẵn sàng implementation. Node nhận information need đủ cụ thể từ Intent,
+  tạo view ngắn có dẫn nguồn hoặc kết quả unresolved; không chọn route, không
+  tạo ADR store thứ hai. Review cuối `READY`; cross-check H1-T0/H1-T1:
+  `NO CONFLICT`.
 - Roadmap component H1-T2–H1-T10 cũ đã được
   [lưu để tham khảo](H1-archived-component-roadmap.md), không còn là task active.
-  Backlog H1-T11–H1-T23 đi theo từng node của H1-T0; tên là placeholder,
+  Backlog H1-T12–H1-T23 đi theo từng node của H1-T0; tên là placeholder,
   chưa phê duyệt implementation contract. H1-T24 ghi nhận workflow quản lý
   Constitution rule đã defer. Các điểm defer khác nằm trong
   [H1 deferred-work register](H1-deferred-work.md).
