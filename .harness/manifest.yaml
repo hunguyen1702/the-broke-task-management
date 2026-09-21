@@ -1,0 +1,17 @@
+manifestVersion: 1
+frameworkVersion: 1.0.0
+rulesetVersion: 1.0.0
+frameworkDigest: f61042649083d18d6ff1fc734268760dbe9a9abad59090ef192a69a114b26dd9
+script: .harness/scripts/validate-constitution
+installationApproval:
+  approvedBy: user
+  approvedOn: 2026-09-21
+  rulesetVersion: 1.0.0
+limits:
+  frontmatterBytes: 8192
+  default:
+    bodyWords: 1000
+    bodyBytes: 16384
+  workflow:
+    bodyWords: 2500
+    bodyBytes: 40960

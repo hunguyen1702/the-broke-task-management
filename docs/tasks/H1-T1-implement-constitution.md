@@ -2,7 +2,7 @@
 id: H1-T1
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - H1-T0
 ---
@@ -192,3 +192,14 @@ Re-read H1-T0 before approval: its flow makes Constitution an input to Router
 and explicitly defers other node schemas; this task supplies governance and
 validation only. No conflicting inherited persistence or output contract.
 NO CONFLICT.
+
+## Implementation result
+
+The pinned Constitution is installed under `.harness/` with five active
+framework rules and an empty workflow category. Canonical rule files, the
+schema, manifest, derived index, and validator are covered by isolated
+temporary-repository tests. The rule-management workflow remains H1-T24.
+
+Verification: `rtk mise run format`, `rtk mise run lint`, and
+`rtk mise run test` passed on 2026-09-21. Acceptance impact: `none`, because
+the harness does not change the product CLI or an existing user scenario.

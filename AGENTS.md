@@ -1,5 +1,10 @@
 # Repository Guidelines
 
+The repository harness is declared in `.harness/manifest.yaml`. Before mutating
+harness work, run `.harness/scripts/validate-constitution validate`; use
+`inspect-effective` with every relevant relative path, then read the returned
+canonical rule files. See `.harness/README.md` for scope and draft rules.
+
 ## Project Structure & Module Organization
 
 Rust Cargo workspace for `tbtm`, repository-local task-management CLI.

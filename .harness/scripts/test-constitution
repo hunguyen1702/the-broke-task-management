@@ -1,0 +1,139 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'minitest/autorun'
+require 'tmpdir'
+require 'fileutils'
+require 'yaml'
+
+class ConstitutionTest < Minitest::Test
+  SOURCE = File.expand_path('../..', __dir__)
+
+  def setup
+    @temp = Dir.mktmpdir('constitution-test-')
+    FileUtils.cp_r(File.join(SOURCE, '.harness'), File.join(@temp, '.harness'))
+    @script = File.join(@temp, '.harness/scripts/validate-constitution')
+  end
+
+  def teardown
+    FileUtils.remove_entry(@temp)
+  end
+
+  def run_script(*args)
+    require 'open3'
+    Open3.capture3(@script, *args)
+  end
+
+  def project_rule(id, status: 'draft', extra: '', scope: 'repository: true')
+    path = File.join(@temp, ".harness/constitution/project/repository/#{id}-r1.md")
+    front = [
+      '---', 'schemaVersion: 1', 'kind: constitution-rule', "id: #{id}",
+      'revision: 1', "title: #{id}", 'category: repository',
+      "status: #{status}", 'scope:', "  #{scope}",
+      'createdOn: 2026-09-21', 'createdBy: user', extra.strip, '---'
+    ].reject(&:empty?).join("\n")
+    File.write(path, "#{front}\n## Rule\nDo the thing.\n\n## Rationale\nThere is a reason.\n\n## Application\nApply it.\n")
+    path
+  end
+
+  def test_clean_install_and_stable_rebuild
+    assert_equal 0, run_script('validate')[2].exitstatus
+    index = File.binread(File.join(@temp, '.harness/constitution/index.yaml'))
+    result = run_script('rebuild-index')
+    assert_equal 0, result[2].exitstatus, result[1]
+    assert_equal index, File.binread(File.join(@temp, '.harness/constitution/index.yaml'))
+    out, = run_script('inspect-effective')
+    assert_equal 5, YAML.safe_load(out)['rules'].length
+  end
+
+  def test_draft_is_indexed_but_not_effective
+    project_rule('project-draft')
+    result = run_script('rebuild-index')
+    assert_equal 0, result[2].exitstatus, result[1]
+    out, = run_script('inspect-effective')
+    refute_includes out, 'project-draft'
+    assert_includes File.read(File.join(@temp, '.harness/constitution/index.yaml')), 'project-draft'
+  end
+
+  def test_active_project_rule_needs_approval
+    path = project_rule('project-active', status: 'active')
+    assert_equal 1, run_script('rebuild-index')[2].exitstatus
+    File.write(path, File.read(path).sub("---\n## Rule", "approvedOn: 2026-09-21\napprovedBy: user\n---\n## Rule"))
+    result = run_script('rebuild-index')
+    assert_equal 0, result[2].exitstatus, result[1]
+    out, = run_script('inspect-effective')
+    assert_includes out, 'project-active'
+  end
+
+  def test_references_and_scope
+    path = project_rule('project-scoped', status: 'active', extra: "approvedOn: 2026-09-21\napprovedBy: user\nextends: [{id: rule-repository, revision: 1}]\n", scope: "paths:\n    include: ['docs/**/*.md']\n    exclude: ['docs/private/**']")
+    assert File.exist?(path)
+    result = run_script('rebuild-index')
+    assert_equal 0, result[2].exitstatus, result[1]
+    assert_includes run_script('inspect-effective', 'docs/a.md')[0], 'project-scoped'
+    refute_includes run_script('inspect-effective', 'docs/private/a.md')[0], 'project-scoped'
+    assert_includes run_script('inspect-effective', 'docs/a.md')[0], 'rule-repository'
+  end
+
+  def test_invalid_canonical_input_keeps_previous_index
+    index_path = File.join(@temp, '.harness/constitution/index.yaml')
+    before = File.binread(index_path)
+    project_rule('broken', extra: "supersedes: [{id: absent, revision: 1}]\n")
+    assert_equal 1, run_script('rebuild-index')[2].exitstatus
+    assert_equal before, File.binread(index_path)
+  end
+
+  def test_missing_schema_and_digest_drift
+    schema = File.join(@temp, '.harness/constitution/schema.yaml')
+    File.delete(schema)
+    assert_equal 1, run_script('validate')[2].exitstatus
+    FileUtils.cp(File.join(SOURCE, '.harness/constitution/schema.yaml'), schema)
+    rule = Dir[File.join(@temp, '.harness/constitution/framework/**/*.md')].first
+    File.open(rule, 'a') { |f| f.puts 'extra' }
+    assert_equal 1, run_script('validate')[2].exitstatus
+  end
+
+  def test_stale_and_missing_index
+    index = File.join(@temp, '.harness/constitution/index.yaml')
+    File.open(index, 'a') { |f| f.puts 'unexpected: true' }
+    assert_equal 1, run_script('validate')[2].exitstatus
+    assert_equal 0, run_script('rebuild-index')[2].exitstatus
+    File.delete(index)
+    assert_equal 1, run_script('validate')[2].exitstatus
+    assert_equal 0, run_script('rebuild-index')[2].exitstatus
+  end
+
+  def test_duplicate_and_cycle_references
+    path = project_rule('project-one')
+    copy = File.join(@temp, '.harness/constitution/project/repository/duplicate-r1.md')
+    FileUtils.cp(path, copy)
+    assert_equal 1, run_script('rebuild-index')[2].exitstatus
+    File.delete(copy)
+    File.write(path, File.read(path).sub("---\n## Rule", "extends: [{id: project-one, revision: 1}]\n---\n## Rule"))
+    assert_equal 1, run_script('rebuild-index')[2].exitstatus
+  end
+
+  def test_body_and_frontmatter_limits
+    path = project_rule('project-large')
+    File.open(path, 'a') { |f| f.write(('word ' * 1001)) }
+    assert_equal 1, run_script('rebuild-index')[2].exitstatus
+    File.write(path, File.read(path).sub('word ' * 1001, ''))
+    File.write(path, File.read(path).sub('title: project-large', "title: #{'界' * 3000}"))
+    assert_equal 1, run_script('rebuild-index')[2].exitstatus
+  end
+
+  def test_missing_manifest_and_invocation_exit_codes
+    manifest = File.join(@temp, '.harness/manifest.yaml')
+    File.delete(manifest)
+    assert_equal 1, run_script('validate')[2].exitstatus
+    assert_equal 2, run_script('unknown')[2].exitstatus
+  end
+
+  def test_supersedes_exact_framework_revision
+    project_rule('project-replacement', status: 'active', extra: "approvedOn: 2026-09-21\napprovedBy: user\nsupersedes: [{id: rule-repository, revision: 1}]\n")
+    assert_equal 0, run_script('rebuild-index')[2].exitstatus
+    out = run_script('inspect-effective')[0]
+    assert_includes out, 'project-replacement'
+    refute_includes out, 'rule-repository'
+  end
+end
