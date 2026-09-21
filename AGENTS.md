@@ -1,9 +1,9 @@
 # Repository Guidelines
 
-The repository harness is declared in `.harness/manifest.yaml`. Before mutating
-harness work, run `.harness/scripts/validate-constitution validate`; use
-`inspect-effective` with every relevant relative path, then read the returned
-canonical rule files. See `.harness/README.md` for scope and draft rules.
+The repository harness is declared in `.harness/manifest.yaml`. Before handling
+work in this repository, validate the Constitution, use `inspect-effective`
+with relevant relative paths, and read the returned canonical rules. Reinspect
+when relevant scope or rules change. See `.harness/README.md` for lookup details.
 
 ## Project Structure & Module Organization
 

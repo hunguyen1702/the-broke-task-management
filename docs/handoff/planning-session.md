@@ -133,7 +133,7 @@ Planning tiếp theo:
   tạo ADR store thứ hai. Review cuối `READY`; cross-check H1-T0/H1-T1:
   `NO CONFLICT`.
 - **H1-T12 Intent** đã hoàn tất planning trong
-  [implementation plan](../tasks/H1-T12-intent.md) và sẵn sàng implementation.
+  [implementation plan](../tasks/H1-T12-intent.md) và đã implementation xong.
   `AGENTS.md` chỉ là entry tra cứu; Constitution rule kích hoạt Intent khi bắt
   đầu công việc mới. Intent trả `needs_clarification` hoặc `ready`, hiển thị
   diễn giải Context–Task–Format và chờ xác nhận rõ ràng trước khi chuyển sang
@@ -141,7 +141,8 @@ Planning tiếp theo:
   vi cho phép thêm framework workflow rule trong giai đoạn xây dựng; manifest,
   digest, index và validator vẫn phải nhất quán. Review cuối `READY`;
   cross-check H1-T0/H1-T1/H1-T11: `NO CONFLICT`. Bổ sung yêu cầu flowchart,
-  diễn giải ngắn gọn và ví dụ bad/good cho logic đánh giá cùng output.
+  diễn giải ngắn gọn và ví dụ bad/good cho logic đánh giá cùng output. Hai
+  workflow rule đã active trong Constitution 1.2.0; acceptance impact `none`.
 - Roadmap component H1-T2–H1-T10 cũ đã được
   [lưu để tham khảo](H1-archived-component-roadmap.md), không còn là task active.
   Backlog H1-T13–H1-T23 đi theo từng node của H1-T0; tên là placeholder,

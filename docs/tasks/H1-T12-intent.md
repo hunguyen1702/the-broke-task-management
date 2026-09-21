@@ -2,7 +2,7 @@
 id: H1-T12
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - H1-T1
   - H1-T11
@@ -192,3 +192,34 @@ construction addendum permits necessary H1 workflow-rule additions without
 silently editing version 1.1.0. H1-T11 consumes a specific information need
 and scope and returns `insufficient_query` to Intent. This task creates no
 competing truth store, route selector, or product contract. NO CONFLICT.
+
+## Implementation result
+
+The [workflow entry rule](../../.harness/workflow/rule-workflow-entry-r1.md)
+loads Intent for new work and material goal/scope changes while preserving
+ordinary continuation. The [Intent rule](../../.harness/workflow/rule-intent-r1.md)
+contains the required flowchart, short steps, and paired bad/good examples for
+clarity, clarification, confirmation text, and the `ready` handoff. The
+repository `AGENTS.md` points to Constitution lookup. No hook, durable
+prompt-rewrite store, Router behavior, or product CLI change was added.
+
+Manual workflow walkthrough on 2026-09-21:
+
+- “Shorten the setup guide” reaches the concise interpretation display, then
+  waits; only an explicit confirmation yields `ready` with a guide-specific
+  information need and scope for Current Truth.
+- “Add a dashboard” yields `needs_clarification` for the target surface.
+  Answering “editor” updates the same Intent; a correction redisplays the
+  interpretation before any handoff.
+- A confirmation reply continues the pending Intent. A routine progress
+  question keeps the confirmed intent; a new goal starts another Intent.
+- Current Truth `insufficient_query` returns to the same Intent for a focused
+  question and reconfirmation if the interpretation materially changes.
+
+The Constitution moved to pinned ruleset 1.2.0 with matching provenance for
+all framework rules, a recomputed framework digest, and a rebuilt index.
+`validate` and `inspect-effective` passed and exposed both new workflow rules.
+The isolated Constitution suite passed (11 tests, 47 assertions). Repository
+format, lint, and full test tasks passed. Acceptance impact: `none`, because
+the change is confined to repository-agent workflow and does not alter a
+product acceptance scenario.

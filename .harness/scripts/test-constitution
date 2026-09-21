@@ -43,8 +43,10 @@ class ConstitutionTest < Minitest::Test
     assert_equal 0, result[2].exitstatus, result[1]
     assert_equal index, File.binread(File.join(@temp, '.harness/index.yaml'))
     out, = run_script('inspect-effective')
-    assert_equal 6, YAML.safe_load(out)['rules'].length
+    assert_equal 8, YAML.safe_load(out)['rules'].length
     assert_includes out, '.harness/workflow/rule-current-truth-r1.md'
+    assert_includes out, '.harness/workflow/rule-workflow-entry-r1.md'
+    assert_includes out, '.harness/workflow/rule-intent-r1.md'
     refute File.exist?(File.join(@temp, '.harness/current-truth.md'))
   end
 

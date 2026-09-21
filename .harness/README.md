@@ -6,7 +6,11 @@ Canonical rules live in `.harness/<category>/`, including active workflows in
 directory layout does not encode origin. The pinned `frameworkDigest` hashes
 only framework-origin rules, sorted by their path relative to `.harness/`.
 For each file, hash its relative path bytes, NUL, exact file bytes, NUL.
-Framework-origin rules are immutable until a governed ruleset upgrade.
+Framework-origin rules are pinned by a ruleset version. During initial H1
+construction, the user's bounded authorization allows additions needed for
+approved workflow nodes. Each addition creates a new pinned snapshot with
+matching provenance, digest, index, and validation; do not edit a snapshot
+under its old version. General upgrade/reinstall remains deferred.
 Installation approval identifies the pinned ruleset; validation checks
 consistency and cannot prove human intent.
 

@@ -26,7 +26,7 @@ covers framework-origin rule files using their paths relative to `.harness/`.
 The user also authorized the generic Current Truth rule in `.harness/workflow/`.
 All future workflows belong there. Historical statements below about H1-T1's
 initial empty workflow category describe the original 1.0.0 install, not the
-current 1.1.0 state. See
+subsequent 1.1.0 state. See
 [TD-0003](../decisions/TD-0003-flatten-constitution-rules.md).
 
 ## Initial H1 construction authorization (2026-09-21)
