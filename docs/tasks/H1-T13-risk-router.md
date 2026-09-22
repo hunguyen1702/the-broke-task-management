@@ -2,7 +2,7 @@
 id: H1-T13
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - H1-T1
   - H1-T11
@@ -157,3 +157,35 @@ Truth's direct stop/return behavior, and Intent's goal/scope boundary without
 creating a competing source or universal node schema. NO CONFLICT. Final
 direct-document review: READY. All direct implementation dependencies are
 `done`, so H1-T13 implementation is `ready`.
+
+## Implementation result
+
+The [Risk Router workflow](../../.harness/workflow/rule-risk-router-r1.md)
+implements the six qualitative decision signals, all seven handoffs, upstream
+stop boundaries, rerouting, and the compact user-visible/downstream output. It
+uses no numeric threshold, persistent routing record, mandatory script, or
+downstream-node implementation. A POC remains a bounded Spike probe.
+
+Manual walkthrough on 2026-09-23:
+
+- A familiar, reversible correction with an established pattern and focused
+  check routes Direct; a missing authoritative API fact routes Research;
+  multiple viable storage designs route Explore; uncertain provider
+  compatibility routes Spike; and a clear migration spanning data, interface,
+  and consumers routes Plan.
+- A confirmed request to build an auth API does not return to Intent merely
+  because its mechanism is undecided. A material change to the target system
+  or requested outcome returns to Intent and refreshes affected Current Truth.
+- A newly exposed user-owned contract decision stops for authority. Current
+  Truth `insufficient_query` returns directly to Intent, while
+  `invalid_constitution` and `rule_conflict` stop directly with the user;
+  none passes through Router.
+- New dependency evidence refreshes affected Current Truth and permits a new
+  route without preserving the previous recommendation.
+
+The Constitution moved to pinned ruleset 1.3.0 with matching framework-rule
+provenance, a recomputed digest, and rebuilt index. `validate` and
+`inspect-effective` expose the new rule. The isolated Constitution suite
+passed with 11 tests and 49 assertions; repository format, lint, and full test
+tasks passed. Acceptance impact: `none`, because this repository-agent
+workflow changes no `tbtm` product behavior or product acceptance scenario.

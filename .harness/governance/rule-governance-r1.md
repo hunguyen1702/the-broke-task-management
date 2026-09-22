@@ -10,7 +10,7 @@ scope: {repository: true}
 createdOn: 2026-09-21
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.2.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.3.0}
 ---
 ## Rule
 Write short, scoped rules in this format. Keep all categories directly under `.harness/`; rule origin is recorded in frontmatter. Agents may propose project rules from repository evidence but may not activate them. Rebuild the index when canonical rules change and validate every Constitution change.

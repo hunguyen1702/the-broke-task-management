@@ -10,7 +10,7 @@ scope: {repository: true}
 createdOn: 2026-09-21
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.2.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.3.0}
 ---
 ## Rule
 For each new work intent, interpret the user's goal and scope from the request

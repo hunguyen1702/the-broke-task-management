@@ -85,7 +85,7 @@ node demonstrates a concrete need.
 | H1-T1 | Constitution | done; implementation done |
 | H1-T11 | Current Truth | done; implementation done |
 | H1-T12 | Intent | done; implementation done |
-| H1-T13 | Risk Router | done; implementation ready |
+| H1-T13 | Risk Router | done; implementation done |
 | H1-T14 | Direct path | needed |
 | H1-T15 | Research | needed |
 | H1-T16 | Explore | needed |
@@ -181,6 +181,10 @@ is archived for reference and must not be claimed.
   material goal/scope drift returns to Intent, while user-owned decisions
   stop for authority. Decision and direct-document reviews: READY. H1-T0,
   H1-T1, H1-T11, and H1-T12 cross-check: NO CONFLICT.
+- H1-T13 implementation is complete in
+  `.harness/workflow/rule-risk-router-r1.md`. Ruleset 1.3.0 validates with the
+  new generic workflow effective; route walkthroughs, the Constitution suite,
+  repository format, lint, and tests passed. Acceptance impact is `none`.
 - The former H1-T2–H1-T10 component roadmap was archived; H1-T14–H1-T23 remain node-first planning placeholders and H1-T24 tracks the deferred Constitution rule-management workflow.
 - H1 is the first planning priority ahead of all remaining product-story plans.
 - The epic is approved at the architecture and decomposition level. Remaining H1 placeholders stay `planning_status: needed` until their dedicated planning sessions begin, then follow the normal `in_progress` and `done` planning lifecycle.
