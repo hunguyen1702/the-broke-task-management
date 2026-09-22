@@ -143,9 +143,17 @@ Planning tiếp theo:
   cross-check H1-T0/H1-T1/H1-T11: `NO CONFLICT`. Bổ sung yêu cầu flowchart,
   diễn giải ngắn gọn và ví dụ bad/good cho logic đánh giá cùng output. Hai
   workflow rule đã active trong Constitution 1.2.0; acceptance impact `none`.
+- **H1-T13 Risk Router** đã hoàn tất planning trong
+  [implementation plan](../tasks/H1-T13-risk-router.md), sẵn sàng
+  implementation. Sáu câu hỏi là tín hiệu định tính cho agent suy luận,
+  không phải tổng điểm tự động. Output mỗi lần route chỉ là path, lý do ngắn,
+  và bước tiếp theo, hiển thị cho user và chuyển cho workflow kế tiếp trong
+  hội thoại; không tạo document bắt buộc. Các route giữ flow H1-T0; chỉ goal
+  hoặc scope thay đổi đáng kể mới quay lại Intent. Decision review và direct
+  document review: READY; đọc lại H1-T0/H1-T1/H1-T11/H1-T12: NO CONFLICT.
 - Roadmap component H1-T2–H1-T10 cũ đã được
   [lưu để tham khảo](H1-archived-component-roadmap.md), không còn là task active.
-  Backlog H1-T13–H1-T23 đi theo từng node của H1-T0; tên là placeholder,
+  Backlog H1-T14–H1-T23 đi theo từng node của H1-T0; tên là placeholder,
   chưa phê duyệt implementation contract. H1-T24 ghi nhận workflow quản lý
   Constitution rule đã defer. Các điểm defer khác nằm trong
   [H1 deferred-work register](H1-deferred-work.md).

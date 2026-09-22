@@ -5,6 +5,14 @@ work in this repository, validate the Constitution, use `inspect-effective`
 with relevant relative paths, and read the returned canonical rules. Reinspect
 when relevant scope or rules change. See `.harness/README.md` for lookup details.
 
+### NOTE: Harness construction
+
+While H1 is under active development, an in-progress ruleset snapshot may
+temporarily fail Constitution validation. For H1 planning work explicitly
+authorized by the user, report the failure and continue using the approved H1
+contracts and readable current rules; do not treat the invalid snapshot as
+validated or apply this exception to implementation or unrelated work.
+
 ## Project Structure & Module Organization
 
 Rust Cargo workspace for `tbtm`, repository-local task-management CLI.
