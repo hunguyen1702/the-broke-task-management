@@ -168,9 +168,21 @@ Planning tiếp theo:
   và điều kiện kiểm tra độ mới. Independent decision review và fresh direct
   document review: READY. Đọc lại parent H1 và H1-T1/H1-T11/H1-T12/H1-T13
   sau draft: NO CONFLICT. Chưa implementation; chưa commit tài liệu.
+- **H1-T16 Explore** đã hoàn tất planning trong
+  [implementation plan](../tasks/H1-T16-explore.md), implementation `ready`.
+  User đã xác nhận mỗi lần Explore xử lý một choice question cụ thể, so sánh
+  các option thực sự khác nhau không theo quota, và cân nhắc status quo khi
+  viable. Tiêu chí lấy từ Intent, contract, Constitution và Current Truth;
+  hard constraint tách khỏi preference, evidence tách khỏi assumption, không
+  dùng score bắt buộc. Capsule conversational trả recommendation hoặc exact
+  unresolved discriminator cùng provenance về Router; không approve, execute,
+  hoặc tự gọi Research/Spike. Independent decision review sau khi bổ sung
+  evidence/assumption provenance và direct-document review: READY. Đọc lại
+  parent H1 và H1-T0/H1-T1/H1-T11/H1-T12/H1-T13 sau draft: NO CONFLICT.
+  Chưa implementation; chưa commit tài liệu.
 - Roadmap component H1-T2–H1-T10 cũ đã được
   [lưu để tham khảo](H1-archived-component-roadmap.md), không còn là task active.
-  Backlog H1-T16–H1-T23 đi theo từng node của H1-T0; tên là placeholder,
+  Backlog H1-T17–H1-T23 đi theo từng node của H1-T0; tên là placeholder,
   chưa phê duyệt implementation contract. H1-T24 ghi nhận workflow quản lý
   Constitution rule đã defer. Các điểm defer khác nằm trong
   [H1 deferred-work register](H1-deferred-work.md).

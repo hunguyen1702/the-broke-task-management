@@ -88,7 +88,7 @@ node demonstrates a concrete need.
 | H1-T13 | Risk Router | done; implementation done |
 | H1-T14 | Direct path | done; implementation ready |
 | H1-T15 | Research | done; implementation ready |
-| H1-T16 | Explore | needed |
+| H1-T16 | Explore | done; implementation ready |
 | H1-T17 | Spike | needed |
 | H1-T18 | Plan | needed |
 | H1-T19 | Commitment Gate | needed |
@@ -98,8 +98,8 @@ node demonstrates a concrete need.
 | H1-T23 | Integrated flow validation | needed |
 | H1-T24 | Manage Constitution rules (deferred workflow) | needed |
 
-H1-T16–H1-T24 are backlog placeholders, not approved implementation
-contracts.
+H1-T17–H1-T24 are backlog placeholders, not approved implementation
+contracts. H1-T16 planning is complete and implementation is ready.
 Their precise scope, sequence, and dependencies are decided when each node is
 planned. A Context Capsule is the candidate return output of Research, Explore,
 and Spike, not a preselected separate component. Tests, lints, and skills are
@@ -201,7 +201,15 @@ is archived for reference and must not be claimed.
   snapshots retain provenance, ownership, and freshness boundaries.
   Independent decision and direct-document reviews: READY. Direct dependency
   cross-check H1-T1/H1-T11/H1-T12/H1-T13 and parent H1: NO CONFLICT.
-- The former H1-T2–H1-T10 component roadmap was archived; H1-T16–H1-T23
+- H1-T16 Explore planning is complete in
+  [its implementation task](../tasks/H1-T16-explore.md). Explore compares one
+  concrete choice using sourced hard constraints, preferences, evidence, and
+  explicit assumptions without fixed option counts or mandatory scoring. It
+  returns an ephemeral recommendation or exact unresolved discriminator to
+  Router; it does not approve, execute, or invoke sibling workflows.
+  Independent decision and direct-document reviews: READY. Direct dependency
+  cross-check H1-T1/H1-T11/H1-T12/H1-T13 and parent H1: NO CONFLICT.
+- The former H1-T2–H1-T10 component roadmap was archived; H1-T17–H1-T23
   remain node-first planning placeholders and H1-T24 tracks the deferred
   Constitution rule-management workflow.
 - H1 is the first planning priority ahead of all remaining product-story plans.
