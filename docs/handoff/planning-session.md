@@ -159,9 +159,18 @@ Planning tiếp theo:
   thường, mini-plan bền vững hay định nghĩa trước Execute/Proof of Work.
   Independent review: READY; đọc lại H1-T0/H1-T1/H1-T11/H1-T12/H1-T13:
   NO CONFLICT.
+- **H1-T15 Research** đã hoàn tất planning trong
+  [implementation plan](../tasks/H1-T15-research.md), implementation `ready`.
+  User đã xác nhận lookup read-only có giới hạn; Context Capsule mặc định
+  trong hội thoại, chỉ lưu khi có nhu cầu tái sử dụng rõ ràng hoặc user yêu cầu.
+  Kết quả có nguồn hoặc gap chưa giải quyết quay qua Current Truth về Router;
+  không chọn giải pháp hay chạy experiment. Capsule lưu có provenance, owner
+  và điều kiện kiểm tra độ mới. Independent decision review và fresh direct
+  document review: READY. Đọc lại parent H1 và H1-T1/H1-T11/H1-T12/H1-T13
+  sau draft: NO CONFLICT. Chưa implementation; chưa commit tài liệu.
 - Roadmap component H1-T2–H1-T10 cũ đã được
   [lưu để tham khảo](H1-archived-component-roadmap.md), không còn là task active.
-  Backlog H1-T15–H1-T23 đi theo từng node của H1-T0; tên là placeholder,
+  Backlog H1-T16–H1-T23 đi theo từng node của H1-T0; tên là placeholder,
   chưa phê duyệt implementation contract. H1-T24 ghi nhận workflow quản lý
   Constitution rule đã defer. Các điểm defer khác nằm trong
   [H1 deferred-work register](H1-deferred-work.md).
