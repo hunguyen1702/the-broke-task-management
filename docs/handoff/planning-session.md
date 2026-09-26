@@ -151,9 +151,17 @@ Planning tiếp theo:
   hội thoại; không tạo document bắt buộc. Các route giữ flow H1-T0; chỉ goal
   hoặc scope thay đổi đáng kể mới quay lại Intent. Decision review và direct
   document review: READY; đọc lại H1-T0/H1-T1/H1-T11/H1-T12: NO CONFLICT.
+- **H1-T14 Direct path** đã hoàn tất planning trong
+  [implementation plan](../tasks/H1-T14-direct-path.md) và sẵn sàng
+  implementation. Node recheck các giả định của Router, frame action
+  bounded dạng ephemeral với constraint, provisional proof và stop condition,
+  rồi kết thúc tại handoff sang Execute; không thêm approval gate thông
+  thường, mini-plan bền vững hay định nghĩa trước Execute/Proof of Work.
+  Independent review: READY; đọc lại H1-T0/H1-T1/H1-T11/H1-T12/H1-T13:
+  NO CONFLICT.
 - Roadmap component H1-T2–H1-T10 cũ đã được
   [lưu để tham khảo](H1-archived-component-roadmap.md), không còn là task active.
-  Backlog H1-T14–H1-T23 đi theo từng node của H1-T0; tên là placeholder,
+  Backlog H1-T15–H1-T23 đi theo từng node của H1-T0; tên là placeholder,
   chưa phê duyệt implementation contract. H1-T24 ghi nhận workflow quản lý
   Constitution rule đã defer. Các điểm defer khác nằm trong
   [H1 deferred-work register](H1-deferred-work.md).
