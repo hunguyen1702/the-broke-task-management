@@ -10,7 +10,7 @@ scope: {repository: true}
 createdOn: 2026-09-23
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.3.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.4.0}
 ---
 ## Rule
 Given confirmed Intent and relevant Current Truth, select the smallest credible

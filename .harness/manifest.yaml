@@ -1,12 +1,12 @@
 manifestVersion: 1
-frameworkVersion: 1.3.0
-rulesetVersion: 1.3.0
-frameworkDigest: 8fd461c3bbe08ec0d2e080192b9c24797253432c98c1cd7d68528981b3c16b05
+frameworkVersion: 1.4.0
+rulesetVersion: 1.4.0
+frameworkDigest: f4f1d70606596eba6c2cbe8bf53a957fc65138154e242d4f499c40e84c19c4e0
 script: .harness/scripts/validate-constitution
 installationApproval:
   approvedBy: user
   approvedOn: 2026-09-21
-  rulesetVersion: 1.3.0
+  rulesetVersion: 1.4.0
 limits:
   frontmatterBytes: 8192
   default:

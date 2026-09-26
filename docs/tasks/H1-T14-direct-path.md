@@ -2,7 +2,7 @@
 id: H1-T14
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - H1-T1
   - H1-T11
@@ -199,3 +199,32 @@ node-first flow, Constitution pinning, Current Truth refresh, Intent boundary,
 and Router ownership without creating a durable mini-plan or defining future
 nodes. NO CONFLICT. All direct implementation dependencies are `done`, so
 H1-T14 implementation is `ready`.
+
+## Implementation result
+
+The [Direct workflow](../../.harness/workflow/rule-direct-r1.md) rechecks the
+current Intent, Current Truth, and Router assumptions before framing an
+ephemeral bounded action for Execute. It preserves existing authority and
+destructive-action gates, requires proportional proof and meaningful stop
+conditions, and returns material drift to the owning upstream node without
+defining Execute or Proof of Work behavior.
+
+Manual workflow walkthrough on 2026-09-27:
+
+- A known one-file parser correction with a focused regression reaches Execute
+  with no additional approval gate.
+- A shared serializer or public input-contract expansion returns the changed
+  evidence to Router rather than widening Direct execution.
+- Missing evidence, viable alternatives, unproven feasibility, and substantial
+  cross-boundary work return to Router without Direct selecting the replacement
+  route.
+- Goal or scope drift returns to Intent; an implementation-only assumption
+  change refreshes Current Truth and reroutes. User-owned and destructive
+  decisions remain stopped for their separate authority.
+
+The Constitution moved to pinned ruleset 1.4.0 with matching framework-rule
+provenance, recomputed digest, and rebuilt index. `validate` and
+`inspect-effective` passed and expose the new rule. The isolated Constitution
+suite passed with 11 tests and 51 assertions; repository format, lint, and
+full tests passed. Acceptance impact: `none`, because this repository-agent
+workflow changes no `tbtm` product behavior or product acceptance scenario.
