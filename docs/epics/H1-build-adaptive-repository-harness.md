@@ -89,7 +89,7 @@ node demonstrates a concrete need.
 | H1-T14 | Direct path | done; implementation done |
 | H1-T15 | Research | done; implementation done |
 | H1-T16 | Explore | done; implementation done |
-| H1-T17 | Spike | done; implementation ready |
+| H1-T17 | Spike | done; implementation done |
 | H1-T18 | Plan | needed |
 | H1-T19 | Commitment Gate | needed |
 | H1-T20 | Execute | needed |
@@ -98,7 +98,7 @@ node demonstrates a concrete need.
 | H1-T23 | Integrated flow validation | needed |
 | H1-T24 | Manage Constitution rules (deferred workflow) | needed |
 
-H1-T16 and H1-T17 planning are complete; H1-T18–H1-T24 remain backlog
+H1-T16 and H1-T17 are implemented; H1-T18–H1-T24 remain backlog
 placeholders, not approved implementation contracts. Their precise scope,
 sequence, and dependencies are decided when each node is planned. A Context
 Capsule is the candidate return output of Research, Explore, and Spike, not a
@@ -236,6 +236,13 @@ is archived for reference and must not be claimed.
   reviews: READY. Direct dependency cross-check H1-T1/H1-T11/H1-T12/H1-T13
   and parent H1: NO CONFLICT. Final review found only stale status projections;
   those were corrected and direct-document re-review concluded READY.
+- H1-T17 implementation is complete in
+  `.harness/workflow/rule-spike-r1.md`. Ruleset 1.7.0 validates with the
+  generic Spike workflow effective. It runs one bounded feasibility probe in
+  Docker isolation, or a user-confirmed `/tmp` fallback, classifies the result
+  as `supported`, `refuted`, or `inconclusive`, retains artifacts until the
+  user authorizes cleanup, and returns through Current Truth to Router.
+  Acceptance impact is `none`.
 - The former H1-T2–H1-T10 component roadmap was archived; H1-T18–H1-T23 remain node-first planning
   placeholders, and H1-T24 tracks the deferred Constitution rule-management
   workflow.

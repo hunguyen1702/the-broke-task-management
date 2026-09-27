@@ -2,7 +2,7 @@
 id: H1-T17
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - H1-T1
   - H1-T11
@@ -193,3 +193,33 @@ mutation path, or universal Context Capsule schema. Dependency cross-check:
 `NO CONFLICT`. All direct implementation dependencies are `done`, so H1-T17
 implementation is `ready`. Final independent direct-document review found and
 then verified corrections to stale status projections. Final review: `READY`.
+
+## Implementation result
+
+The [Spike workflow](../../.harness/workflow/rule-spike-r1.md) tests one
+consequential feasibility assumption with one bounded probe in a disposable
+Docker workspace, using a read-only repository mount or copied inputs. When
+Docker is unavailable, it stops and waits for explicit confirmation before a
+resolved `mktemp -d` fallback under `/tmp` outside the repository. It returns
+`supported`, `refuted`, or `inconclusive` evidence through refreshed Current
+Truth to Router, without comparing alternatives or producing production code.
+
+Manual workflow walkthrough on 2026-09-27: supported and refuted probes require
+their declared evidence thresholds, and a probe that reaches a declared limit
+without either threshold is reported `inconclusive`. Missing facts return to
+Router for Research, and several viable directions return for Explore rather
+than spawning solution-specific probes. Unconfirmed fallback, scope expansion,
+unavailable authority, external side effects, and other safety-boundary
+crossings stop without executing. Inconclusive or still-needed artifacts are
+retained with full disclosure; conclusive disposable containers, images,
+volumes, directories, and output remain until the user explicitly authorizes
+deletion. The capsule reports environment, isolation, integrity evidence,
+provenance, conclusion, limitations, artifacts, and the next Router question,
+and it states that POC results are not production completion.
+
+The Constitution moved to pinned ruleset 1.7.0 with matching framework-rule
+provenance, a recomputed framework digest, and rebuilt index. `validate`,
+`inspect-effective`, and `test-constitution` passed, as did repository
+format, lint, and tests. Acceptance impact: `none`, because this generic
+harness workflow does not change `tbtm` product behavior or a product
+acceptance scenario.
