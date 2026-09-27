@@ -90,7 +90,8 @@ node demonstrates a concrete need.
 | H1-T15 | Research | done; implementation done |
 | H1-T16 | Explore | done; implementation done |
 | H1-T17 | Spike | done; implementation done |
-| H1-T18 | Plan | needed |
+| H1-T18A | Lazy workflow loading | done; implementation ready |
+| H1-T18 | Plan | in progress |
 | H1-T19 | Commitment Gate | needed |
 | H1-T20 | Execute | needed |
 | H1-T21 | Proof of Work | needed |
@@ -98,9 +99,11 @@ node demonstrates a concrete need.
 | H1-T23 | Integrated flow validation | needed |
 | H1-T24 | Manage Constitution rules (deferred workflow) | needed |
 
-H1-T16 and H1-T17 are implemented; H1-T18–H1-T24 remain backlog
-placeholders, not approved implementation contracts. Their precise scope,
-sequence, and dependencies are decided when each node is planned. A Context
+H1-T16 and H1-T17 are implemented. H1-T18A is planned and ready for
+implementation; H1-T18 Plan planning is in progress and depends on it.
+H1-T19–H1-T24 remain backlog placeholders, not approved implementation
+contracts. Their precise scope, sequence, and dependencies are decided when
+each node is planned. A Context
 Capsule is the candidate return output of Research, Explore, and Spike, not a
 preselected separate component. Tests, lints, and skills are possible Learning
 Promotion targets, not folders or systems prescribed here. Extract common
@@ -243,8 +246,17 @@ is archived for reference and must not be claimed.
   as `supported`, `refuted`, or `inconclusive`, retains artifacts until the
   user authorizes cleanup, and returns through Current Truth to Router.
   Acceptance impact is `none`.
-- The former H1-T2–H1-T10 component roadmap was archived; H1-T18–H1-T23 remain node-first planning
-  placeholders, and H1-T24 tracks the deferred Constitution rule-management
-  workflow.
+- H1-T18A lazy workflow loading planning is complete in
+  [its implementation task](../tasks/H1-T18A-lazy-workflow-loading.md).
+  Constitution validation remains exhaustive, while `inspect-context` loads
+  only core rules and `inspect-workflow` loads the Router-selected workflow by
+  stable ID. Direct, Research, Explore, and Spike become on-demand; nested
+  lookup enables Plan subprocess isolation without implementing Plan itself.
+  Independent review: READY. Direct dependency cross-check H1-T1 and
+  H1-T11–H1-T17: NO CONFLICT.
+- The former H1-T2–H1-T10 component roadmap was archived. H1-T18 Plan planning
+  is in progress and depends on H1-T18A; H1-T19–H1-T23 remain node-first
+  planning placeholders, and H1-T24 tracks the deferred Constitution
+  rule-management workflow.
 - H1 is the first planning priority ahead of all remaining product-story plans.
 - The epic is approved at the architecture and decomposition level. Remaining H1 placeholders stay `planning_status: needed` until their dedicated planning sessions begin, then follow the normal `in_progress` and `done` planning lifecycle.

@@ -172,7 +172,7 @@ Planning tiếp theo:
   lookup read-only bounded trả evidence/gap qua Current Truth về Router,
   capsule lưu giữ provenance và freshness boundary. Acceptance impact `none`.
 - **H1-T16 Explore** đã hoàn tất planning trong
-  [implementation plan](../tasks/H1-T16-explore.md), implementation `ready`.
+  [implementation plan](../tasks/H1-T16-explore.md), implementation `done`.
   User đã xác nhận mỗi lần Explore xử lý một choice question cụ thể, so sánh
   các option thực sự khác nhau không theo quota, và cân nhắc status quo khi
   viable. Tiêu chí lấy từ Intent, contract, Constitution và Current Truth;
@@ -182,9 +182,10 @@ Planning tiếp theo:
   hoặc tự gọi Research/Spike. Independent decision review sau khi bổ sung
   evidence/assumption provenance và direct-document review: READY. Đọc lại
   parent H1 và H1-T0/H1-T1/H1-T11/H1-T12/H1-T13 sau draft: NO CONFLICT.
-  Chưa implementation; chưa commit tài liệu.
+  Workflow Explore đã active trong Constitution 1.6.0; acceptance impact
+  `none`.
 - **H1-T17 Spike** đã hoàn tất planning trong
-  [implementation plan](../tasks/H1-T17-spike.md), implementation `ready`.
+  [implementation plan](../tasks/H1-T17-spike.md), implementation `done`.
   Mỗi Spike kiểm chứng đúng một feasibility assumption theo một hướng probe có
   giới hạn. Docker là isolation mặc định bắt buộc; nếu không khả dụng thì dừng,
   cảnh báo và chỉ dùng thư mục mới từ `mktemp -d` dưới `/tmp` sau xác nhận rõ
@@ -196,18 +197,35 @@ Planning tiếp theo:
   reviews: READY. Đọc lại parent H1 và
   H1-T0/H1-T1/H1-T11/H1-T12/H1-T13/H1-T16 sau draft: NO CONFLICT. Final
   review chỉ tìm thấy status projection cũ; đã sửa và re-review kết luận READY.
+- **H1-T18A Lazy workflow loading** đã hoàn tất planning trong
+  [implementation plan](../tasks/H1-T18A-lazy-workflow-loading.md),
+  implementation `ready`. Constitution vẫn validate và pin toàn bộ ruleset,
+  nhưng repository bootstrap chỉ đọc core rules qua `inspect-context`; sau khi
+  Router chọn route, `inspect-workflow` chỉ trả workflow family tương ứng theo
+  stable logical ID. `scope` tiếp tục chỉ mang nghĩa repository path. Direct,
+  Research, Explore và Spike chuyển sang `on_demand`; nested on-demand lookup
+  chuẩn bị boundary cho các subprocess của Plan mà chưa implement Plan.
+  Independent review: READY. Đọc lại H1-T1 và H1-T11–H1-T17 sau draft:
+  NO CONFLICT.
 - Roadmap component H1-T2–H1-T10 cũ đã được
   [lưu để tham khảo](H1-archived-component-roadmap.md), không còn là task active.
-  H1-T16 và H1-T17 đã planning xong, implementation `ready`. Backlog H1-T18–H1-T23
-  đi theo từng node của H1-T0; tên là placeholder, chưa phê duyệt
-  implementation contract. H1-T24 ghi nhận workflow quản lý Constitution
-  rule đã defer. Các điểm defer khác nằm trong
+  H1-T16 và H1-T17 đã implementation xong. H1-T18A đã planning xong và
+  implementation `ready`; H1-T18 Plan đang planning và phụ thuộc H1-T18A.
+  Backlog H1-T19–H1-T23 đi theo từng node của H1-T0; tên là placeholder, chưa
+  phê duyệt implementation contract. H1-T24 ghi nhận workflow quản lý
+  Constitution rule đã defer. Các điểm defer khác nằm trong
   [H1 deferred-work register](H1-deferred-work.md).
 - Giữ **E8-S1: Connect the extension to repository state** ở trạng thái
   `needed`; chưa planning E8 cho đến khi H1 hoàn tất hoặc người dùng đổi ưu
   tiên rõ ràng.
 
 ### Implementation readiness tại thời điểm handoff
+
+- **H1-T18A** đã planning xong và sẵn sàng implementation. Task thêm
+  `contextLoading`, giữ `inspect-effective` làm diagnostic đầy đủ, thêm
+  `inspect-context` và `inspect-workflow`, rồi migrate các route workflow hiện
+  có sang on-demand loading. H1-T18 Plan chưa implementation-ready cho đến khi
+  planning hoàn tất và dependency này được triển khai.
 
 - **E1-S1-T1**, **E1-S2-T1**, **E1-S5-T1**, **E1-S3-T1**, **E3-S1-T1** và **E2-S1-T1** đã implementation xong; xem commit và dependency hiện hành trong [status dashboard](../STATUS.md).
 - **E1-S4-T1** đã implementation xong với deterministic read-only agent và active-claim listing.
@@ -497,7 +515,9 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 
 Nếu tiếp tục implementation:
 
-1. Xem [status dashboard](../STATUS.md) để chọn task implementation `ready`; H1-T1 Constitution là ưu tiên H1 hiện tại. Claim task trước khi sửa source.
+1. Xem [status dashboard](../STATUS.md) để chọn task implementation `ready`;
+   H1-T18A lazy workflow loading là prerequisite H1 tiếp theo. Claim task
+   trước khi sửa source.
 
 Nếu tiếp tục planning:
 
