@@ -152,13 +152,14 @@ Planning tiếp theo:
   hoặc scope thay đổi đáng kể mới quay lại Intent. Decision review và direct
   document review: READY; đọc lại H1-T0/H1-T1/H1-T11/H1-T12: NO CONFLICT.
 - **H1-T14 Direct path** đã hoàn tất planning trong
-  [implementation plan](../tasks/H1-T14-direct-path.md) và sẵn sàng
+  [implementation plan](../tasks/H1-T14-direct-path.md) và đã hoàn tất
   implementation. Node recheck các giả định của Router, frame action
   bounded dạng ephemeral với constraint, provisional proof và stop condition,
   rồi kết thúc tại handoff sang Execute; không thêm approval gate thông
   thường, mini-plan bền vững hay định nghĩa trước Execute/Proof of Work.
   Independent review: READY; đọc lại H1-T0/H1-T1/H1-T11/H1-T12/H1-T13:
-  NO CONFLICT.
+  NO CONFLICT. Constitution 1.4.0 hợp lệ với Direct workflow active;
+  acceptance impact `none`.
 - **H1-T15 Research** đã hoàn tất implementation trong
   [implementation plan](../tasks/H1-T15-research.md), status `done`.
   User đã xác nhận lookup read-only có giới hạn; Context Capsule mặc định
@@ -182,11 +183,25 @@ Planning tiếp theo:
   evidence/assumption provenance và direct-document review: READY. Đọc lại
   parent H1 và H1-T0/H1-T1/H1-T11/H1-T12/H1-T13 sau draft: NO CONFLICT.
   Chưa implementation; chưa commit tài liệu.
+- **H1-T17 Spike** đã hoàn tất planning trong
+  [implementation plan](../tasks/H1-T17-spike.md), implementation `ready`.
+  Mỗi Spike kiểm chứng đúng một feasibility assumption theo một hướng probe có
+  giới hạn. Docker là isolation mặc định bắt buộc; nếu không khả dụng thì dừng,
+  cảnh báo và chỉ dùng thư mục mới từ `mktemp -d` dưới `/tmp` sau xác nhận rõ
+  ràng. Probe không ghi working tree; kết quả `supported`, `refuted` hoặc
+  `inconclusive` quay qua Current Truth về Router. POC chưa kết luận hoặc còn
+  cần làm evidence được giữ và báo đầy đủ; artifact không còn cần chỉ được xóa
+  sau lựa chọn rõ ràng của user. Nhiều solution direction quay về Explore,
+  không tự fan-out subagent để spike từng phương án. Independent decision
+  reviews: READY. Đọc lại parent H1 và
+  H1-T0/H1-T1/H1-T11/H1-T12/H1-T13/H1-T16 sau draft: NO CONFLICT. Final
+  review chỉ tìm thấy status projection cũ; đã sửa và re-review kết luận READY.
 - Roadmap component H1-T2–H1-T10 cũ đã được
   [lưu để tham khảo](H1-archived-component-roadmap.md), không còn là task active.
-  Backlog H1-T17–H1-T23 đi theo từng node của H1-T0; tên là placeholder,
-  chưa phê duyệt implementation contract. H1-T24 ghi nhận workflow quản lý
-  Constitution rule đã defer. Các điểm defer khác nằm trong
+  H1-T16 và H1-T17 đã planning xong, implementation `ready`. Backlog H1-T18–H1-T23
+  đi theo từng node của H1-T0; tên là placeholder, chưa phê duyệt
+  implementation contract. H1-T24 ghi nhận workflow quản lý Constitution
+  rule đã defer. Các điểm defer khác nằm trong
   [H1 deferred-work register](H1-deferred-work.md).
 - Giữ **E8-S1: Connect the extension to repository state** ở trạng thái
   `needed`; chưa planning E8 cho đến khi H1 hoàn tất hoặc người dùng đổi ưu

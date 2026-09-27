@@ -44,11 +44,12 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - **H1 is the first priority before all remaining product-story plans.**
   H1-T0 validated the node-first flow; H1-T1 Constitution is implemented and
   H1-T11 Current Truth is implemented and verified; acceptance impact is `none`.
-  H1-T12 Intent and H1-T13 Risk Router are implemented and verified;
+- H1-T12 Intent and H1-T13 Risk Router are implemented and verified;
+  acceptance impact is `none`. H1-T14 Direct path is implemented and verified;
   acceptance impact is `none`. H1-T15 Research is implemented and verified;
-  acceptance impact is `none`. H1-T14 Direct path and H1-T16 Explore are
-  planned and ready for implementation. Plan later nodes from that
-  flow, not the archived component roadmap. Do not begin E8 planning until H1 is complete or the
+  acceptance impact is `none`. H1-T16 Explore and H1-T17 Spike are planned
+  and ready for implementation. Plan later nodes from that flow, not the
+  archived component roadmap. Do not begin E8 planning until H1 is complete or the
   user explicitly changes the priority.
 - E1-S1-T2 is complete; repeat initialization now expects the authoritative
   exit `2`, and AT-E1-S1-001 passed its targeted rerun.
@@ -91,12 +92,11 @@ H1 is an engineering-enablement epic outside the `tbtm` product contract.
 H1-T0 validated the node-first flow; H1-T1 Constitution is implemented and
 verified. H1-T11 Current Truth is implemented as a generic Constitution workflow.
 Acceptance impact for both tasks is `none`.
-H1-T12 Intent planning and implementation are complete. H1-T13 Risk Router
-planning and implementation are complete. H1-T14 Direct path planning is
-complete and implementation is ready. H1-T15 Research implementation is
-complete; acceptance impact is `none`.
-H1-T16 Explore planning is complete and implementation is ready. H1-T17–H1-T24
-remain unplanned placeholders with no approved implementation contract. Former
+H1-T12 Intent, H1-T13 Risk Router, and H1-T14 Direct path planning and
+implementation are complete. Acceptance impact for each is `none`. H1-T15
+Research implementation is complete; acceptance impact is `none`. H1-T16
+Explore and H1-T17 Spike are planned and ready. H1-T18–H1-T24 remain
+unplanned placeholders with no approved implementation contract. Former
 H1-T2–H1-T10 are
 [archived for reference](handoff/H1-archived-component-roadmap.md), not active tasks.
 
@@ -108,10 +108,10 @@ H1-T2–H1-T10 are
 | [H1-T11](tasks/H1-T11-current-truth.md) Current Truth | Task | done | done | H1-T1 |
 | [H1-T12](tasks/H1-T12-intent.md) Intent | Task | done | done | H1-T1, H1-T11 |
 | [H1-T13](tasks/H1-T13-risk-router.md) Risk Router | Task | done | done | H1-T1, H1-T11, H1-T12 |
-| [H1-T14](tasks/H1-T14-direct-path.md) Direct path | Task | done | ready | H1-T1, H1-T11, H1-T12, H1-T13 |
+| [H1-T14](tasks/H1-T14-direct-path.md) Direct path | Task | done | done | H1-T1, H1-T11, H1-T12, H1-T13 |
 | [H1-T15](tasks/H1-T15-research.md) Research | Task | done | done | H1-T1, H1-T11, H1-T12, H1-T13 |
 | [H1-T16](tasks/H1-T16-explore.md) Explore | Task | done | ready | H1-T1, H1-T11, H1-T12, H1-T13 |
-| H1-T17 Spike | Node placeholder | needed | not_planned | — |
+| [H1-T17](tasks/H1-T17-spike.md) Spike | Task | done | ready | H1-T1, H1-T11, H1-T12, H1-T13 |
 | H1-T18 Plan | Node placeholder | needed | not_planned | — |
 | H1-T19 Commitment Gate | Node placeholder | needed | not_planned | — |
 | H1-T20 Execute | Node placeholder | needed | not_planned | — |
