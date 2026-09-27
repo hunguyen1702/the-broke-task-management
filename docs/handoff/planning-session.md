@@ -159,15 +159,17 @@ Planning tiếp theo:
   thường, mini-plan bền vững hay định nghĩa trước Execute/Proof of Work.
   Independent review: READY; đọc lại H1-T0/H1-T1/H1-T11/H1-T12/H1-T13:
   NO CONFLICT.
-- **H1-T15 Research** đã hoàn tất planning trong
-  [implementation plan](../tasks/H1-T15-research.md), implementation `ready`.
+- **H1-T15 Research** đã hoàn tất implementation trong
+  [implementation plan](../tasks/H1-T15-research.md), status `done`.
   User đã xác nhận lookup read-only có giới hạn; Context Capsule mặc định
   trong hội thoại, chỉ lưu khi có nhu cầu tái sử dụng rõ ràng hoặc user yêu cầu.
   Kết quả có nguồn hoặc gap chưa giải quyết quay qua Current Truth về Router;
   không chọn giải pháp hay chạy experiment. Capsule lưu có provenance, owner
   và điều kiện kiểm tra độ mới. Independent decision review và fresh direct
   document review: READY. Đọc lại parent H1 và H1-T1/H1-T11/H1-T12/H1-T13
-  sau draft: NO CONFLICT. Chưa implementation; chưa commit tài liệu.
+  sau draft: NO CONFLICT. Workflow Research đã active trong Constitution 1.5.0;
+  lookup read-only bounded trả evidence/gap qua Current Truth về Router,
+  capsule lưu giữ provenance và freshness boundary. Acceptance impact `none`.
 - **H1-T16 Explore** đã hoàn tất planning trong
   [implementation plan](../tasks/H1-T16-explore.md), implementation `ready`.
   User đã xác nhận mỗi lần Explore xử lý một choice question cụ thể, so sánh

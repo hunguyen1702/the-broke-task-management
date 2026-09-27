@@ -2,7 +2,7 @@
 id: H1-T15
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - H1-T1
   - H1-T11
@@ -199,3 +199,25 @@ confirmed Intent, Current Truth provenance/freshness and authority boundaries,
 and Router-owned route selection. Its optional capsule is a dated evidence
 snapshot, not a competing truth store or shared node schema. NO CONFLICT.
 All direct implementation dependencies are done; implementation is ready.
+
+## Implementation result
+
+The [Research workflow](../../.harness/workflow/rule-research-r1.md) provides
+a bounded read-only investigation, proportional source selection, evidence
+provenance, honest stopping, and a conversational Context Capsule that returns
+through Current Truth to Risk Router. Optional persistence remains
+owner-controlled and requires provenance plus revalidation conditions.
+
+Manual workflow walkthrough on 2026-09-27: a missing local policy fact uses
+the existing Current Truth baseline and its relevant source; a version-specific
+provider question records the applicable version; conflicting or inaccessible
+sources return an unresolved result with retained evidence; and a question
+needing a probe returns the feasibility gap for Router rather than running it.
+The default result stays conversational; a justified saved snapshot records
+its scope, sources, owner, and freshness conditions.
+
+The Constitution moved to pinned ruleset 1.5.0 with matching provenance, a
+recomputed framework digest, and rebuilt index. `validate` and
+`inspect-effective` passed. Acceptance impact: `none`, because this generic
+harness workflow does not change `tbtm` product behavior or a product
+acceptance scenario.

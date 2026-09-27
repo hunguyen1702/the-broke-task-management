@@ -8,7 +8,7 @@ rules:
   status: active
   effective: true
   path: ".harness/authority/rule-authority-r1.md"
-  sha256: 44a51e6f309117937b8cdf9dbebaf5f7cfcee10a501118dca305013cf68a1d67
+  sha256: 72aa5f2f913182bdf2523fc36ab9a803869db3f7470e735dfd40657cc6c55ad5
 - id: rule-current-truth
   revision: 1
   source: framework
@@ -16,7 +16,7 @@ rules:
   status: active
   effective: true
   path: ".harness/workflow/rule-current-truth-r1.md"
-  sha256: e80dbaef61ebd364b717700632afb14a21b281cb468c420d1a7d7e957c05adf5
+  sha256: f291a823398069aadefe152458ece4f4bb97bfba9aa13656239b252eb3be594c
 - id: rule-direct
   revision: 1
   source: framework
@@ -24,7 +24,7 @@ rules:
   status: active
   effective: true
   path: ".harness/workflow/rule-direct-r1.md"
-  sha256: 7478d371b81012dd5a7976f3c8383e5343b2167016325467a1d1cd049612f740
+  sha256: 2add3b1f795cac0224528ad9c30667809fa615342bb977f675f7edfc62bf46d7
 - id: rule-governance
   revision: 1
   source: framework
@@ -32,7 +32,7 @@ rules:
   status: active
   effective: true
   path: ".harness/governance/rule-governance-r1.md"
-  sha256: ec461700c6fc6bbc91c85868467bd378ae079b7caba0f8d3bc4246c970d10589
+  sha256: '061508e215bfcf5bf2da206b76748cefece0ad0f1bff5349a4cf03031f277673'
 - id: rule-intent
   revision: 1
   source: framework
@@ -40,7 +40,7 @@ rules:
   status: active
   effective: true
   path: ".harness/workflow/rule-intent-r1.md"
-  sha256: e9b98ada7f23edbde31d8a48a4908d9fa092a98b568e9675b302848543c6779e
+  sha256: 7083f822608b56a9e9924320d8b188b68babde90dc5370200f850b2d197c69dc
 - id: rule-repository
   revision: 1
   source: framework
@@ -48,7 +48,15 @@ rules:
   status: active
   effective: true
   path: ".harness/repository/rule-repository-r1.md"
-  sha256: fa15dfc0e823e43ab81816123d9a33d099df27667cbbec26ade84d0f7aa88c02
+  sha256: 82c9f7186b6bfc1095d3b4aff3315dc1cf94c9404b3372b4a7d8af5579367554
+- id: rule-research
+  revision: 1
+  source: framework
+  category: workflow
+  status: active
+  effective: true
+  path: ".harness/workflow/rule-research-r1.md"
+  sha256: bb8d2c6333bdc8e5c3b6b4cfb986d43565cd5ccaf69e4cb7b19e9de7f2b93464
 - id: rule-risk-router
   revision: 1
   source: framework
@@ -56,7 +64,7 @@ rules:
   status: active
   effective: true
   path: ".harness/workflow/rule-risk-router-r1.md"
-  sha256: 34e15a00747525f00237108eb52953aa322546faa392044651387505fb648af6
+  sha256: acacbce358b0d06c5fadb96d49da2fe19723cbc734cf08c6579fb47e1afb57db
 - id: rule-safety
   revision: 1
   source: framework
@@ -64,7 +72,7 @@ rules:
   status: active
   effective: true
   path: ".harness/safety/rule-safety-r1.md"
-  sha256: accbba32b2362eb7c448f7161fd856d9c28112222f043e9d5104bef46c3671a8
+  sha256: ab1a47982614e6d6addbb5439332fa849553c5e5103341a4ae177d631b9067c7
 - id: rule-verification
   revision: 1
   source: framework
@@ -72,7 +80,7 @@ rules:
   status: active
   effective: true
   path: ".harness/verification/rule-verification-r1.md"
-  sha256: c373b60af734225c10022cef888b6845316e0da964720e9f36ae18171683f1d5
+  sha256: 122b52beb3712b52021f140fa477fb6558dc13a1b33ece0d041c712f57801072
 - id: rule-workflow-entry
   revision: 1
   source: framework
@@ -80,4 +88,4 @@ rules:
   status: active
   effective: true
   path: ".harness/workflow/rule-workflow-entry-r1.md"
-  sha256: ea1245b353ee4311b1532d7b5c2962cd29e1187b483017d0d994ac2aed313ddc
+  sha256: 99c037f71e06bc368c0d7a5071c539640d31f56ff1a89f3ac1f36f56dbf6939b

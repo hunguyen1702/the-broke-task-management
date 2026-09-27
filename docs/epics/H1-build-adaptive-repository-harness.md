@@ -87,7 +87,7 @@ node demonstrates a concrete need.
 | H1-T12 | Intent | done; implementation done |
 | H1-T13 | Risk Router | done; implementation done |
 | H1-T14 | Direct path | done; implementation ready |
-| H1-T15 | Research | done; implementation ready |
+| H1-T15 | Research | done; implementation done |
 | H1-T16 | Explore | done; implementation ready |
 | H1-T17 | Spike | needed |
 | H1-T18 | Plan | needed |
@@ -201,6 +201,12 @@ is archived for reference and must not be claimed.
   snapshots retain provenance, ownership, and freshness boundaries.
   Independent decision and direct-document reviews: READY. Direct dependency
   cross-check H1-T1/H1-T11/H1-T12/H1-T13 and parent H1: NO CONFLICT.
+- H1-T15 implementation is complete in
+  `.harness/workflow/rule-research-r1.md`. Ruleset 1.5.0 validates with the
+  generic Research workflow effective. It performs only bounded read-only
+  lookup and returns evidence or a precise gap through Current Truth to
+  Router; optional saved capsules retain provenance and freshness boundaries.
+  Acceptance impact is `none`.
 - H1-T16 Explore planning is complete in
   [its implementation task](../tasks/H1-T16-explore.md). Explore compares one
   concrete choice using sourced hard constraints, preferences, evidence, and
