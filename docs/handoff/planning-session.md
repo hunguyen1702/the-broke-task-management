@@ -199,7 +199,7 @@ Planning tiếp theo:
   review chỉ tìm thấy status projection cũ; đã sửa và re-review kết luận READY.
 - **H1-T18A Lazy workflow loading** đã hoàn tất planning trong
   [implementation plan](../tasks/H1-T18A-lazy-workflow-loading.md),
-  implementation `ready`. Constitution vẫn validate và pin toàn bộ ruleset,
+  implementation `done`. Constitution vẫn validate và pin toàn bộ ruleset,
   nhưng repository bootstrap chỉ đọc core rules qua `inspect-context`; sau khi
   Router chọn route, `inspect-workflow` chỉ trả workflow family tương ứng theo
   stable logical ID. `scope` tiếp tục chỉ mang nghĩa repository path. Direct,
@@ -207,10 +207,20 @@ Planning tiếp theo:
   chuẩn bị boundary cho các subprocess của Plan mà chưa implement Plan.
   Independent review: READY. Đọc lại H1-T1 và H1-T11–H1-T17 sau draft:
   NO CONFLICT.
+- **H1-T18 Plan** đã hoàn tất planning trong
+  [implementation plan](../tasks/H1-T18-plan.md), implementation `ready`. Plan
+  là một top-level on-demand workflow với ba active on-demand subprocess rule
+  riêng cho Epic, Story và Implementation Task Planning. Epic output gồm
+  contract, technical design và future-planning board. Story output gồm
+  requirement contract cùng Task specification cho single-unit story, hoặc
+  shared technical design và Task Planning board cho multi-unit story.
+  Subprocess được lookup bằng stable ID, không dùng `extends` nên không kéo
+  sibling vào context. Independent review: READY. Đọc lại H1-T1,
+  H1-T11–H1-T18A và parent H1: NO CONFLICT.
 - Roadmap component H1-T2–H1-T10 cũ đã được
   [lưu để tham khảo](H1-archived-component-roadmap.md), không còn là task active.
-  H1-T16 và H1-T17 đã implementation xong. H1-T18A đã planning xong và
-  implementation `ready`; H1-T18 Plan đang planning và phụ thuộc H1-T18A.
+  H1-T16, H1-T17 và H1-T18A đã implementation xong. H1-T18 Plan đã planning
+  xong và implementation `ready`.
   Backlog H1-T19–H1-T23 đi theo từng node của H1-T0; tên là placeholder, chưa
   phê duyệt implementation contract. H1-T24 ghi nhận workflow quản lý
   Constitution rule đã defer. Các điểm defer khác nằm trong
@@ -221,11 +231,13 @@ Planning tiếp theo:
 
 ### Implementation readiness tại thời điểm handoff
 
-- **H1-T18A** đã planning xong và sẵn sàng implementation. Task thêm
+- **H1-T18A** đã implementation xong. Task thêm
   `contextLoading`, giữ `inspect-effective` làm diagnostic đầy đủ, thêm
   `inspect-context` và `inspect-workflow`, rồi migrate các route workflow hiện
-  có sang on-demand loading. H1-T18 Plan chưa implementation-ready cho đến khi
-  planning hoàn tất và dependency này được triển khai.
+  có sang on-demand loading.
+- **H1-T18** đã planning xong và sẵn sàng implementation. Task sẽ thêm Plan
+  coordinator cùng ba subprocess rule on-demand, các output template và
+  cross-document review boundary.
 
 - **E1-S1-T1**, **E1-S2-T1**, **E1-S5-T1**, **E1-S3-T1**, **E3-S1-T1** và **E2-S1-T1** đã implementation xong; xem commit và dependency hiện hành trong [status dashboard](../STATUS.md).
 - **E1-S4-T1** đã implementation xong với deterministic read-only agent và active-claim listing.
@@ -516,8 +528,7 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 Nếu tiếp tục implementation:
 
 1. Xem [status dashboard](../STATUS.md) để chọn task implementation `ready`;
-   H1-T18A lazy workflow loading là prerequisite H1 tiếp theo. Claim task
-   trước khi sửa source.
+   H1-T18 Plan là task H1 tiếp theo. Claim task trước khi sửa source.
 
 Nếu tiếp tục planning:
 

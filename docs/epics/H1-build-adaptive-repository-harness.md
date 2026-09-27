@@ -90,8 +90,8 @@ node demonstrates a concrete need.
 | H1-T15 | Research | done; implementation done |
 | H1-T16 | Explore | done; implementation done |
 | H1-T17 | Spike | done; implementation done |
-| H1-T18A | Lazy workflow loading | done; implementation ready |
-| H1-T18 | Plan | in progress |
+| H1-T18A | Lazy workflow loading | done; implementation done |
+| H1-T18 | Plan | done; implementation ready |
 | H1-T19 | Commitment Gate | needed |
 | H1-T20 | Execute | needed |
 | H1-T21 | Proof of Work | needed |
@@ -99,8 +99,8 @@ node demonstrates a concrete need.
 | H1-T23 | Integrated flow validation | needed |
 | H1-T24 | Manage Constitution rules (deferred workflow) | needed |
 
-H1-T16 and H1-T17 are implemented. H1-T18A is planned and ready for
-implementation; H1-T18 Plan planning is in progress and depends on it.
+H1-T16, H1-T17, and H1-T18A are implemented. H1-T18 Plan planning is complete
+and implementation-ready.
 H1-T19–H1-T24 remain backlog placeholders, not approved implementation
 contracts. Their precise scope, sequence, and dependencies are decided when
 each node is planned. A Context
@@ -254,8 +254,25 @@ is archived for reference and must not be claimed.
   lookup enables Plan subprocess isolation without implementing Plan itself.
   Independent review: READY. Direct dependency cross-check H1-T1 and
   H1-T11–H1-T17: NO CONFLICT.
+- H1-T18A implementation is complete in the pinned 1.8.0 Constitution
+  snapshot. Bootstrap now uses `inspect-context`, while `inspect-workflow`
+  resolves only the Router-selected Direct, Research, Explore, or Spike
+  family. Full validation and `inspect-effective` diagnostics remain
+  exhaustive. Constitution tests, format, lint, and workspace tests passed;
+  acceptance impact is `none`.
+- H1-T18 Plan planning is complete in
+  [its implementation task](../tasks/H1-T18-plan.md). One on-demand Plan
+  coordinator classifies work as Epic, Story, or Implementation Task planning
+  and loads only the selected active subprocess rule through H1-T18A. Epic
+  packages contain a contract, separate technical design, and future-planning
+  board. Story packages contain requirements plus either a paired Task
+  specification or a shared technical design and bounded Task Planning board.
+  Blocking evidence or decision gaps return to their owning boundary; reviewed
+  packages proceed to Commitment Gate without implying execution approval.
+  Independent review: READY. Direct dependency cross-check H1-T1, H1-T11–H1-T18A:
+  NO CONFLICT. All implementation dependencies are done.
 - The former H1-T2–H1-T10 component roadmap was archived. H1-T18 Plan planning
-  is in progress and depends on H1-T18A; H1-T19–H1-T23 remain node-first
+  is complete and implementation-ready; H1-T19–H1-T23 remain node-first
   planning placeholders, and H1-T24 tracks the deferred Constitution
   rule-management workflow.
 - H1 is the first planning priority ahead of all remaining product-story plans.
