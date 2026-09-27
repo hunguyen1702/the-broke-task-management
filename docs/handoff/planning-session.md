@@ -208,7 +208,8 @@ Planning tiếp theo:
   Independent review: READY. Đọc lại H1-T1 và H1-T11–H1-T17 sau draft:
   NO CONFLICT.
 - **H1-T18 Plan** đã hoàn tất planning trong
-  [implementation plan](../tasks/H1-T18-plan.md), implementation `ready`. Plan
+  [implementation plan](../tasks/H1-T18-plan.md), implementation `not_planned`
+  cho đến khi H1-T18B hoàn tất. Plan
   là một top-level on-demand workflow với ba active on-demand subprocess rule
   riêng cho Epic, Story và Implementation Task Planning. Epic output gồm
   contract, technical design và future-planning board. Story output gồm
@@ -217,10 +218,20 @@ Planning tiếp theo:
   Subprocess được lookup bằng stable ID, không dùng `extends` nên không kéo
   sibling vào context. Independent review: READY. Đọc lại H1-T1,
   H1-T11–H1-T18A và parent H1: NO CONFLICT.
+- **H1-T18B Stage core workflow loading** đã hoàn tất planning trong
+  [implementation plan](../tasks/H1-T18B-staged-core-workflow-loading.md),
+  implementation `ready`. Intent vẫn là bootstrap workflow; sau khi Intent
+  `ready`, chỉ Current Truth được lookup, rồi chỉ Risk Router sau Current
+  Truth. Task giữ validator lookup deterministic, không thêm session state,
+  và là prerequisite của H1-T18 Plan. H1-T18 chuyển sang implementation
+  `not_planned` cho đến khi H1-T18B hoàn tất. Independent review đã yêu cầu
+  gán lookup successor cho handoff `ready` của Intent/Current Truth (không phải
+  Workflow Entry); đã sửa. Đọc lại H1-T1, H1-T11, H1-T12, H1-T13, H1-T18A,
+  H1-T18 và parent H1: NO CONFLICT.
 - Roadmap component H1-T2–H1-T10 cũ đã được
   [lưu để tham khảo](H1-archived-component-roadmap.md), không còn là task active.
-  H1-T16, H1-T17 và H1-T18A đã implementation xong. H1-T18 Plan đã planning
-  xong và implementation `ready`.
+  H1-T16, H1-T17 và H1-T18A đã implementation xong. H1-T18B implementation
+  `ready`; H1-T18 Plan đã planning xong nhưng chờ H1-T18B.
   Backlog H1-T19–H1-T23 đi theo từng node của H1-T0; tên là placeholder, chưa
   phê duyệt implementation contract. H1-T24 ghi nhận workflow quản lý
   Constitution rule đã defer. Các điểm defer khác nằm trong
@@ -528,7 +539,8 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 Nếu tiếp tục implementation:
 
 1. Xem [status dashboard](../STATUS.md) để chọn task implementation `ready`;
-   H1-T18 Plan là task H1 tiếp theo. Claim task trước khi sửa source.
+   H1-T18B Stage core workflow loading là task H1 tiếp theo. Claim task trước
+   khi sửa source.
 
 Nếu tiếp tục planning:
 

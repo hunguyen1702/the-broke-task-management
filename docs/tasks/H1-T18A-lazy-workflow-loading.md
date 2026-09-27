@@ -2,7 +2,7 @@
 id: H1-T18A
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - H1-T1
   - H1-T11
@@ -291,3 +291,17 @@ schema, path matching, stable workflow-family resolution, extension and
 replacement compatibility, cross-category loading invariants, and exit-code
 behavior. Final review: `READY`. All implementation dependencies are `done`,
 so H1-T18A implementation is `ready`.
+
+## Implementation completion
+
+Implemented in the pinned 1.8.0 Constitution snapshot. `contextLoading` is
+indexed for every rule; `inspect-context` loads the bootstrap set and
+`inspect-workflow` resolves one selected on-demand workflow family. Direct,
+Research, Explore, and Spike are on-demand, while Workflow Entry, Intent,
+Current Truth, Risk Router, and non-workflow rules remain bootstrap context.
+The validator preserves full `inspect-effective` diagnostics and rejects
+loading-class mismatches across extensions or replacements.
+
+`validate`, Constitution tests, format, lint, and the workspace test suite
+passed. Acceptance impact: `none`, because this changes only the repository
+harness and no `tbtm` product behavior or acceptance scenario.

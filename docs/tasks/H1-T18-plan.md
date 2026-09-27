@@ -2,9 +2,10 @@
 id: H1-T18
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: not_planned
 depends_on:
   - H1-T18A
+  - H1-T18B
   - H1-T1
   - H1-T11
   - H1-T12
@@ -227,8 +228,8 @@ construction authorization:
 All four use H1-T18A's `on_demand` loading classification. The coordinator
 selects a subprocess by stable rule ID and uses nested `inspect-workflow`
 lookup; it does not read sibling rule files. Keep each subprocess's
-route-specific templates in its own rule. H1-T18 depends on H1-T18A and does
-not reimplement or revise the loading mechanism. Do not connect subprocess
+route-specific templates in its own rule. H1-T18 depends on H1-T18A and
+H1-T18B and does not reimplement or revise the loading mechanism. Do not connect subprocess
 rules to the coordinator with `extends`, because H1-T18A intentionally returns
 all effective extenders of a selected workflow family and would therefore load
 siblings together. The already-loaded coordinator supplies the shared context;
@@ -307,6 +308,7 @@ do not create, modify, or execute product acceptance scenarios in this task.
 - [H1-T16 Explore](H1-T16-explore.md)
 - [H1-T17 Spike](H1-T17-spike.md)
 - [H1-T18A lazy workflow loading](H1-T18A-lazy-workflow-loading.md)
+- [H1-T18B staged core workflow loading](H1-T18B-staged-core-workflow-loading.md)
 - [Parent H1 epic](../epics/H1-build-adaptive-repository-harness.md)
 - [Constitution lookup](../../.harness/README.md)
 
@@ -317,7 +319,7 @@ Plan consumes requirements, Current Truth, and applicable Context Capsules and
 produces planning documents for later Commitment Gate review.
 
 After drafting, H1-T1, H1-T11, H1-T12, H1-T13, H1-T15, H1-T16, H1-T17,
-H1-T18A, and parent H1 were re-read. Plan preserves Constitution pinning,
+H1-T18A, H1-T18B, and parent H1 were re-read. Plan preserves Constitution pinning,
 sourced Current Truth, confirmed Intent, Router ownership, and the provenance
 and uncertainty boundaries of all three Context Capsule producers. Its four
 active rules use H1-T18A's stable-ID nested lookup without `extends`, so the
