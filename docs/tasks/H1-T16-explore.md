@@ -2,7 +2,7 @@
 id: H1-T16
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - H1-T1
   - H1-T11
@@ -242,3 +242,25 @@ implementation is `ready`. Final direct-document review found and then verified
 the correction of one authority boundary: user-owned decisions now stop
 directly, while only recommendations and missing fact/probe outcomes return to
 Router. Final review: `READY`.
+
+## Implementation result
+
+The [Explore workflow](../../.harness/workflow/rule-explore-r1.md) compares
+materially distinct viable approaches using sourced constraints and decisive
+trade-offs, without scoring, approval, execution, or sibling-workflow
+invocation. It returns a concise, ephemeral recommendation or exact unresolved
+discriminator to Risk Router; user-owned decisions stop directly.
+
+Manual workflow walkthrough on 2026-09-27: a credible status quo is retained
+as an option, superficial variants are consolidated, and a hard-constraint
+violation is excluded with evidence. A supported recommendation exposes its
+assumptions and change conditions; missing authoritative facts and uncertain
+feasibility return exact discriminators to Router without selecting Research or
+Spike. A choice that changes an approved contract stops for the user rather
+than entering the Router capsule.
+
+The Constitution moved to pinned ruleset 1.6.0 with matching framework-rule
+provenance, a recomputed framework digest, and rebuilt index. `validate` and
+`inspect-effective` passed. Acceptance impact: `none`, because this generic
+harness workflow does not change `tbtm` product behavior or a product
+acceptance scenario.

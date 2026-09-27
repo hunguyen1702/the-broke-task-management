@@ -88,7 +88,7 @@ node demonstrates a concrete need.
 | H1-T13 | Risk Router | done; implementation done |
 | H1-T14 | Direct path | done; implementation done |
 | H1-T15 | Research | done; implementation done |
-| H1-T16 | Explore | done; implementation ready |
+| H1-T16 | Explore | done; implementation done |
 | H1-T17 | Spike | done; implementation ready |
 | H1-T18 | Plan | needed |
 | H1-T19 | Commitment Gate | needed |
@@ -219,6 +219,12 @@ is archived for reference and must not be claimed.
   Router; it does not approve, execute, or invoke sibling workflows.
   Independent decision and direct-document reviews: READY. Direct dependency
   cross-check H1-T1/H1-T11/H1-T12/H1-T13 and parent H1: NO CONFLICT.
+- H1-T16 implementation is complete in
+  `.harness/workflow/rule-explore-r1.md`. Ruleset 1.6.0 validates with the
+  generic Explore workflow effective. It compares materially distinct viable
+  alternatives using sourced constraints and trade-offs, returning an
+  ephemeral recommendation or exact unresolved discriminator to Router while
+  preserving direct user-authority stops. Acceptance impact is `none`.
 - H1-T17 Spike planning is complete in
   [its implementation task](../tasks/H1-T17-spike.md). Spike runs one bounded
   feasibility probe in Docker without writing to the repository. Docker

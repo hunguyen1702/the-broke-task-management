@@ -10,7 +10,7 @@ scope: {repository: true}
 createdOn: 2026-09-21
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.5.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.6.0}
 ---
 ## Rule
 Require proof proportional to the change and report unverified limitations.
