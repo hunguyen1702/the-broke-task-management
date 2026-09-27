@@ -1,9 +1,12 @@
 # Repository Guidelines
 
 The repository harness is declared in `.harness/manifest.yaml`. Before handling
-work in this repository, validate the Constitution, use `inspect-effective`
-with relevant relative paths, and read the returned canonical rules. Reinspect
-when relevant scope or rules change. See `.harness/README.md` for lookup details.
+work in this repository, validate the Constitution, use `inspect-context`
+with relevant relative paths, and read the returned canonical core rules.
+After Risk Router selects an on-demand workflow, use `inspect-workflow` with
+that workflow ID and the same paths, then read only its returned rules.
+`inspect-effective` remains the complete diagnostic view. Reinspect when
+relevant scope, route, or rules change. See `.harness/README.md` for lookup details.
 
 ### NOTE: Harness construction
 

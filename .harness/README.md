@@ -16,12 +16,16 @@ consistency and cannot prove human intent.
 
 Run `.harness/scripts/validate-constitution validate` before mutating harness
 work. An invalid Constitution blocks that work; read-only diagnosis is allowed.
-Run `.harness/scripts/validate-constitution inspect-effective path/one path/two`
+Run `.harness/scripts/validate-constitution inspect-context path/one path/two`
 with all relevant repository-relative paths, then read each returned canonical
-rule file. Re-query when the target path set expands. With no paths, inspection
-returns all effective rules. Output is stable YAML. An active rule is effective
-unless another active rule explicitly supersedes its exact ID and revision.
-`extends` keeps its referenced rule effective. Exclusions win over inclusions.
+core rule file. After Risk Router selects an on-demand workflow, run
+`inspect-workflow <workflow-id> path/one path/two` and read only its returned
+canonical chain. Re-query core context when target paths or material rules
+change, and selected workflow context when the route changes. `inspect-effective`
+remains the complete diagnostic view: with no paths it returns every effective
+rule. Output is stable YAML. An active rule is effective unless another active
+rule explicitly supersedes its exact ID and revision. `extends` keeps its
+referenced rule effective. Exclusions win over inclusions.
 
 Scope patterns use `/` relative to the repository root. `*` matches zero or
 more characters in one segment; `**` matches zero or more whole segments.
@@ -34,6 +38,7 @@ body sections. Drafts appear in the index but not effective inspection. The
 future rule-management workflow owns approval and activation; do not set
 `active` or approval metadata without explicit user authorization. After any
 canonical change, run `rebuild-index` and `validate`. Rebuild validates inputs
-first and replaces only the index. `validate` and `inspect-effective` never
-write files. Exit codes are 0 for success, 1 for invalid Constitution or stale
-index, and 2 for invocation or IO failure.
+first and replaces only the index. `validate`, `inspect-effective`,
+`inspect-context`, and `inspect-workflow` never write files. Exit codes are 0
+for success, 1 for invalid Constitution or stale index, and 2 for invocation,
+selection, or IO failure.

@@ -36,6 +36,18 @@ class ConstitutionTest < Minitest::Test
     path
   end
 
+  def project_workflow(id, status: 'draft', loading: 'on_demand', extra: '', scope: 'repository: true')
+    path = File.join(@temp, ".harness/workflow/#{id}-r1.md")
+    front = [
+      '---', 'schemaVersion: 1', 'kind: constitution-rule', "id: #{id}",
+      'revision: 1', "title: #{id}", 'category: workflow',
+      "status: #{status}", 'scope:', "  #{scope}", "contextLoading: #{loading}",
+      'createdOn: 2026-09-21', 'createdBy: user', 'origin: project', extra.strip, '---'
+    ].reject(&:empty?).join("\n")
+    File.write(path, "#{front}\n## Rule\nDo the thing.\n\n## Rationale\nThere is a reason.\n\n## Application\nApply it.\n")
+    path
+  end
+
   def test_clean_install_and_stable_rebuild
     assert_equal 0, run_script('validate')[2].exitstatus
     index = File.binread(File.join(@temp, '.harness/index.yaml'))
@@ -53,6 +65,51 @@ class ConstitutionTest < Minitest::Test
     assert_includes out, '.harness/workflow/rule-explore-r1.md'
     assert_includes out, '.harness/workflow/rule-spike-r1.md'
     refute File.exist?(File.join(@temp, '.harness/current-truth.md'))
+    assert_equal 'on_demand', YAML.safe_load(index)['rules'].find { |rule| rule['id'] == 'rule-direct' }['contextLoading']
+  end
+
+  def test_context_and_independent_workflow_lookups
+    context = YAML.safe_load(run_script('inspect-context', 'docs/a.md')[0])['rules']
+    assert_equal 9, context.length
+    refute context.any? { |rule| %w[rule-direct rule-research rule-explore rule-spike].include?(rule['id']) }
+    %w[rule-direct rule-research rule-explore rule-spike].each do |id|
+      rules = YAML.safe_load(run_script('inspect-workflow', id, 'docs/a.md')[0])['rules']
+      assert_equal [id], rules.map { |rule| rule['id'] }
+    end
+  end
+
+  def test_workflow_selection_errors_do_not_emit_partial_output
+    [['missing-workflow'], ['rule-repository'], ['rule-intent'], ['rule-direct', '/tmp/a'], ['rule-direct', '']].each do |args|
+      out, err, status = run_script('inspect-workflow', *args)
+      assert_equal 2, status.exitstatus, err
+      assert_empty out
+      refute_empty err
+    end
+  end
+
+  def test_workflow_replacement_extensions_and_loading_compatibility
+    project_workflow('project-direct', status: 'active', extra: "approvedOn: 2026-09-21\napprovedBy: user\nsupersedes: [{id: rule-direct, revision: 1}]\n")
+    project_workflow('project-direct-extension', status: 'active', extra: "approvedOn: 2026-09-21\napprovedBy: user\nextends: [{id: project-direct, revision: 1}]\n")
+    project_workflow('project-direct-transitive', status: 'active', extra: "approvedOn: 2026-09-21\napprovedBy: user\nextends: [{id: project-direct-extension, revision: 1}]\n")
+    assert_equal 0, run_script('rebuild-index')[2].exitstatus
+    rules = YAML.safe_load(run_script('inspect-workflow', 'rule-direct', 'docs/a.md')[0])['rules']
+    assert_equal %w[project-direct project-direct-extension project-direct-transitive], rules.map { |rule| rule['id'] }
+
+    project_rule('invalid-loading', extra: "extends: [{id: rule-direct, revision: 1}]\n")
+    assert_equal 1, run_script('rebuild-index')[2].exitstatus
+  end
+
+  def test_workflow_scope_mismatch_and_nested_lookup
+    project_workflow('nested-workflow', status: 'active', extra: "approvedOn: 2026-09-21\napprovedBy: user\n", scope: "paths:\n    include: ['docs/**']\n    exclude: ['docs/private/**']")
+    assert_equal 0, run_script('rebuild-index')[2].exitstatus
+    out, _err, status = run_script('inspect-workflow', 'nested-workflow', 'crates/a.rs')
+    assert_equal 2, status.exitstatus
+    assert_empty out
+    out, _err, status = run_script('inspect-workflow', 'nested-workflow', 'docs/private/a.md')
+    assert_equal 2, status.exitstatus
+    assert_empty out
+    rules = YAML.safe_load(run_script('inspect-workflow', 'nested-workflow', 'docs/a.md')[0])['rules']
+    assert_equal ['nested-workflow'], rules.map { |rule| rule['id'] }
   end
 
   def test_draft_is_indexed_but_not_effective

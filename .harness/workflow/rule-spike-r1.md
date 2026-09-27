@@ -7,10 +7,11 @@ title: Test one consequential feasibility assumption
 category: workflow
 status: active
 scope: {repository: true}
+contextLoading: on_demand
 createdOn: 2026-09-27
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.7.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.8.0}
 ---
 ## Rule
 

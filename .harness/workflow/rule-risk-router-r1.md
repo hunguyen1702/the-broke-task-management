@@ -7,10 +7,11 @@ title: Select the smallest credible workflow
 category: workflow
 status: active
 scope: {repository: true}
+contextLoading: always
 createdOn: 2026-09-23
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.7.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.8.0}
 ---
 ## Rule
 Given confirmed Intent and relevant Current Truth, select the smallest credible
@@ -98,6 +99,11 @@ Next: <specific action, question, probe, or decision>.
 ```
 
 Do not print the whole matrix or create a per-request routing document.
+
+For an on-demand route, the next action first runs `inspect-workflow` with the
+selected stable workflow ID and current target paths, then reads its returned
+canonical chain. Router chooses the route; the validator only resolves its
+canonical loading chain.
 
 **Intent boundary bad:** return to Intent because the user asked for an auth
 API but the authentication mechanism is not chosen. **Good:** keep the

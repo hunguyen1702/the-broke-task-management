@@ -7,10 +7,11 @@ title: Interpret and confirm user intent
 category: workflow
 status: active
 scope: {repository: true}
+contextLoading: always
 createdOn: 2026-09-21
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.7.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.8.0}
 ---
 ## Rule
 For each new work intent, interpret the user's goal and scope from the request

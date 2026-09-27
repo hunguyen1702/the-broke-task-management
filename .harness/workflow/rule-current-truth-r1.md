@@ -7,10 +7,11 @@ title: Assemble Current Truth
 category: workflow
 status: active
 scope: {repository: true}
+contextLoading: always
 createdOn: 2026-09-21
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.7.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.8.0}
 ---
 ## Rule
 Given a concrete information need and target scope from Intent, assemble a

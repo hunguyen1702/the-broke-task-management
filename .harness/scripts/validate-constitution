@@ -12,7 +12,7 @@ class InvalidConstitution < StandardError; end
 class Constitution
   CATEGORIES = %w[governance authority safety workflow repository verification].freeze
   STATUSES = %w[draft active superseded retired].freeze
-  FIELDS = %w[schemaVersion kind id revision title category status scope createdOn createdBy origin extends supersedes approvedOn approvedBy installationApproval].freeze
+  FIELDS = %w[schemaVersion kind id revision title category status scope createdOn createdBy origin extends supersedes approvedOn approvedBy installationApproval contextLoading].freeze
 
   def initialize(root)
     @root = File.expand_path(root)
@@ -134,6 +134,11 @@ class Constitution
     fail_at(path, 'unsupported schemaVersion or kind', id) unless data['schemaVersion'] == @schema['schemaVersion'] && data['kind'] == @schema['kind']
     fail_at(path, 'invalid category', id) unless data['category'] == File.basename(File.dirname(path))
     fail_at(path, 'invalid status', id) unless STATUSES.include?(data['status'])
+    if data['category'] == 'workflow'
+      fail_at(path, 'workflow rule requires contextLoading', id) unless %w[always on_demand].include?(data['contextLoading'])
+    else
+      fail_at(path, 'non-workflow rule must not specify contextLoading', id) if data.key?('contextLoading')
+    end
     source = data['origin']
     fail_at(path, 'invalid origin', id) unless %w[framework project].include?(source)
     %w[title createdBy].each { |key| fail_at(path, "invalid #{key}", id) unless data[key].is_a?(String) && !data[key].strip.empty? }
@@ -214,12 +219,24 @@ class Constitution
     @rules.each do |rule|
       rule[:effective] = rule[:data]['status'] == 'active' && !replacements.key?([rule[:data]['id'], rule[:data]['revision']])
     end
+    @rules.each do |rule|
+      %w[extends supersedes].each do |field|
+        (rule[:data][field] || []).each do |ref|
+          target = @by_pair[[ref['id'], ref['revision']]]
+          fail_at(rule[:path], "contextLoading mismatch with #{ref['id']}@#{ref['revision']}", rule[:data]['id']) unless loading(rule) == loading(target)
+        end
+      end
+    end
+  end
+
+  def loading(rule)
+    rule[:data]['category'] == 'workflow' ? rule[:data]['contextLoading'] : 'always'
   end
 
   def index
     { 'indexVersion' => 1, 'rules' => @rules.sort_by { |r| [r[:data]['id'], r[:data]['revision'], r[:source]] }.map do |r|
       d = r[:data]
-      { 'id' => d['id'], 'revision' => d['revision'], 'source' => r[:source], 'category' => d['category'], 'status' => d['status'], 'effective' => r[:effective], 'path' => relative(r[:path]), 'sha256' => r[:digest] }
+      { 'id' => d['id'], 'revision' => d['revision'], 'source' => r[:source], 'category' => d['category'], 'status' => d['status'], 'effective' => r[:effective], 'contextLoading' => loading(r), 'path' => relative(r[:path]), 'sha256' => r[:digest] }
     end }
   end
 
@@ -245,9 +262,63 @@ class Constitution
 
   def inspect_effective(paths)
     check_index
-    paths.each { |path| raise ArgumentError, "invalid target path #{path.inspect}" if path.start_with?('/') || path.split('/').include?('..') }
+    validate_target_paths(paths)
     selected = @rules.select { |r| r[:effective] && (paths.empty? || paths.any? { |path| applies?(r[:data]['scope'], path) }) }
-    puts YAML.dump({ 'rules' => selected.sort_by { |r| [r[:data]['id'], r[:data]['revision']] }.map { |r| { 'id' => r[:data]['id'], 'revision' => r[:data]['revision'], 'path' => relative(r[:path]) } } })
+    emit(selected)
+  end
+
+  def inspect_context(paths)
+    check_index
+    validate_target_paths(paths)
+    selected = @rules.select { |r| r[:effective] && loading(r) == 'always' && (paths.empty? || paths.any? { |path| applies?(r[:data]['scope'], path) }) }
+    emit(selected)
+  end
+
+  def inspect_workflow(id, paths)
+    check_index
+    validate_target_paths(paths)
+    starting = @rules.find { |r| r[:data]['id'] == id && r[:data]['status'] == 'active' }
+    raise ArgumentError, "unknown workflow id #{id.inspect}" unless starting
+    raise ArgumentError, "not a workflow id #{id.inspect}" unless starting[:data]['category'] == 'workflow'
+    raise ArgumentError, "workflow id #{id.inspect} is not on_demand" unless loading(starting) == 'on_demand'
+
+    chain = [starting]
+    while (replacement = active_replacement(chain.last))
+      chain << replacement
+    end
+    leaf = chain.last
+    raise ArgumentError, "workflow id #{id.inspect} does not apply to target paths" if !paths.empty? && !paths.any? { |path| applies?(leaf[:data]['scope'], path) }
+
+    chain_pairs = chain.map { |r| [r[:data]['id'], r[:data]['revision']] }
+    selected = @rules.select do |rule|
+      rule[:effective] && rule[:data]['category'] == 'workflow' && loading(rule) == 'on_demand' &&
+        (paths.empty? || paths.any? { |path| applies?(rule[:data]['scope'], path) }) &&
+        (rule == leaf || reaches_any?(rule, chain_pairs))
+    end
+    emit(selected)
+  end
+
+  def active_replacement(rule)
+    target = [rule[:data]['id'], rule[:data]['revision']]
+    @rules.find { |candidate| candidate[:data]['status'] == 'active' && (candidate[:data]['supersedes'] || []).any? { |ref| [ref['id'], ref['revision']] == target } }
+  end
+
+  def reaches_any?(rule, pairs, visited = {})
+    pair = [rule[:data]['id'], rule[:data]['revision']]
+    return false if visited[pair]
+    visited[pair] = true
+    (rule[:data]['extends'] || []).any? do |ref|
+      target = @by_pair[[ref['id'], ref['revision']]]
+      pairs.include?([ref['id'], ref['revision']]) || reaches_any?(target, pairs, visited)
+    end
+  end
+
+  def validate_target_paths(paths)
+    paths.each { |path| raise ArgumentError, "invalid target path #{path.inspect}" unless path.is_a?(String) && !path.empty? && !path.start_with?('/') && !path.split('/').any? { |part| %w[. ..].include?(part) } }
+  end
+
+  def emit(rules)
+    puts YAML.dump({ 'rules' => rules.sort_by { |r| [r[:data]['id'], r[:data]['revision']] }.map { |r| { 'id' => r[:data]['id'], 'revision' => r[:data]['revision'], 'path' => relative(r[:path]) } } })
   end
 
   def applies?(scope, path)
@@ -272,8 +343,8 @@ end
 
 begin
   command = ARGV.shift
-  raise ArgumentError, 'usage: validate-constitution validate|rebuild-index|inspect-effective [relative paths...]' unless %w[validate rebuild-index inspect-effective].include?(command)
-  raise ArgumentError, 'unexpected arguments' unless command == 'inspect-effective' || ARGV.empty?
+  raise ArgumentError, 'usage: validate-constitution validate|rebuild-index|inspect-effective|inspect-context [relative paths...]|inspect-workflow <workflow-id> [relative paths...]' unless %w[validate rebuild-index inspect-effective inspect-context inspect-workflow].include?(command)
+  raise ArgumentError, 'unexpected arguments' unless %w[inspect-effective inspect-context inspect-workflow].include?(command) || ARGV.empty?
   root = File.expand_path('../..', __dir__)
   constitution = Constitution.new(root)
   constitution.load_inputs
@@ -281,6 +352,11 @@ begin
   when 'validate' then constitution.check_index
   when 'rebuild-index' then constitution.rebuild
   when 'inspect-effective' then constitution.inspect_effective(ARGV)
+  when 'inspect-context' then constitution.inspect_context(ARGV)
+  when 'inspect-workflow'
+    id = ARGV.shift
+    raise ArgumentError, 'missing workflow id' unless id
+    constitution.inspect_workflow(id, ARGV)
   end
 rescue InvalidConstitution => e
   warn e.message
