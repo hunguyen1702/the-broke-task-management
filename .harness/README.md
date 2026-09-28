@@ -17,15 +17,20 @@ consistency and cannot prove human intent.
 Run `.harness/scripts/validate-constitution validate` before mutating harness
 work. An invalid Constitution blocks that work; read-only diagnosis is allowed.
 Run `.harness/scripts/validate-constitution inspect-context path/one path/two`
-with all relevant repository-relative paths, then read each returned canonical
-core rule file. After Risk Router selects an on-demand workflow, run
-`inspect-workflow <workflow-id> path/one path/two` and read only its returned
-canonical chain. Re-query core context when target paths or material rules
-change, and selected workflow context when the route changes. `inspect-effective`
-remains the complete diagnostic view: with no paths it returns every effective
-rule. Output is stable YAML. An active rule is effective unless another active
-rule explicitly supersedes its exact ID and revision. `extends` keeps its
-referenced rule effective. Exclusions win over inclusions.
+with all relevant repository-relative paths, then read each returned bootstrap
+rule. Bootstrap contains every non-workflow rule, Workflow Entry, and Intent;
+it excludes Current Truth, Risk Router, and routed workflows. After Intent
+returns confirmed `ready`, run `inspect-workflow rule-current-truth` with the
+same paths and read its returned chain. After Current Truth returns `ready` or
+a routable `unresolved`, run `inspect-workflow rule-risk-router` with those
+paths and read its returned chain. After Risk Router selects a route, run
+`inspect-workflow <workflow-id> path/one path/two` and read only that selected
+canonical chain. `inspect-workflow` is a deterministic lookup, not a lifecycle
+engine. Re-query affected context when target paths, rules, or route change.
+`inspect-effective` remains the complete diagnostic view: with no paths it
+returns every effective rule. Output is stable YAML. An active rule is effective
+unless another active rule explicitly supersedes its exact ID and revision.
+`extends` keeps its referenced rule effective. Exclusions win over inclusions.
 
 Scope patterns use `/` relative to the repository root. `*` matches zero or
 more characters in one segment; `**` matches zero or more whole segments.

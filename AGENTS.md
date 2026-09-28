@@ -2,11 +2,14 @@
 
 The repository harness is declared in `.harness/manifest.yaml`. Before handling
 work in this repository, validate the Constitution, use `inspect-context`
-with relevant relative paths, and read the returned canonical core rules.
-After Risk Router selects an on-demand workflow, use `inspect-workflow` with
-that workflow ID and the same paths, then read only its returned rules.
-`inspect-effective` remains the complete diagnostic view. Reinspect when
-relevant scope, route, or rules change. See `.harness/README.md` for lookup details.
+with relevant relative paths, and read the returned bootstrap rules. Bootstrap
+loads Intent but not Current Truth, Risk Router, or routed workflows. After
+confirmed Intent, use `inspect-workflow rule-current-truth`; after Current Truth
+`ready` or routable `unresolved`, use `inspect-workflow rule-risk-router`; after
+Router selects a route, use `inspect-workflow` with that workflow ID. Use the
+same relevant paths and read only each returned chain. `inspect-effective`
+remains the complete diagnostic view. Reinspect when relevant scope, route, or
+rules change. See `.harness/README.md` for lookup details.
 
 ### NOTE: Harness construction
 

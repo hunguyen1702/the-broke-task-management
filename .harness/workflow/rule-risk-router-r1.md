@@ -7,11 +7,11 @@ title: Select the smallest credible workflow
 category: workflow
 status: active
 scope: {repository: true}
-contextLoading: always
+contextLoading: on_demand
 createdOn: 2026-09-23
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.8.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.10.0}
 ---
 ## Rule
 Given confirmed Intent and relevant Current Truth, select the smallest credible

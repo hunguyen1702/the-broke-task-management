@@ -91,8 +91,8 @@ node demonstrates a concrete need.
 | H1-T16 | Explore | done; implementation done |
 | H1-T17 | Spike | done; implementation done |
 | H1-T18A | Lazy workflow loading | done; implementation done |
-| H1-T18B | Stage core workflow loading | done; implementation ready |
-| H1-T18 | Plan | done; implementation blocked by H1-T18B |
+| H1-T18B | Stage core workflow loading | done; implementation done |
+| H1-T18 | Plan | done; implementation done |
 | H1-T19 | Commitment Gate | needed |
 | H1-T20 | Execute | needed |
 | H1-T21 | Proof of Work | needed |
@@ -100,9 +100,7 @@ node demonstrates a concrete need.
 | H1-T23 | Integrated flow validation | needed |
 | H1-T24 | Manage Constitution rules (deferred workflow) | needed |
 
-H1-T16, H1-T17, and H1-T18A are implemented. H1-T18B staged core workflow
-loading is implementation-ready. H1-T18 Plan planning is complete and waits
-for H1-T18B.
+H1-T16, H1-T17, H1-T18A, H1-T18B, and H1-T18 Plan are implemented.
 H1-T19–H1-T24 remain backlog placeholders, not approved implementation
 contracts. Their precise scope, sequence, and dependencies are decided when
 each node is planned. A Context
@@ -262,10 +260,10 @@ is archived for reference and must not be claimed.
   family. Full validation and `inspect-effective` diagnostics remain
   exhaustive. Constitution tests, format, lint, and workspace tests passed;
   acceptance impact is `none`.
-- H1-T18B staged core workflow loading is planned and implementation-ready.
+- H1-T18B staged core workflow loading is implemented in pinned snapshot 1.9.0.
   It retains Intent in bootstrap context, then loads Current Truth and Risk
-  Router only after their predecessor handoffs. It is a prerequisite for
-  H1-T18 Plan so Plan is not implemented against the eager core context.
+  Router only after their predecessor handoffs. H1-T18 Plan implements against
+  that staged core context. Acceptance impact is `none`.
 - H1-T18 Plan planning is complete in
   [its implementation task](../tasks/H1-T18-plan.md). One on-demand Plan
   coordinator classifies work as Epic, Story, or Implementation Task planning
@@ -275,12 +273,14 @@ is archived for reference and must not be claimed.
   specification or a shared technical design and bounded Task Planning board.
   Blocking evidence or decision gaps return to their owning boundary; reviewed
   packages proceed to Commitment Gate without implying execution approval.
-  Independent review: READY. Direct dependency cross-check H1-T1, H1-T11–H1-T18A:
-  NO CONFLICT. H1-T18B is an additional planned implementation dependency, so
-  H1-T18 implementation waits for H1-T18B.
-- The former H1-T2–H1-T10 component roadmap was archived. H1-T18 Plan planning
-  is complete and implementation waits for H1-T18B; H1-T19–H1-T23 remain node-first
-  planning placeholders, and H1-T24 tracks the deferred Constitution
+  Independent review: READY. Direct dependency cross-check H1-T1, H1-T11–H1-T18B:
+  NO CONFLICT. H1-T18 is implemented in pinned snapshot 1.10.0 with the Plan
+  coordinator and its three independently loadable subprocesses. Constitution
+  validation, lookup checks, format, lint, and tests passed; acceptance impact
+  is `none`.
+- The former H1-T2–H1-T10 component roadmap was archived. H1-T18 Plan is
+  implemented; H1-T19–H1-T23 remain node-first planning placeholders, and
+  H1-T24 tracks the deferred Constitution
   rule-management workflow.
 - H1 is the first planning priority ahead of all remaining product-story plans.
 - The epic is approved at the architecture and decomposition level. Remaining H1 placeholders stay `planning_status: needed` until their dedicated planning sessions begin, then follow the normal `in_progress` and `done` planning lifecycle.

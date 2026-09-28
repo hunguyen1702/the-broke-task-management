@@ -220,7 +220,7 @@ Planning tiếp theo:
   H1-T11–H1-T18A và parent H1: NO CONFLICT.
 - **H1-T18B Stage core workflow loading** đã hoàn tất planning trong
   [implementation plan](../tasks/H1-T18B-staged-core-workflow-loading.md),
-  implementation `ready`. Intent vẫn là bootstrap workflow; sau khi Intent
+  implementation `done`. Intent vẫn là bootstrap workflow; sau khi Intent
   `ready`, chỉ Current Truth được lookup. Current Truth `ready` hoặc
   `unresolved` còn định tuyến được sẽ lookup Risk Router; `insufficient_query`
   quay lại Intent, còn invalid Constitution, rule conflict và xung đột thuộc
@@ -240,8 +240,8 @@ Planning tiếp theo:
   test/verification, references và definition of done: READY.
 - Roadmap component H1-T2–H1-T10 cũ đã được
   [lưu để tham khảo](H1-archived-component-roadmap.md), không còn là task active.
-  H1-T16, H1-T17 và H1-T18A đã implementation xong. H1-T18B implementation
-  `ready`; H1-T18 Plan đã planning xong nhưng chờ H1-T18B.
+  H1-T16, H1-T17, H1-T18A và H1-T18B đã implementation xong. H1-T18 Plan đã
+  planning xong và implementation `ready`.
   Backlog H1-T19–H1-T23 đi theo từng node của H1-T0; tên là placeholder, chưa
   phê duyệt implementation contract. H1-T24 ghi nhận workflow quản lý
   Constitution rule đã defer. Các điểm defer khác nằm trong

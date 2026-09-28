@@ -11,13 +11,16 @@ contextLoading: always
 createdOn: 2026-09-21
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.8.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.10.0}
 ---
 ## Rule
-After loading the always-context Constitution rules, invoke the Intent workflow for a
-new work intent that has no confirmed interpretation. Continue an established
-intent without restarting it. Re-enter Intent for a new goal or material
-goal/scope change; return Current Truth `insufficient_query` to the same Intent.
+After loading the always-context Constitution rules, invoke the bootstrap
+Intent workflow for a new work intent that has no confirmed interpretation.
+Intent loads Current Truth only after confirmed `ready`; Current Truth loads
+Risk Router only after `ready` or a routable `unresolved`. Continue an
+established intent without restarting it. Re-enter Intent for a new goal or
+material goal/scope change; return Current Truth `insufficient_query` to the
+same Intent.
 
 ## Rationale
 The entry boundary must be discoverable from the Constitution while keeping
@@ -37,9 +40,11 @@ flowchart TD
     D -- No --> K[Continue established conversation]
 ```
 
-Use `inspect-context` for repository startup. After Router selects an
-on-demand workflow, use `inspect-workflow` for that stable rule ID and the
-current target paths before entering it. Use the request and conversation state to distinguish new work from an answer,
+Use `inspect-context` for repository startup; it loads Workflow Entry and
+Intent, but not Current Truth, Risk Router, or routed workflows. Intent and
+Current Truth own their successor lookups. After Router selects an on-demand
+workflow, use `inspect-workflow` for that stable rule ID and the current target
+paths before entering it. Use the request and conversation state to distinguish new work from an answer,
 correction, status request, or continuation. A confirmation reply completes the
 pending Intent; it is not a new request. Reinspect effective rules when target
 paths or material rules change, not on every message.

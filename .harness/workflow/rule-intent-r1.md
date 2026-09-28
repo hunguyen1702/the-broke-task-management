@@ -11,7 +11,7 @@ contextLoading: always
 createdOn: 2026-09-21
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.8.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.10.0}
 ---
 ## Rule
 For each new work intent, interpret the user's goal and scope from the request
@@ -39,7 +39,7 @@ flowchart TD
     E --> B
     C -- No reply --> W[Wait; no downstream handoff]
     W --> C
-    C -- Yes --> R[ready: hand information need and scope to Current Truth]
+    C -- Yes --> R[ready: lookup Current Truth]
     R --> T{Current Truth returns insufficient_query?}
     T -- Yes --> Q
     T -- No --> H[Continue lifecycle toward Router]
@@ -62,7 +62,9 @@ flowchart TD
    comprehension; a later irreversible action may need its own approval.
 4. **Handoff.** `ready` carries the confirmed interpretation, a specific
    information need and target scope for Current Truth, stated constraints,
-   and any nonblocking assumptions. If Current Truth returns
+   and any nonblocking assumptions. Invoke `inspect-workflow
+   rule-current-truth` with the current relevant paths and read only its
+   returned chain before Current Truth. If Current Truth returns
    `insufficient_query`, clarify within this Intent and reconfirm a materially
    revised interpretation. No durable prompt rewrite or shared node schema is
    required. Cancellation or replacement is a conversation control event.

@@ -7,11 +7,11 @@ title: Assemble Current Truth
 category: workflow
 status: active
 scope: {repository: true}
-contextLoading: always
+contextLoading: on_demand
 createdOn: 2026-09-21
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.8.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.10.0}
 ---
 ## Rule
 Given a concrete information need and target scope from Intent, assemble a
@@ -41,8 +41,8 @@ flowchart TD
     F --> G[Compare claims, sources, scope, and freshness]
     E -- No --> G
     G --> H{Conflict or blocking gap?}
-    H -- No --> R[Ready → Router]
-    H -- Yes --> U[Unresolved: cite claims and follow-up → Router or user authority]
+    H -- No --> R[Ready: lookup Router]
+    H -- Yes --> U[Unresolved: route, return, stop, or await authority]
     R --> J{Scope or material source changed?}
     U --> J
     J -- Yes --> C
@@ -73,9 +73,14 @@ flowchart TD
    evidence gap. If a test is unreadable, cite the contract, attempted path,
    and bounded follow-up. If approved sources conflict without precedence,
    preserve both claims and state that a user authority decision is needed.
-6. **Handoff.** Return the compact result below. Recheck affected sources if
-   scope or material state changes. Preserve existing work; report inaccessible
-   sources and unverified claims instead of inventing facts.
+6. **Handoff.** On `ready`, or a routable `unresolved` such as an inspectable
+   evidence gap, invoke `inspect-workflow rule-risk-router` with the current
+   relevant paths and read only its returned chain before Router. Send
+   `insufficient_query` to Intent. For `invalid_constitution` and
+   `rule_conflict`, stop and notify the user; for an authority-bound conflict,
+   await the user's decision. None of those outcomes loads Router. Recheck
+   affected sources if scope or material state changes. Preserve existing work;
+   report inaccessible sources and unverified claims instead of inventing facts.
 
 Example `ready`: “Is operation X atomic?” → `[decision]` contract requires
 atomicity (contract §Persistence); `[observation]` transaction and rollback
@@ -92,11 +97,8 @@ If unresolved: <insufficient_query|invalid_constitution|rule_conflict|evidence_g
   <missing question or conflicting sourced claims>; <needed follow-up>
 ```
 
-`ready` may contain nonblocking unknowns. Send `insufficient_query` to Intent.
-For `invalid_constitution` and `rule_conflict`, stop and notify the user with
-the cited diagnostic or rule. Do not route or resume the stopped request until
-the cause is resolved by its proper authority.
-Send inspectable gaps to Router for route selection. Describe authority-bound
+`ready` may contain nonblocking unknowns. A routable `unresolved` sends an
+inspectable gap to Router for route selection. Describe authority-bound
 conflicts for an explicit user decision; this workflow does not make that
 decision. A later handoff mechanism may persist a snapshot, while canonical
 contracts and decision records retain their own rationale.

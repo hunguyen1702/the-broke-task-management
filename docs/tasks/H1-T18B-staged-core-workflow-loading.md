@@ -2,7 +2,7 @@
 id: H1-T18B
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - H1-T1
   - H1-T11
@@ -130,3 +130,15 @@ the existing return and stop boundaries. No other material design choice was
 reopened. Structured self-review found the direction, outcome branches, tests,
 references, and definition of done complete. The paired planning handoff
 records the dependency cross-check.
+
+## Implementation completion
+
+Implemented in pinned Constitution snapshot 1.9.0. Bootstrap keeps Intent and
+excludes Current Truth, Risk Router, and routed workflows. Confirmed Intent now
+looks up Current Truth; Current Truth looks up Router only for `ready` and
+routable `unresolved` results. The deterministic lookup algorithm, exhaustive
+diagnostics, and loading compatibility checks remain unchanged.
+
+Constitution validation, focused lookup walkthroughs, the Constitution suite,
+format, lint, and workspace tests passed. Acceptance impact: `none`, because
+this changes repository harness behavior only and no `tbtm` product workflow.

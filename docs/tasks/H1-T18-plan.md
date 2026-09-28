@@ -2,7 +2,7 @@
 id: H1-T18
 kind: implementation_task
 planning_status: done
-implementation_status: not_planned
+implementation_status: done
 depends_on:
   - H1-T18A
   - H1-T18B
@@ -331,4 +331,18 @@ Story classification, companion technical-design artifacts, provenance
 wording, blocking versus deferred decisions, Story definition of done, the
 implementation-planning-board schema, and conditional Story-to-Task
 composition. Final review: `READY`. All direct implementation dependencies are
-`done`, so H1-T18 implementation is `ready`.
+`done`.
+
+## Implementation result
+
+Implemented the four independent on-demand workflow rules in Constitution
+snapshot 1.10.0: Plan coordination plus Epic, Story, and Implementation Task
+Planning. The coordinator selects a subprocess by stable ID without loading
+siblings; a bounded single-unit Story may then load Task Planning. All package
+creation requires explicit artifact-generation confirmation and ends with a
+Commitment Gate handoff rather than execution approval.
+
+The derived index was rebuilt. Constitution validation, focused bootstrap and
+Plan lookup checks, format, lint, workspace tests, and the Constitution suite
+passed. Acceptance impact: `none`, because this changes only repository-harness
+behavior and no `tbtm` product workflow.

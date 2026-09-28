@@ -55,7 +55,7 @@ class ConstitutionTest < Minitest::Test
     assert_equal 0, result[2].exitstatus, result[1]
     assert_equal index, File.binread(File.join(@temp, '.harness/index.yaml'))
     out, = run_script('inspect-effective')
-    assert_equal 13, YAML.safe_load(out)['rules'].length
+    assert_equal 17, YAML.safe_load(out)['rules'].length
     assert_includes out, '.harness/workflow/rule-current-truth-r1.md'
     assert_includes out, '.harness/workflow/rule-workflow-entry-r1.md'
     assert_includes out, '.harness/workflow/rule-intent-r1.md'
@@ -64,18 +64,30 @@ class ConstitutionTest < Minitest::Test
     assert_includes out, '.harness/workflow/rule-research-r1.md'
     assert_includes out, '.harness/workflow/rule-explore-r1.md'
     assert_includes out, '.harness/workflow/rule-spike-r1.md'
+    assert_includes out, '.harness/workflow/rule-plan-r1.md'
+    assert_includes out, '.harness/workflow/rule-plan-epic-r1.md'
+    assert_includes out, '.harness/workflow/rule-plan-story-r1.md'
+    assert_includes out, '.harness/workflow/rule-plan-task-r1.md'
     refute File.exist?(File.join(@temp, '.harness/current-truth.md'))
-    assert_equal 'on_demand', YAML.safe_load(index)['rules'].find { |rule| rule['id'] == 'rule-direct' }['contextLoading']
+    %w[rule-current-truth rule-risk-router rule-direct rule-plan rule-plan-epic rule-plan-story rule-plan-task].each do |id|
+      assert_equal 'on_demand', YAML.safe_load(index)['rules'].find { |rule| rule['id'] == id }['contextLoading']
+    end
   end
 
   def test_context_and_independent_workflow_lookups
     context = YAML.safe_load(run_script('inspect-context', 'docs/a.md')[0])['rules']
-    assert_equal 9, context.length
-    refute context.any? { |rule| %w[rule-direct rule-research rule-explore rule-spike].include?(rule['id']) }
-    %w[rule-direct rule-research rule-explore rule-spike].each do |id|
+    assert_equal 7, context.length
+    assert_equal %w[rule-authority rule-governance rule-intent rule-repository rule-safety rule-verification rule-workflow-entry], context.map { |rule| rule['id'] }
+    refute context.any? { |rule| %w[rule-current-truth rule-risk-router rule-direct rule-research rule-explore rule-spike rule-plan rule-plan-epic rule-plan-story rule-plan-task].include?(rule['id']) }
+    %w[rule-current-truth rule-risk-router rule-direct rule-research rule-explore rule-spike rule-plan rule-plan-epic rule-plan-story rule-plan-task].each do |id|
       rules = YAML.safe_load(run_script('inspect-workflow', id, 'docs/a.md')[0])['rules']
       assert_equal [id], rules.map { |rule| rule['id'] }
     end
+
+    effective = YAML.safe_load(run_script('inspect-effective')[0])['rules']
+    assert_equal 17, effective.length
+    assert_includes effective.map { |rule| rule['id'] }, 'rule-current-truth'
+    assert_includes effective.map { |rule| rule['id'] }, 'rule-risk-router'
   end
 
   def test_workflow_selection_errors_do_not_emit_partial_output
