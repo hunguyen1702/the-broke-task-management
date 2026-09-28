@@ -221,13 +221,23 @@ Planning tiếp theo:
 - **H1-T18B Stage core workflow loading** đã hoàn tất planning trong
   [implementation plan](../tasks/H1-T18B-staged-core-workflow-loading.md),
   implementation `ready`. Intent vẫn là bootstrap workflow; sau khi Intent
-  `ready`, chỉ Current Truth được lookup, rồi chỉ Risk Router sau Current
-  Truth. Task giữ validator lookup deterministic, không thêm session state,
+  `ready`, chỉ Current Truth được lookup. Current Truth `ready` hoặc
+  `unresolved` còn định tuyến được sẽ lookup Risk Router; `insufficient_query`
+  quay lại Intent, còn invalid Constitution, rule conflict và xung đột thuộc
+  thẩm quyền user giữ nguyên nhánh dừng/chờ quyết định. Task giữ validator
+  lookup deterministic, không thêm session state,
   và là prerequisite của H1-T18 Plan. H1-T18 chuyển sang implementation
   `not_planned` cho đến khi H1-T18B hoàn tất. Independent review đã yêu cầu
   gán lookup successor cho handoff `ready` của Intent/Current Truth (không phải
   Workflow Entry); đã sửa. Đọc lại H1-T1, H1-T11, H1-T12, H1-T13, H1-T18A,
   H1-T18 và parent H1: NO CONFLICT.
+  Rà soát toàn bộ contract ngày 2026-09-28: user xác nhận nhánh `unresolved`
+  còn định tuyến được phải tải Router; các nhánh dừng và return được giữ theo
+  H1-T11/H1-T13. Không có quyết định material khác cần mở lại. User chọn tự
+  review có cấu trúc thay cho subagent review ở vòng chỉnh sửa này. Đối chiếu
+  lại H1-T1, H1-T11, H1-T12, H1-T13, H1-T18A, H1-T18 và parent H1:
+  NO CONFLICT. Self-review về hướng implementation, các nhánh outcome,
+  test/verification, references và definition of done: READY.
 - Roadmap component H1-T2–H1-T10 cũ đã được
   [lưu để tham khảo](H1-archived-component-roadmap.md), không còn là task active.
   H1-T16, H1-T17 và H1-T18A đã implementation xong. H1-T18B implementation

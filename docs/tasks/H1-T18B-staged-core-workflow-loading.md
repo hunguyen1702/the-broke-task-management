@@ -23,7 +23,7 @@ receives only the next lifecycle node when it is needed:
 ```text
 repository startup → Intent
 confirmed Intent → Current Truth
-completed Current Truth → Risk Router
+Current Truth ready or routable unresolved → Risk Router
 Router-selected route → selected workflow family
 ```
 
@@ -39,8 +39,12 @@ Direct, Research, Explore, and Spike.
 
 After Intent returns confirmed `ready`, the Intent rule must invoke
 `inspect-workflow rule-current-truth` with the current relevant paths, then
-read only the returned chain. After Current Truth returns `ready`, that rule
-invokes `inspect-workflow rule-risk-router` with those paths. After Router
+read only the returned chain. After Current Truth returns `ready` or a
+routable `unresolved` result such as an inspectable evidence gap, that rule
+invokes `inspect-workflow rule-risk-router` with those paths. An
+`insufficient_query` returns to the same Intent; `invalid_constitution` and
+`rule_conflict` stop and notify the user; an authority-bound conflict waits
+for the user's decision. None of those outcomes loads Router. After Router
 selects a route, it invokes the existing lookup for that selected workflow ID.
 A route cannot make a sibling node enter context.
 
@@ -67,9 +71,10 @@ the newly selected rule family.
 Install a new pinned framework snapshot. Update the Current Truth and Risk
 Router workflow frontmatter to `contextLoading: on_demand`. Update Intent's
 `ready` handoff to invoke `inspect-workflow rule-current-truth`; update Current
-Truth's `ready` handoff to invoke `inspect-workflow rule-risk-router`. Update
-Workflow Entry, `AGENTS.md`, and `.harness/README.md` to state the staged
-lookup sequence. Recompute framework provenance and digest, rebuild the
+Truth's `ready` and routable `unresolved` handoffs to invoke
+`inspect-workflow rule-risk-router`, while preserving its return and stop
+outcomes. Update Workflow Entry, `AGENTS.md`, and `.harness/README.md` to state
+the staged lookup sequence. Recompute framework provenance and digest, rebuild the
 derived index, and retain `contextLoading` compatibility validation across
 extensions and replacements.
 
@@ -89,7 +94,9 @@ nodes and Router-selected routes.
   rules.
 - Walk through Intent → Current Truth → Router → each existing route from a
   fresh bootstrap context; verify documentation loads only the next required
-  workflow at every handoff.
+  workflow at every handoff. Check both Current Truth `ready` and routable
+  `unresolved` results, plus `insufficient_query`, direct stop outcomes, and
+  authority-bound conflicts; only `ready` and routable `unresolved` load Router.
 - Verify path mismatch, replacement, extension, invalid ID, and `always`
   workflow selection retain H1-T18A's deterministic errors and no partial
   stdout.
@@ -99,8 +106,9 @@ nodes and Router-selected routes.
 ## Definition of done
 
 A new session loads Intent but not Current Truth, Risk Router, or a routed
-workflow. Each completed upstream node explicitly triggers lookup of only its
-successor. All rules remain fully validated, indexed, pinned, and diagnosable.
+workflow. Confirmed Intent loads Current Truth; Current Truth loads Router only
+for `ready` or routable `unresolved` results. All rules remain fully
+validated, indexed, pinned, and diagnosable.
 Record acceptance impact after implementation; do not create or execute
 acceptance scenarios during this task.
 
@@ -112,3 +120,13 @@ acceptance scenarios during this task.
 - [H1-T12](H1-T12-intent.md)
 - [H1-T13](H1-T13-risk-router.md)
 - [H1-T18](H1-T18-plan.md)
+
+## Planning review (2026-09-28)
+
+The user requested a full contract review and clarified that a routable Current
+Truth `unresolved` result must load Risk Router. The handoff, guidance,
+verification, and completion criteria above now cover that path while preserving
+the existing return and stop boundaries. No other material design choice was
+reopened. Structured self-review found the direction, outcome branches, tests,
+references, and definition of done complete. The paired planning handoff
+records the dependency cross-check.
