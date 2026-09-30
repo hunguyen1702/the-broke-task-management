@@ -95,14 +95,15 @@ node demonstrates a concrete need.
 | H1-T18B | Stage core workflow loading | done; implementation done |
 | H1-T18 | Plan | done; implementation done |
 | [H1-T20](../tasks/H1-T20-execute.md) | Execute | done; implementation done |
-| H1-T21 | Proof of Work | needed |
+| [H1-T21](../tasks/H1-T21-proof-of-work.md) | Proof of Work | done; implementation ready |
 | H1-T22 | Learning Promotion | needed |
 | H1-T23 | Integrated flow validation | needed |
 | H1-T24 | Manage Constitution rules (deferred workflow) | needed |
 
 H1-T16, H1-T17, H1-T18A, H1-T18B, and H1-T18 Plan are implemented.
 H1-T19 Commitment Gate is deferred outside the active flow. H1-T20 Execute
-is implemented and verified. H1-T21–H1-T24 remain backlog placeholders, not approved implementation
+is implemented and verified. H1-T21 is planned and implementation ready.
+H1-T22–H1-T24 remain backlog placeholders, not approved implementation
 contracts. Their precise scope, sequence, and dependencies are decided when
 each node is planned. A Context
 Capsule is the candidate return output of Research, Explore, and Spike, not a
@@ -280,7 +281,7 @@ is archived for reference and must not be claimed.
   validation, lookup checks, format, lint, and tests passed; acceptance impact
   is `none`.
 - The former H1-T2–H1-T10 component roadmap was archived. H1-T18 Plan is
-  implemented; H1-T21–H1-T23 remain node-first planning placeholders, and
+  implemented; H1-T22–H1-T23 remain node-first planning placeholders, and
   H1-T24 tracks the deferred Constitution rule-management workflow.
 - The user deferred H1-T19 Commitment Gate and revised the target lifecycle to
   Plan → Execute. H1-T19 is no longer on the active task board. The installed
@@ -307,4 +308,14 @@ is archived for reference and must not be claimed.
   Execute and no runtime Commitment Gate dependency. Constitution validation,
   isolated workflow/index coverage, format, lint, and workspace tests passed;
   acceptance impact is `none`.
+- H1-T21 Proof of Work planning is complete in
+  [its implementation task](../tasks/H1-T21-proof-of-work.md). It assesses final
+  outcome and required verification against the existing work basis, reuses
+  fresh Execute evidence, obtains authorized missing proof and returns exact
+  defects or material changes to their owners. Accepted proof permits bounded
+  completion and a semantic Learning Promotion handoff. No mandatory ledger,
+  independent reviewer or universal approval gate is added. Implementation adds
+  an on-demand PoW rule and a superseding Execute handoff in a new pinned
+  snapshot. H1-T1/H1-T18A/H1-T20 cross-check: NO CONFLICT. Independent document
+  review: READY. Dependencies are done; implementation is ready.
 - The epic is approved at the architecture and decomposition level. Remaining H1 placeholders stay `planning_status: needed` until their dedicated planning sessions begin, then follow the normal `in_progress` and `done` planning lifecycle.

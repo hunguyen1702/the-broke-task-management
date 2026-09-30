@@ -243,13 +243,14 @@ Planning tiếp theo:
   H1-T16, H1-T17, H1-T18A, H1-T18B và H1-T18 Plan đã implementation xong.
   User đã tạm bỏ H1-T19 Commitment Gate khỏi active H1 flow: Plan chuyển
   thẳng sang Execute. H1-T19 được ghi trong deferred-work register, không còn
-  trong active task board; H1-T20 Execute đã planning xong, implementation ready.
-  Backlog H1-T21–H1-T23 vẫn là placeholder, chưa phê duyệt implementation
+  trong active task board; H1-T20 Execute đã implementation xong.
+  H1-T21 đã planning xong, implementation ready.
+  Backlog H1-T22–H1-T23 vẫn là placeholder, chưa phê duyệt implementation
   contract. H1-T24 ghi nhận workflow quản lý
   Constitution rule đã defer. Các điểm defer khác nằm trong
   [H1 deferred-work register](H1-deferred-work.md).
 - **H1-T20 Execute** đã hoàn tất planning trong
-  [implementation plan](../tasks/H1-T20-execute.md), implementation `ready`.
+  [implementation plan](../tasks/H1-T20-execute.md), implementation `done`.
   Execute nhận Direct frame hoặc actionable Plan unit, dùng authority đã có,
   thực hiện thay đổi và check/local repair trong scope. Material drift quay về
   đúng node; partial effects được giữ và báo. PoW là node đánh giá riêng theo
@@ -263,6 +264,19 @@ Planning tiếp theo:
 - Giữ **E8-S1: Connect the extension to repository state** ở trạng thái
   `needed`; chưa planning E8 cho đến khi H1 hoàn tất hoặc người dùng đổi ưu
   tiên rõ ràng.
+
+- **H1-T21 Proof of Work** đã planning xong trong
+  [implementation plan](../tasks/H1-T21-proof-of-work.md), implementation `ready`.
+  Theo yêu cầu user, session tiến hành ngay không chờ confirm Intent. PoW đánh
+  giá outcome/constraints/checks theo contract hiện có, tái sử dụng evidence
+  còn hiệu lực và chạy focused verification khi đã có authority. Local defect
+  về Execute; material evidence/risk/approach về Current Truth → Router; scope
+  drift về Intent. Required proof không lấy được phải báo blocked. Accepted
+  proof cho phép bounded completion và semantic Learning Promotion handoff;
+  H1-T22 chưa được implement nên không lookup rule vắng mặt. Không thêm ledger
+  bắt buộc hay reviewer/gate phổ quát. Đọc lại H1-T1/H1-T18A/H1-T20 sau draft:
+  NO CONFLICT. Independent direct-document review: READY. Adaptive-planning
+  được áp dụng theo Task Planning của H1 đã approved, dùng parent epic hiện có.
 
 ### Implementation readiness tại thời điểm handoff
 
@@ -563,12 +577,13 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 Nếu tiếp tục implementation:
 
 1. Xem [status dashboard](../STATUS.md) để chọn task implementation `ready`;
-   H1-T20 Execute là task `ready` tiếp theo; claim trước khi implementation.
+   H1-T21 Proof of Work là task `ready` tiếp theo; claim trước khi implementation.
 
 Nếu tiếp tục planning:
 
-1. Chọn H1-T21 Proof of Work làm node tiếp theo; H1-T20 Execute đã planning
-   xong và implementation `ready`. H1-T19 Commitment Gate đã được
+1. Chọn H1-T22 Learning Promotion làm node planning tiếp theo; H1-T21 Proof
+   of Work đã planning xong và implementation `ready`; H1-T20 Execute đã done.
+   H1-T19 Commitment Gate đã được
    user tạm bỏ khỏi active flow và ghi trong deferred-work register.
 2. Plan node từ nhu cầu thực của flow H1 đã cập nhật.
    Xác định dependency khi planning, không dùng roadmap H1-T2–H1-T10 cũ hoặc
