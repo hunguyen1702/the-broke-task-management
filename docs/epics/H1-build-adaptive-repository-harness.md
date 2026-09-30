@@ -21,21 +21,22 @@ Plan and implement H1 before any remaining product-story planning, including E8.
 
 ## Adaptive lifecycle
 
-The validated working flow for node-by-node development is:
+The target flow for node-by-node development, revised by the user after the
+initial H1-T0 validation, is:
 
 ```text
 Intent + Constitution + Current Truth → Risk Router
   → Direct → Execute → Proof of Work → Learning Promotion
   → Research / Explore / Spike → Context Capsule → Risk Router
-  → Plan → Commitment Gate → Execute → Proof of Work → Learning Promotion
+  → Plan → Execute → Proof of Work → Learning Promotion
 Learning Promotion may update Current Truth, Constitution, or checks through
 their respective authority boundaries.
 ```
 
 Simple work may take a short path through the lifecycle. Each new work intent
 first receives one explicit user confirmation of the agent's concise
-Context–Task–Format interpretation; this is a comprehension check, not the
-later Commitment Gate. Once confirmed, the complete architecture must support
+Context–Task–Format interpretation; this is a comprehension check, not
+approval to execute. Once confirmed, the complete architecture must support
 every stage without forcing every request through every other artifact,
 approval, review, or automation. Ordinary continuation keeps the confirmed
 intent; a new goal or material change starts Intent again.
@@ -93,7 +94,6 @@ node demonstrates a concrete need.
 | H1-T18A | Lazy workflow loading | done; implementation done |
 | H1-T18B | Stage core workflow loading | done; implementation done |
 | H1-T18 | Plan | done; implementation done |
-| H1-T19 | Commitment Gate | needed |
 | H1-T20 | Execute | needed |
 | H1-T21 | Proof of Work | needed |
 | H1-T22 | Learning Promotion | needed |
@@ -101,7 +101,8 @@ node demonstrates a concrete need.
 | H1-T24 | Manage Constitution rules (deferred workflow) | needed |
 
 H1-T16, H1-T17, H1-T18A, H1-T18B, and H1-T18 Plan are implemented.
-H1-T19–H1-T24 remain backlog placeholders, not approved implementation
+H1-T19 Commitment Gate is deferred outside the active flow. H1-T20–H1-T24
+remain backlog placeholders, not approved implementation
 contracts. Their precise scope, sequence, and dependencies are decided when
 each node is planned. A Context
 Capsule is the candidate return output of Research, Explore, and Spike, not a
@@ -279,8 +280,12 @@ is archived for reference and must not be claimed.
   validation, lookup checks, format, lint, and tests passed; acceptance impact
   is `none`.
 - The former H1-T2–H1-T10 component roadmap was archived. H1-T18 Plan is
-  implemented; H1-T19–H1-T23 remain node-first planning placeholders, and
-  H1-T24 tracks the deferred Constitution
-  rule-management workflow.
+  implemented; H1-T20–H1-T23 remain node-first planning placeholders, and
+  H1-T24 tracks the deferred Constitution rule-management workflow.
+- The user deferred H1-T19 Commitment Gate and revised the target lifecycle to
+  Plan → Execute. H1-T19 is no longer on the active task board. The installed
+  Router and Plan workflow rules still describe the earlier gate; their
+  versioned alignment belongs to future approved implementation work. See
+  [TD-0008](../decisions/TD-0008-defer-h1-commitment-gate.md).
 - H1 is the first planning priority ahead of all remaining product-story plans.
 - The epic is approved at the architecture and decomposition level. Remaining H1 placeholders stay `planning_status: needed` until their dedicated planning sessions begin, then follow the normal `in_progress` and `done` planning lifecycle.

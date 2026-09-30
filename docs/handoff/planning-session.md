@@ -240,10 +240,12 @@ Planning tiếp theo:
   test/verification, references và definition of done: READY.
 - Roadmap component H1-T2–H1-T10 cũ đã được
   [lưu để tham khảo](H1-archived-component-roadmap.md), không còn là task active.
-  H1-T16, H1-T17, H1-T18A và H1-T18B đã implementation xong. H1-T18 Plan đã
-  planning xong và implementation `ready`.
-  Backlog H1-T19–H1-T23 đi theo từng node của H1-T0; tên là placeholder, chưa
-  phê duyệt implementation contract. H1-T24 ghi nhận workflow quản lý
+  H1-T16, H1-T17, H1-T18A, H1-T18B và H1-T18 Plan đã implementation xong.
+  User đã tạm bỏ H1-T19 Commitment Gate khỏi active H1 flow: Plan chuyển
+  thẳng sang Execute. H1-T19 được ghi trong deferred-work register, không còn
+  trong active task board; H1-T20 Execute là node tiếp theo cần planning.
+  Backlog H1-T20–H1-T23 vẫn là placeholder, chưa phê duyệt implementation
+  contract. H1-T24 ghi nhận workflow quản lý
   Constitution rule đã defer. Các điểm defer khác nằm trong
   [H1 deferred-work register](H1-deferred-work.md).
 - Giữ **E8-S1: Connect the extension to repository state** ở trạng thái
@@ -549,14 +551,14 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 Nếu tiếp tục implementation:
 
 1. Xem [status dashboard](../STATUS.md) để chọn task implementation `ready`;
-   H1-T18B Stage core workflow loading là task H1 tiếp theo. Claim task trước
-   khi sửa source.
+   các task H1 đã có implementation contract đều hoàn tất. Claim task mới
+   sau khi planning của node đó kết thúc và dependency đã `done`.
 
 Nếu tiếp tục planning:
 
-1. H1-T0 planning đã hoàn tất; H1-T1 Constitution planning đã hoàn tất và
-   implementation task đang `ready`. Claim H1-T1 trước khi thay đổi source.
-2. Chọn node tiếp theo từ flow H1-T0 và plan từ nhu cầu thực của node đó.
+1. Chọn H1-T20 Execute làm node tiếp theo; H1-T19 Commitment Gate đã được
+   user tạm bỏ khỏi active flow và ghi trong deferred-work register.
+2. Plan node từ nhu cầu thực của flow H1 đã cập nhật.
    Xác định dependency khi planning, không dùng roadmap H1-T2–H1-T10 cũ hoặc
    pre-author shared schema/component cho toàn bộ harness. Giữ các điểm defer
    trong register cho đến khi được planning riêng.

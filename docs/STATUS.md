@@ -51,7 +51,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
   verified; acceptance impact is `none`. H1-T18B staged core workflow loading
   is implemented and verified; acceptance impact is `none`. H1-T18 Plan is
   implemented and verified; acceptance impact is `none`.
-  Plan later nodes from that flow, not the
+  The user removed H1-T19 Commitment Gate from the active H1 flow; H1-T20
+  Execute is the next node to plan. Plan later nodes from that flow, not the
   archived component roadmap. Do not begin E8 planning until H1 is complete or the
   user explicitly changes the priority.
 - E1-S1-T2 is complete; repeat initialization now expects the authoritative
@@ -100,8 +101,8 @@ implementation are complete. Acceptance impact for each is `none`. H1-T15
 Research, H1-T16 Explore, and H1-T17 Spike implementation are complete;
 acceptance impact is `none` for each. H1-T18A lazy workflow loading is
 implemented and verified; acceptance impact is `none`. H1-T18 Plan planning is
-done and implementation is ready after H1-T18B staged core workflow loading
-completed; H1-T19–H1-T24
+done and implementation is complete after H1-T18B staged core workflow loading.
+H1-T19 Commitment Gate is deferred outside the active flow; H1-T20–H1-T24
 remain unplanned placeholders with no approved implementation contract. Former
 H1-T2–H1-T10 are
 [archived for reference](handoff/H1-archived-component-roadmap.md), not active tasks.
@@ -121,7 +122,6 @@ H1-T2–H1-T10 are
 | [H1-T18A](tasks/H1-T18A-lazy-workflow-loading.md) Lazy workflow loading | Task | done | done | H1-T1, H1-T11, H1-T12, H1-T13, H1-T14, H1-T15, H1-T16, H1-T17 |
 | [H1-T18B](tasks/H1-T18B-staged-core-workflow-loading.md) Stage core workflow loading | Task | done | done | H1-T1, H1-T11, H1-T12, H1-T13, H1-T18A |
 | [H1-T18](tasks/H1-T18-plan.md) Plan | Task | done | done | H1-T18A, H1-T18B, H1-T1, H1-T11, H1-T12, H1-T13, H1-T15, H1-T16, H1-T17 |
-| H1-T19 Commitment Gate | Node placeholder | needed | not_planned | — |
 | H1-T20 Execute | Node placeholder | needed | not_planned | — |
 | H1-T21 Proof of Work | Node placeholder | needed | not_planned | — |
 | H1-T22 Learning Promotion | Node placeholder | needed | not_planned | — |
