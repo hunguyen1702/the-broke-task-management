@@ -11,7 +11,7 @@ contextLoading: on_demand
 createdOn: 2026-09-28
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.10.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.11.0}
 ---
 ## Rule
 Produce a Story package for one observable outcome with a bounded product scope and credible cohesive acceptance boundary. It may contain several technical units without becoming an Epic.

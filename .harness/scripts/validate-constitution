@@ -146,7 +146,7 @@ class Constitution
     validate_scope(path, id, data['scope'])
     %w[extends supersedes].each { |key| validate_refs(path, id, data[key]) if data.key?(key) }
     if source == 'framework'
-      fail_at(path, 'framework rule must be active', id) unless data['status'] == 'active'
+      fail_at(path, 'framework rule must be active or superseded', id) unless %w[active superseded].include?(data['status'])
       fail_at(path, 'framework approval provenance mismatch', id) unless data['installationApproval'] == @manifest['installationApproval']
     elsif data['status'] == 'active'
       fail_at(path, 'active project rule lacks user approval metadata', id) unless data['approvedBy'] == 'user' && date?(data['approvedOn'])
@@ -215,6 +215,10 @@ class Constitution
     graph.keys.sort.each { |pair| walk.call(pair) }
     replacements.each do |target, rules|
       fail_at(rules.last[:path], "multiple effective replacements of #{target.join('@')}", rules.last[:data]['id']) if rules.length > 1
+    end
+    @rules.each do |rule|
+      pair = [rule[:data]['id'], rule[:data]['revision']]
+      fail_at(rule[:path], 'superseded rule lacks an active replacement', rule[:data]['id']) if rule[:data]['status'] == 'superseded' && !replacements.key?(pair)
     end
     @rules.each do |rule|
       rule[:effective] = rule[:data]['status'] == 'active' && !replacements.key?([rule[:data]['id'], rule[:data]['revision']])

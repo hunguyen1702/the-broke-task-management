@@ -55,21 +55,22 @@ class ConstitutionTest < Minitest::Test
     assert_equal 0, result[2].exitstatus, result[1]
     assert_equal index, File.binread(File.join(@temp, '.harness/index.yaml'))
     out, = run_script('inspect-effective')
-    assert_equal 17, YAML.safe_load(out)['rules'].length
+    assert_equal 18, YAML.safe_load(out)['rules'].length
     assert_includes out, '.harness/workflow/rule-current-truth-r1.md'
     assert_includes out, '.harness/workflow/rule-workflow-entry-r1.md'
     assert_includes out, '.harness/workflow/rule-intent-r1.md'
-    assert_includes out, '.harness/workflow/rule-risk-router-r1.md'
-    assert_includes out, '.harness/workflow/rule-direct-r1.md'
+    assert_includes out, '.harness/workflow/rule-risk-router-r2.md'
+    assert_includes out, '.harness/workflow/rule-direct-r2.md'
     assert_includes out, '.harness/workflow/rule-research-r1.md'
     assert_includes out, '.harness/workflow/rule-explore-r1.md'
     assert_includes out, '.harness/workflow/rule-spike-r1.md'
-    assert_includes out, '.harness/workflow/rule-plan-r1.md'
+    assert_includes out, '.harness/workflow/rule-plan-r2.md'
     assert_includes out, '.harness/workflow/rule-plan-epic-r1.md'
     assert_includes out, '.harness/workflow/rule-plan-story-r1.md'
     assert_includes out, '.harness/workflow/rule-plan-task-r1.md'
+    assert_includes out, '.harness/workflow/rule-execute-r1.md'
     refute File.exist?(File.join(@temp, '.harness/current-truth.md'))
-    %w[rule-current-truth rule-risk-router rule-direct rule-plan rule-plan-epic rule-plan-story rule-plan-task].each do |id|
+    %w[rule-current-truth rule-risk-router rule-direct rule-plan rule-plan-epic rule-plan-story rule-plan-task rule-execute].each do |id|
       assert_equal 'on_demand', YAML.safe_load(index)['rules'].find { |rule| rule['id'] == id }['contextLoading']
     end
   end
@@ -78,16 +79,33 @@ class ConstitutionTest < Minitest::Test
     context = YAML.safe_load(run_script('inspect-context', 'docs/a.md')[0])['rules']
     assert_equal 7, context.length
     assert_equal %w[rule-authority rule-governance rule-intent rule-repository rule-safety rule-verification rule-workflow-entry], context.map { |rule| rule['id'] }
-    refute context.any? { |rule| %w[rule-current-truth rule-risk-router rule-direct rule-research rule-explore rule-spike rule-plan rule-plan-epic rule-plan-story rule-plan-task].include?(rule['id']) }
-    %w[rule-current-truth rule-risk-router rule-direct rule-research rule-explore rule-spike rule-plan rule-plan-epic rule-plan-story rule-plan-task].each do |id|
+    refute context.any? { |rule| %w[rule-current-truth rule-risk-router rule-direct rule-research rule-explore rule-spike rule-plan rule-plan-epic rule-plan-story rule-plan-task rule-execute].include?(rule['id']) }
+    %w[rule-current-truth rule-risk-router rule-direct rule-research rule-explore rule-spike rule-plan rule-plan-epic rule-plan-story rule-plan-task rule-execute].each do |id|
       rules = YAML.safe_load(run_script('inspect-workflow', id, 'docs/a.md')[0])['rules']
       assert_equal [id], rules.map { |rule| rule['id'] }
     end
 
     effective = YAML.safe_load(run_script('inspect-effective')[0])['rules']
-    assert_equal 17, effective.length
+    assert_equal 18, effective.length
     assert_includes effective.map { |rule| rule['id'] }, 'rule-current-truth'
     assert_includes effective.map { |rule| rule['id'] }, 'rule-risk-router'
+  end
+
+  def test_framework_workflow_revisions_remain_auditable
+    rules = YAML.safe_load(File.binread(File.join(@temp, '.harness/index.yaml')))['rules']
+    %w[rule-direct rule-plan rule-risk-router].each do |id|
+      legacy = rules.find { |rule| rule['id'] == id && rule['revision'] == 1 }
+      current = rules.find { |rule| rule['id'] == id && rule['revision'] == 2 }
+      assert_equal 'superseded', legacy['status']
+      refute legacy['effective']
+      assert_equal true, current['effective']
+    end
+  end
+
+  def test_superseded_rule_requires_an_active_replacement
+    path = project_rule('project-old', status: 'superseded')
+    assert File.exist?(path)
+    assert_equal 1, run_script('rebuild-index')[2].exitstatus
   end
 
   def test_workflow_selection_errors_do_not_emit_partial_output
@@ -100,7 +118,7 @@ class ConstitutionTest < Minitest::Test
   end
 
   def test_workflow_replacement_extensions_and_loading_compatibility
-    project_workflow('project-direct', status: 'active', extra: "approvedOn: 2026-09-21\napprovedBy: user\nsupersedes: [{id: rule-direct, revision: 1}]\n")
+    project_workflow('project-direct', status: 'active', extra: "approvedOn: 2026-09-21\napprovedBy: user\nsupersedes: [{id: rule-direct, revision: 2}]\n")
     project_workflow('project-direct-extension', status: 'active', extra: "approvedOn: 2026-09-21\napprovedBy: user\nextends: [{id: project-direct, revision: 1}]\n")
     project_workflow('project-direct-transitive', status: 'active', extra: "approvedOn: 2026-09-21\napprovedBy: user\nextends: [{id: project-direct-extension, revision: 1}]\n")
     assert_equal 0, run_script('rebuild-index')[2].exitstatus

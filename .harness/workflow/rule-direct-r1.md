@@ -5,13 +5,13 @@ id: rule-direct
 revision: 1
 title: Frame established bounded work
 category: workflow
-status: active
+status: superseded
 scope: {repository: true}
 contextLoading: on_demand
 createdOn: 2026-09-27
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.10.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.11.0}
 ---
 ## Rule
 After Risk Router selects Direct, recheck its current assumptions and frame the

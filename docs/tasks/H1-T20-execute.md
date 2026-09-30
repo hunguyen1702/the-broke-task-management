@@ -2,7 +2,7 @@
 id: H1-T20
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - H1-T1
   - H1-T11
@@ -269,3 +269,18 @@ references are reconciled by TD-0008; their runtime alignment is an explicit
 H1-T20 implementation deliverable, not a claim about the installed snapshot.
 Dependency cross-check: `NO CONFLICT`. All direct implementation dependencies
 are `done`, so implementation is `ready`.
+
+## Implementation result
+
+Implemented the generic on-demand Execute workflow in the pinned 1.11.0
+Constitution snapshot. Direct, Router, and Plan now use retained, superseding
+revisions that route authorized bounded work through Execute; planning-only
+packages end with their proposed successor. Execute handles existing authority,
+deferred-question boundaries, local repair, returns, partial effects, and the
+semantic Proof of Work handoff without loading an absent Proof of Work rule.
+
+The validator now retains superseded framework revisions while requiring their
+provenance to match the installed snapshot. The derived index and isolated
+Constitution coverage verify the independent Execute lookup, bootstrap
+exclusion, and auditable Direct/Plan/Router revision history. Acceptance
+impact: `none`, because this changes repository-harness behavior only.

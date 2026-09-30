@@ -94,7 +94,7 @@ node demonstrates a concrete need.
 | H1-T18A | Lazy workflow loading | done; implementation done |
 | H1-T18B | Stage core workflow loading | done; implementation done |
 | H1-T18 | Plan | done; implementation done |
-| [H1-T20](../tasks/H1-T20-execute.md) | Execute | done; implementation ready |
+| [H1-T20](../tasks/H1-T20-execute.md) | Execute | done; implementation done |
 | H1-T21 | Proof of Work | needed |
 | H1-T22 | Learning Promotion | needed |
 | H1-T23 | Integrated flow validation | needed |
@@ -102,7 +102,7 @@ node demonstrates a concrete need.
 
 H1-T16, H1-T17, H1-T18A, H1-T18B, and H1-T18 Plan are implemented.
 H1-T19 Commitment Gate is deferred outside the active flow. H1-T20 Execute
-is planned and ready to implement. H1-T21–H1-T24 remain backlog placeholders, not approved implementation
+is implemented and verified. H1-T21–H1-T24 remain backlog placeholders, not approved implementation
 contracts. Their precise scope, sequence, and dependencies are decided when
 each node is planned. A Context
 Capsule is the candidate return output of Research, Explore, and Spike, not a
@@ -284,8 +284,8 @@ is archived for reference and must not be claimed.
   H1-T24 tracks the deferred Constitution rule-management workflow.
 - The user deferred H1-T19 Commitment Gate and revised the target lifecycle to
   Plan → Execute. H1-T19 is no longer on the active task board. The installed
-  Router and Plan workflow rules still describe the earlier gate; their
-  versioned alignment belongs to future approved implementation work. See
+  Router and Plan rules were aligned in Constitution snapshot 1.11.0; retained
+  historical revisions continue to record the earlier gate. See
   [TD-0008](../decisions/TD-0008-defer-h1-commitment-gate.md).
 - H1 is the first planning priority ahead of all remaining product-story plans.
 - H1-T20 Execute planning is complete in
@@ -299,4 +299,12 @@ is archived for reference and must not be claimed.
   deferred-question readiness. Independent decision and document reviews:
   READY. H1-T1/H1-T11–H1-T14/H1-T18A/H1-T18B/H1-T18 and TD-0008
   cross-check: NO CONFLICT. All dependencies are done; implementation is ready.
+- H1-T20 Execute is implemented in pinned snapshot 1.11.0. Its on-demand
+  Execute rule accepts Direct frames and actionable reviewed Plan units, checks
+  existing authority and local claim state, permits bounded repair, preserves
+  partial effects, and hands evidence to the semantic Proof of Work boundary.
+  Direct, Plan, and Router now use explicit superseding revisions with Plan →
+  Execute and no runtime Commitment Gate dependency. Constitution validation,
+  isolated workflow/index coverage, format, lint, and workspace tests passed;
+  acceptance impact is `none`.
 - The epic is approved at the architecture and decomposition level. Remaining H1 placeholders stay `planning_status: needed` until their dedicated planning sessions begin, then follow the normal `in_progress` and `done` planning lifecycle.

@@ -5,13 +5,13 @@ id: rule-plan
 revision: 1
 title: Produce a reviewed planning package
 category: workflow
-status: active
+status: superseded
 scope: {repository: true}
 contextLoading: on_demand
 createdOn: 2026-09-28
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.10.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.11.0}
 ---
 ## Rule
 After Risk Router selects Plan, reconcile confirmed Intent, Router handoff, Current Truth, the requirement, and applicable Context Capsules. Classify the smallest planning level: Epic for independent outcomes, Story for one observable outcome, or Implementation Task for one technical unit under an approved story. Plan creates a reviewed package and hands it to Commitment Gate; it neither approves execution nor invokes sibling workflows.

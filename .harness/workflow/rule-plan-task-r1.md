@@ -11,7 +11,7 @@ contextLoading: on_demand
 createdOn: 2026-09-28
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.10.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.11.0}
 ---
 ## Rule
 Produce one actionable technical specification only for an approved story whose observable behavior is fixed and whose work is one implementation unit. Return a mis-scoped unit to Plan classification and behavior changes to Story Planning or user authority.

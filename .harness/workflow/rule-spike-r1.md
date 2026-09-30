@@ -11,7 +11,7 @@ contextLoading: on_demand
 createdOn: 2026-09-27
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.10.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.11.0}
 ---
 ## Rule
 
