@@ -12,7 +12,7 @@ createdOn: 2026-09-30
 createdBy: framework
 origin: framework
 supersedes: [{id: rule-plan, revision: 1}]
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.11.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.12.0}
 ---
 ## Rule
 After Risk Router selects Plan, reconcile confirmed Intent, Router handoff, Current Truth, the requirement, and applicable Context Capsules. Classify the smallest planning level: Epic for independent outcomes, Story for one observable outcome, or Implementation Task for one technical unit under an approved story. Plan creates a reviewed package; it neither approves execution nor invokes sibling workflows.

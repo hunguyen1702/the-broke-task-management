@@ -11,7 +11,7 @@ contextLoading: on_demand
 createdOn: 2026-09-28
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.11.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.12.0}
 ---
 ## Rule
 Produce an Epic package only when confirmed work has multiple independently deliverable outcomes, multiple subsystems or user journeys, or no cohesive implementation and verification boundary. Preserve blocking uncertainty for its owner; do not decide it during decomposition.

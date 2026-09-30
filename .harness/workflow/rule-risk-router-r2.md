@@ -12,7 +12,7 @@ createdOn: 2026-09-30
 createdBy: framework
 origin: framework
 supersedes: [{id: rule-risk-router, revision: 1}]
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.11.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.12.0}
 ---
 ## Rule
 Given confirmed Intent and relevant Current Truth, select the smallest credible next workflow. Explain the decisive reason and next action briefly. Reconsider the route when material evidence, risk, authority, goal, or scope changes.

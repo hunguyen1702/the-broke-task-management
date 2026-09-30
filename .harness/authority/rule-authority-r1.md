@@ -10,7 +10,7 @@ scope: {repository: true}
 createdOn: 2026-09-21
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.11.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.12.0}
 ---
 ## Rule
 The user decides and delegates. Agents execute ordinary work within scope and ask for decisions that expand scope. Only the user approves rule activation or semantic governance changes.

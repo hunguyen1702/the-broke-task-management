@@ -2,7 +2,7 @@
 id: H1-T22
 kind: implementation_task
 planning_status: done
-implementation_status: blocked
+implementation_status: ready
 depends_on:
   - H1-T1
   - H1-T18A
@@ -21,8 +21,8 @@ durable change waits for explicit user approval of the concrete proposal.
 
 This is one technical unit under approved H1, not a new product story.
 The product PRD supplies no H1 behavior and requires no change. H1-T21 is
-planned but not implemented, so this task's implementation is blocked until
-that dependency is done. Planning approval does not authorize implementation.
+implemented, so this task is ready for implementation. Planning approval does
+not authorize implementation.
 
 ## Inputs and evaluation basis
 

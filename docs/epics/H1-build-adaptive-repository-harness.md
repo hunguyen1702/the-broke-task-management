@@ -97,15 +97,15 @@ node demonstrates a concrete need.
 | H1-T18B | Stage core workflow loading | done; implementation done |
 | H1-T18 | Plan | done; implementation done |
 | [H1-T20](../tasks/H1-T20-execute.md) | Execute | done; implementation done |
-| [H1-T21](../tasks/H1-T21-proof-of-work.md) | Proof of Work | done; implementation ready |
-| [H1-T22](../tasks/H1-T22-learning-promotion.md) | Learning Promotion | done; implementation blocked by H1-T21 |
+| [H1-T21](../tasks/H1-T21-proof-of-work.md) | Proof of Work | done; implementation done |
+| [H1-T22](../tasks/H1-T22-learning-promotion.md) | Learning Promotion | done; implementation ready |
 | H1-T23 | Integrated flow validation | needed |
 | H1-T24 | Manage Constitution rules (deferred workflow) | needed |
 
 H1-T16, H1-T17, H1-T18A, H1-T18B, and H1-T18 Plan are implemented.
 H1-T19 Commitment Gate is deferred outside the active flow. H1-T20 Execute
-is implemented and verified. H1-T21 is planned and implementation ready.
-H1-T22 is planned and implementation is blocked by H1-T21.
+is implemented and verified. H1-T21 is implemented and verified.
+H1-T22 is planned and implementation is ready.
 H1-T23–H1-T24 remain backlog placeholders, not approved implementation
 contracts. Their precise scope, sequence, and dependencies are decided when
 each node is planned. A Context
@@ -311,6 +311,14 @@ is archived for reference and must not be claimed.
   Execute and no runtime Commitment Gate dependency. Constitution validation,
   isolated workflow/index coverage, format, lint, and workspace tests passed;
   acceptance impact is `none`.
+- H1-T21 Proof of Work is implemented in the pinned 1.12.0 Constitution
+  snapshot. Its generic on-demand rule assesses final artifacts against the
+  existing work basis, reuses fresh evidence, runs authorized focused checks,
+  and returns precise defects or material changes to their owners. Execute now
+  has a retained superseding revision that selectively loads PoW. Accepted
+  proof ends at a semantic Learning Promotion handoff without installing an
+  absent workflow. Constitution validation, isolated workflow/index coverage,
+  format, lint, and workspace tests passed; acceptance impact is `none`.
 - H1-T21 Proof of Work planning is complete in
   [its implementation task](../tasks/H1-T21-proof-of-work.md). It assesses final
   outcome and required verification against the existing work basis, reuses
@@ -332,5 +340,5 @@ is archived for reference and must not be claimed.
   lookup or direct promotion. Implementation adds a generic on-demand node and
   superseding PoW handoff in a new pinned snapshot. H1-T1/H1-T18A/H1-T21
   cross-check: NO CONFLICT. Independent decision and fresh document reviews:
-  READY. Implementation is blocked until H1-T21 is done.
+  READY. Implementation is ready because H1-T21 is done.
 - The epic is approved at the architecture and decomposition level. Remaining H1 placeholders stay `planning_status: needed` until their dedicated planning sessions begin, then follow the normal `in_progress` and `done` planning lifecycle.

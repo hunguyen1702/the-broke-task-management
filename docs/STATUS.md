@@ -52,9 +52,9 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
   is implemented and verified; acceptance impact is `none`. H1-T18 Plan is
   implemented and verified; acceptance impact is `none`.
   The user removed H1-T19 Commitment Gate from the active H1 flow; H1-T20
-  Execute is implemented and verified. H1-T21 Proof of Work is planned and
-  implementation `ready`; H1-T22 Learning Promotion is planned and implementation
-  `blocked` until H1-T21 is done. H1-T23 is the next planning checkpoint.
+  Execute and H1-T21 Proof of Work are implemented and verified. H1-T22 Learning
+  Promotion is planned and implementation `ready`. H1-T23 is the next planning
+  checkpoint.
   Plan later nodes from that flow, not the
   archived component roadmap. Do not begin E8 planning until H1 is complete or the
   user explicitly changes the priority.
@@ -106,8 +106,8 @@ acceptance impact is `none` for each. H1-T18A lazy workflow loading is
 implemented and verified; acceptance impact is `none`. H1-T18 Plan planning is
 done and implementation is complete after H1-T18B staged core workflow loading.
 H1-T19 Commitment Gate is deferred outside the active flow. H1-T20 Execute
-is implemented and verified; H1-T21 is planned and implementation ready.
-H1-T22 is planned and blocked by H1-T21. H1-T23–H1-T24 remain
+is implemented and verified; H1-T21 is implemented and verified.
+H1-T22 is planned and implementation ready. H1-T23–H1-T24 remain
 unplanned placeholders with no approved implementation contract. Former
 H1-T2–H1-T10 are
 [archived for reference](handoff/H1-archived-component-roadmap.md), not active tasks.
@@ -128,8 +128,8 @@ H1-T2–H1-T10 are
 | [H1-T18B](tasks/H1-T18B-staged-core-workflow-loading.md) Stage core workflow loading | Task | done | done | H1-T1, H1-T11, H1-T12, H1-T13, H1-T18A |
 | [H1-T18](tasks/H1-T18-plan.md) Plan | Task | done | done | H1-T18A, H1-T18B, H1-T1, H1-T11, H1-T12, H1-T13, H1-T15, H1-T16, H1-T17 |
 | [H1-T20](tasks/H1-T20-execute.md) Execute | Task | done | done | H1-T1, H1-T11, H1-T12, H1-T13, H1-T14, H1-T18A, H1-T18B, H1-T18 |
-| [H1-T21](tasks/H1-T21-proof-of-work.md) Proof of Work | Task | done | ready | H1-T1, H1-T18A, H1-T20 |
-| [H1-T22](tasks/H1-T22-learning-promotion.md) Learning Promotion | Task | done | blocked | H1-T1, H1-T18A, H1-T21 |
+| [H1-T21](tasks/H1-T21-proof-of-work.md) Proof of Work | Task | done | done | H1-T1, H1-T18A, H1-T20 |
+| [H1-T22](tasks/H1-T22-learning-promotion.md) Learning Promotion | Task | done | ready | H1-T1, H1-T18A, H1-T21 |
 | H1-T23 Integrated flow validation | Checkpoint placeholder | needed | not_planned | — |
 | H1-T24 Manage Constitution rules | Deferred workflow placeholder | needed | not_planned | — |
 

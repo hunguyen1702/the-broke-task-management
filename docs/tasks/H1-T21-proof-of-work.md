@@ -2,7 +2,7 @@
 id: H1-T21
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - H1-T1
   - H1-T18A
@@ -209,3 +209,17 @@ lookup, assessment basis, authority, evidence reuse and return ownership:
 `NO CONFLICT`. Independent direct-document review: `READY`, with no material
 blocker. All direct dependencies are implemented; implementation is `ready`.
 H1-T22 remains separately planned work.
+
+## Implementation result
+
+Implemented the generic on-demand Proof of Work workflow and Execute revision
+in the pinned 1.12.0 Constitution snapshot. Execute now selectively loads PoW
+when a bounded unit is ready for assessment. PoW reconciles final artifacts,
+obligations, evidence freshness and verification coverage; it obtains
+authorized focused proof, returns repair or material drift to the correct
+owner, and reports accepted bounded completion or an exact blocker. Learning
+Promotion remains a semantic handoff until H1-T22 is installed.
+
+The derived index and isolated Constitution tests verify PoW's independent
+lookup, bootstrap exclusion, and retained Execute revision history. Acceptance
+impact: `none`, because this changes repository-harness behavior only.

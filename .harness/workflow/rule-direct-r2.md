@@ -12,7 +12,7 @@ createdOn: 2026-09-30
 createdBy: framework
 origin: framework
 supersedes: [{id: rule-direct, revision: 1}]
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.11.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.12.0}
 ---
 ## Rule
 After Risk Router selects Direct, recheck its current assumptions and frame the established, bounded action for Execute. Keep the action frame ephemeral and concise. Direct does not select routes, plan, execute work, claim completion, or define Proof of Work.
