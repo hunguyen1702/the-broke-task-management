@@ -243,11 +243,23 @@ Planning tiếp theo:
   H1-T16, H1-T17, H1-T18A, H1-T18B và H1-T18 Plan đã implementation xong.
   User đã tạm bỏ H1-T19 Commitment Gate khỏi active H1 flow: Plan chuyển
   thẳng sang Execute. H1-T19 được ghi trong deferred-work register, không còn
-  trong active task board; H1-T20 Execute là node tiếp theo cần planning.
-  Backlog H1-T20–H1-T23 vẫn là placeholder, chưa phê duyệt implementation
+  trong active task board; H1-T20 Execute đã planning xong, implementation ready.
+  Backlog H1-T21–H1-T23 vẫn là placeholder, chưa phê duyệt implementation
   contract. H1-T24 ghi nhận workflow quản lý
   Constitution rule đã defer. Các điểm defer khác nằm trong
   [H1 deferred-work register](H1-deferred-work.md).
+- **H1-T20 Execute** đã hoàn tất planning trong
+  [implementation plan](../tasks/H1-T20-execute.md), implementation `ready`.
+  Execute nhận Direct frame hoặc actionable Plan unit, dùng authority đã có,
+  thực hiện thay đổi và check/local repair trong scope. Material drift quay về
+  đúng node; partial effects được giữ và báo. PoW là node đánh giá riêng theo
+  contract công việc cùng Constitution/repository verification rules; cơ chế
+  nội bộ để H1-T21 plan. Planning-only request kết thúc ở package delivery,
+  không tự load Execute hay xin quyền implementation. H1-T20 đồng thời cập
+  nhật runtime Router/Plan theo TD-0008 bằng snapshot/revision mới, gồm xử lý
+  deferred questions. Independent decision và document reviews: READY.
+  Đọc lại H1-T1, H1-T11–H1-T14, H1-T18A, H1-T18B, H1-T18, parent H1 và
+  TD-0008 sau draft: NO CONFLICT. Các direct dependencies đều `done`.
 - Giữ **E8-S1: Connect the extension to repository state** ở trạng thái
   `needed`; chưa planning E8 cho đến khi H1 hoàn tất hoặc người dùng đổi ưu
   tiên rõ ràng.
@@ -551,12 +563,12 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 Nếu tiếp tục implementation:
 
 1. Xem [status dashboard](../STATUS.md) để chọn task implementation `ready`;
-   các task H1 đã có implementation contract đều hoàn tất. Claim task mới
-   sau khi planning của node đó kết thúc và dependency đã `done`.
+   H1-T20 Execute là task `ready` tiếp theo; claim trước khi implementation.
 
 Nếu tiếp tục planning:
 
-1. Chọn H1-T20 Execute làm node tiếp theo; H1-T19 Commitment Gate đã được
+1. Chọn H1-T21 Proof of Work làm node tiếp theo; H1-T20 Execute đã planning
+   xong và implementation `ready`. H1-T19 Commitment Gate đã được
    user tạm bỏ khỏi active flow và ghi trong deferred-work register.
 2. Plan node từ nhu cầu thực của flow H1 đã cập nhật.
    Xác định dependency khi planning, không dùng roadmap H1-T2–H1-T10 cũ hoặc
