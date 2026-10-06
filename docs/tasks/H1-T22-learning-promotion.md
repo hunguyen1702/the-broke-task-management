@@ -2,7 +2,7 @@
 id: H1-T22
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - H1-T1
   - H1-T18A
@@ -226,3 +226,17 @@ lookup, accepted-proof input, approval ownership, canonicality and return
 boundaries: `NO CONFLICT`. Fresh independent direct-document review: `READY`,
 with no material blocker. Implementation remains `blocked` by H1-T21; no
 product source or acceptance-scenario files were changed.
+
+## Implementation result
+
+Implemented the generic on-demand Learning Promotion workflow and a superseding
+Proof of Work handoff in the pinned 1.13.0 Constitution snapshot. Learning
+Promotion evaluates only accepted proof, keeps unsupported or already-covered
+observations ephemeral, presents a concrete proposal before durable changes,
+and preserves accepted unit completion while approval is pending or declined.
+PoW now selectively loads the installed learning workflow after accepted proof.
+
+The derived index and isolated Constitution tests verify the independent
+Learning Promotion lookup, bootstrap exclusion, retained PoW revision history,
+and selective PoW handoff. Acceptance impact: `none`, because this changes
+repository-harness behavior only.

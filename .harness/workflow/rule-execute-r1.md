@@ -11,7 +11,7 @@ contextLoading: on_demand
 createdOn: 2026-09-30
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.12.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.13.0}
 ---
 ## Rule
 After Direct frames an action or Plan reviews an actionable unit, reconcile the current inputs and existing authority, perform only the bounded work, repair local failures, and hand changes plus evidence to Proof of Work. Execute does not accept final proof or create an approval gate.

@@ -2,15 +2,16 @@
 schemaVersion: 1
 kind: constitution-rule
 id: rule-proof-of-work
-revision: 1
+revision: 2
 title: Assess proof of bounded work
 category: workflow
-status: superseded
+status: active
 scope: {repository: true}
 contextLoading: on_demand
 createdOn: 2026-10-01
 createdBy: framework
 origin: framework
+supersedes: [{id: rule-proof-of-work, revision: 1}]
 installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.13.0}
 ---
 ## Rule
@@ -37,13 +38,13 @@ flowchart TD
     X --> A
     E -- required proof unavailable --> K[Report blocked proof and partial effects]
     E -- yes --> P[Report accepted bounded completion]
-    P --> L[Semantic Learning Promotion handoff]
+    P --> L[Load Learning Promotion]
 ```
 
 1. **Reconcile.** Check the current unit, its work basis, final artifacts, applicable rules, and authority. Reuse evidence only when it still covers the final artifacts; a relevant later edit requires the affected check again. Stop on invalid Constitution or an applicable rule conflict. Return material goal or scope drift to Intent, and changed approach, evidence, or risk through Current Truth to Router.
 2. **Assess and verify.** Map the requested outcome, mandatory constraints, and required checks to actual evidence and its limits. A passing narrow test is insufficient when it does not cover an observable requirement. Run an authorized, non-mutating focused check when it can close an evidence gap. Required unavailable proof remains unmet; an optional limitation may be disclosed only when it does not defeat the outcome or a governing requirement.
 3. **Return precisely.** For a local implementation defect, state the failed obligation, evidence, and required revalidation, then run `inspect-workflow rule-execute` with the current relevant paths if its effective family is not already loaded or the relevant scope or rules changed. Preserve and disclose partial effects. Checks with material writes or external effects need the authority and workflow that govern those effects.
-4. **Accept within the boundary.** Report `accepted`, `needs_repair`, `needs_evidence`, or `blocked` with the evidence and limits. Accepted proof supports only the completed unit. Hand off a concise supported learning candidate, or `none`, to Learning Promotion without looking up an absent workflow or creating a durable learning artifact.
+4. **Accept within the boundary.** Report `accepted`, `needs_repair`, `needs_evidence`, or `blocked` with the evidence and limits. Accepted proof supports only the completed unit. Run `inspect-workflow rule-learning-promotion` with the current relevant paths and read its returned family; hand off a concise supported learning candidate, or `none`, without creating a durable learning artifact. Learning Promotion is not a completion gate.
 
 ```text
 Proof of Work: <unit> — <assessment>.
@@ -60,4 +61,4 @@ Next: <Execute repair, focused check, owning return, authority, or Learning Prom
 
 **Repair bad:** silently change artifacts after an evidence gap. **Good:** return a local defect to Execute, or reroute material approach or risk changes through Current Truth and Router.
 
-**Completion bad:** claim an accepted unit completes the epic or authorizes scenarios. **Good:** state the bounded unit, supported evidence, limits, and semantic Learning Promotion handoff.
+**Completion bad:** claim an accepted unit completes the epic or authorizes scenarios. **Good:** state the bounded unit, supported evidence, limits, and selective Learning Promotion handoff.

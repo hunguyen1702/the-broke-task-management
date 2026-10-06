@@ -11,7 +11,7 @@ contextLoading: always
 createdOn: 2026-09-21
 createdBy: framework
 origin: framework
-installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.12.0}
+installationApproval: {approvedBy: user, approvedOn: 2026-09-21, rulesetVersion: 1.13.0}
 ---
 ## Rule
 After loading the always-context Constitution rules, invoke the bootstrap

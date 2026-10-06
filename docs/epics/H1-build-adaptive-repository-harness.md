@@ -98,14 +98,13 @@ node demonstrates a concrete need.
 | H1-T18 | Plan | done; implementation done |
 | [H1-T20](../tasks/H1-T20-execute.md) | Execute | done; implementation done |
 | [H1-T21](../tasks/H1-T21-proof-of-work.md) | Proof of Work | done; implementation done |
-| [H1-T22](../tasks/H1-T22-learning-promotion.md) | Learning Promotion | done; implementation ready |
+| [H1-T22](../tasks/H1-T22-learning-promotion.md) | Learning Promotion | done; implementation done |
 | [H1-T23](../tasks/H1-T23-integrated-flow-validation.md) | Integrated flow validation | done; implementation ready |
 | H1-T24 | Manage Constitution rules (deferred workflow) | needed |
 
 H1-T16, H1-T17, H1-T18A, H1-T18B, and H1-T18 Plan are implemented.
 H1-T19 Commitment Gate is deferred outside the active flow. H1-T20 Execute
-is implemented and verified. H1-T21 is implemented and verified.
-H1-T22 is planned and implementation is ready.
+is implemented and verified. H1-T21 and H1-T22 are implemented and verified.
 H1-T23 is planned as a validation-only checkpoint; remediation is separate.
 H1-T24 remains a backlog placeholder without an approved implementation
 contract; its precise scope, sequence and dependencies are decided when
@@ -342,6 +341,13 @@ is archived for reference and must not be claimed.
   superseding PoW handoff in a new pinned snapshot. H1-T1/H1-T18A/H1-T21
   cross-check: NO CONFLICT. Independent decision and fresh document reviews:
   READY. Implementation is ready because H1-T21 is done.
+- H1-T22 Learning Promotion is implemented in the pinned 1.13.0 Constitution
+  snapshot. Its generic on-demand rule assesses accepted proof for useful,
+  bounded learning; unsupported or already-covered observations remain
+  ephemeral, while every durable change awaits approval of a concrete proposal.
+  PoW now selectively loads the installed workflow without making promotion a
+  completion gate. Constitution validation and isolated workflow/index coverage
+  passed; acceptance impact is `none`.
 - H1-T23 Integrated flow validation planning is complete in
   [its task](../tasks/H1-T23-integrated-flow-validation.md). The user approved
   validation only and separate remediation. Existing deterministic checks and
