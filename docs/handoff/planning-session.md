@@ -15,6 +15,30 @@ quy tắc ownership bên dưới. Parallel planning không cho phép một story
 
 ## Trạng thái hiện tại
 
+### H1-T23 planning handoff (2026-10-06)
+
+- [Integrated flow validation](../tasks/H1-T23-integrated-flow-validation.md)
+  đã planning `done`, implementation `ready`. User chốt validation-only,
+  remediation riêng và tiếp tục claim H1-T23 hiện có. Không tạo epic mới;
+  outcome thuộc H1 và không đổi product PRD.
+- Checkpoint dùng checks hiện có và semantic walkthrough có observed trace;
+  phân biệt command evidence, walkthrough và execution thực tế. Report kết quả
+  chỉ được tạo khi execution riêng, tại
+  `docs/handoff/H1-T23-integrated-flow-validation-results.md`.
+- Đã đọc lại H1-T15/H1-T16/H1-T17/H1-T18/H1-T22 sau draft. Source/owner,
+  state/handoff, authority, evidence freshness, persistence, isolation và
+  concurrency boundaries: `NO CONFLICT`. TD-0008 và các contract mới về staged
+  loading/Execute/PoW giải thích handoff lịch sử. Independent decision review và
+  fresh direct-document review: `READY`, không còn blocker.
+- Dependencies đều implementation `done`. Verdict `verified`, `findings` hoặc
+  `blocked` độc lập với việc hoàn tất assessment; không tự đóng H1, mở E8,
+  triển khai H1-T24 hay sửa runtime để pass. Chưa chạy integration walkthrough
+  hoặc checkpoint trong planning session này.
+- Planning verification: Constitution validate, format, lint, workspace và
+  Constitution tests, link check và `git diff --check` đều pass. Lần test đầu
+  bị chặn bởi Git signing thiếu secret key; rerun pass với `commit.gpgsign=false`
+  chỉ trong environment tiến trình test, không sửa Git config hay source.
+
 Story đã hoàn tất planning:
 
 - **E1-S1: Initialize a repository**
@@ -244,10 +268,9 @@ Planning tiếp theo:
   User đã tạm bỏ H1-T19 Commitment Gate khỏi active H1 flow: Plan chuyển
   thẳng sang Execute. H1-T19 được ghi trong deferred-work register, không còn
   trong active task board; H1-T20 Execute đã implementation xong.
-  H1-T21 đã planning xong, implementation ready.
-  H1-T22 đã planning xong, implementation blocked bởi H1-T21.
-  H1-T23 vẫn là placeholder, chưa phê duyệt implementation
-  contract. H1-T24 ghi nhận workflow quản lý
+  H1-T21 và H1-T22 đã implementation xong.
+  H1-T23 đã planning xong, implementation ready; xem checkpoint handoff ở đầu
+  tài liệu. H1-T24 ghi nhận workflow quản lý
   Constitution rule đã defer. Các điểm defer khác nằm trong
   [H1 deferred-work register](H1-deferred-work.md).
 - **H1-T20 Execute** đã hoàn tất planning trong
@@ -592,16 +615,16 @@ Xem dashboard tập trung tại [Planning and implementation status](../STATUS.m
 Nếu tiếp tục implementation:
 
 1. Xem [status dashboard](../STATUS.md) để chọn task implementation `ready`;
-   H1-T21 Proof of Work là task `ready` tiếp theo; claim trước khi implementation.
+   H1-T23 Integrated flow validation là checkpoint `ready` tiếp theo;
+   claim trước khi execution. H1-T20/H1-T21/H1-T22 đã implementation `done`.
 
 Nếu tiếp tục planning:
 
-1. H1-T22 Learning Promotion đã planning xong, implementation `blocked` bởi
-   H1-T21. Chọn H1-T23 Integrated flow validation làm checkpoint planning tiếp
-   theo; xác định prerequisites từ actual flow khi planning. H1-T21 Proof of
-   Work vẫn implementation `ready`; H1-T20 Execute đã done.
-   H1-T19 Commitment Gate đã được
-   user tạm bỏ khỏi active flow và ghi trong deferred-work register.
+1. H1-T23 đã planning xong và implementation `ready`; ưu tiên validation
+   checkpoint riêng trước khi quyết định scope H1 tiếp theo từ findings thực tế.
+   H1-T24 rule management vẫn deferred và chưa có implementation contract.
+   H1-T19 Commitment Gate đã được user tạm bỏ khỏi active flow và ghi trong
+   deferred-work register.
 2. Plan node từ nhu cầu thực của flow H1 đã cập nhật.
    Xác định dependency khi planning, không dùng roadmap H1-T2–H1-T10 cũ hoặc
    pre-author shared schema/component cho toàn bộ harness. Giữ các điểm defer

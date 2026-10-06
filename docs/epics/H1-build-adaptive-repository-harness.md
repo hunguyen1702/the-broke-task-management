@@ -99,16 +99,17 @@ node demonstrates a concrete need.
 | [H1-T20](../tasks/H1-T20-execute.md) | Execute | done; implementation done |
 | [H1-T21](../tasks/H1-T21-proof-of-work.md) | Proof of Work | done; implementation done |
 | [H1-T22](../tasks/H1-T22-learning-promotion.md) | Learning Promotion | done; implementation ready |
-| H1-T23 | Integrated flow validation | needed |
+| [H1-T23](../tasks/H1-T23-integrated-flow-validation.md) | Integrated flow validation | done; implementation ready |
 | H1-T24 | Manage Constitution rules (deferred workflow) | needed |
 
 H1-T16, H1-T17, H1-T18A, H1-T18B, and H1-T18 Plan are implemented.
 H1-T19 Commitment Gate is deferred outside the active flow. H1-T20 Execute
 is implemented and verified. H1-T21 is implemented and verified.
 H1-T22 is planned and implementation is ready.
-H1-T23–H1-T24 remain backlog placeholders, not approved implementation
-contracts. Their precise scope, sequence, and dependencies are decided when
-each node is planned. A Context
+H1-T23 is planned as a validation-only checkpoint; remediation is separate.
+H1-T24 remains a backlog placeholder without an approved implementation
+contract; its precise scope, sequence and dependencies are decided when
+planned. A Context
 Capsule is the candidate return output of Research, Explore, and Spike, not a
 preselected separate component. Tests, lints, and skills are possible Learning
 Promotion targets, not folders or systems prescribed here. Extract common
@@ -284,7 +285,7 @@ is archived for reference and must not be claimed.
   validation, lookup checks, format, lint, and tests passed; acceptance impact
   is `none`.
 - The former H1-T2–H1-T10 component roadmap was archived. H1-T18 Plan is
-  implemented; H1-T23 remains a node-first planning placeholder, and
+  implemented; H1-T23 is now a planned validation checkpoint, and
   H1-T24 tracks the deferred Constitution rule-management workflow.
 - The user deferred H1-T19 Commitment Gate and revised the target lifecycle to
   Plan → Execute. H1-T19 is no longer on the active task board. The installed
@@ -341,4 +342,16 @@ is archived for reference and must not be claimed.
   superseding PoW handoff in a new pinned snapshot. H1-T1/H1-T18A/H1-T21
   cross-check: NO CONFLICT. Independent decision and fresh document reviews:
   READY. Implementation is ready because H1-T21 is done.
+- H1-T23 Integrated flow validation planning is complete in
+  [its task](../tasks/H1-T23-integrated-flow-validation.md). The user approved
+  validation only and separate remediation. Existing deterministic checks and
+  recorded semantic traces assess the active lifecycle, selective loading,
+  authority, returns, proof, learning and unnecessary ceremony. Command checks,
+  walkthroughs and actual execution retain distinct evidence limits. A dated
+  checkpoint report records `verified`, `findings` or `blocked`; finishing the
+  assessment does not establish H1 completion. H1-T15/H1-T16/H1-T17/H1-T18/H1-T22
+  were re-read after drafting; later explicit decisions reconcile historical
+  handoffs. Cross-check: `NO CONFLICT`. Independent decision and fresh document
+  reviews: `READY`. Dependencies are done; implementation is `ready`.
+  No checkpoint walkthrough or execution was performed during planning.
 - The epic is approved at the architecture and decomposition level. Remaining H1 placeholders stay `planning_status: needed` until their dedicated planning sessions begin, then follow the normal `in_progress` and `done` planning lifecycle.
