@@ -1,0 +1,11 @@
+# E9-S3 claim interruption evidence
+
+The real CLI claim interruption proof now passes on macOS. `rtk cargo test -p tbtm --test recovery_interruption` runs `killed_claim_writer_preserves_original_claims_and_repository_health` (1 passed, 0 ignored on 2026-10-07). The core rollback command `rtk cargo test -p tbtm-core recovery_rollback` runs one passing claim test.
+
+The CLI fixture is fully migrated and has a preexisting claim row with a unique marker. A read-only transaction reads `task_claims` and holds SQLite's SHARED lock. The real `task claim --json` child runs against an unclaimed target. Before the three-second deadline, the test requires the marker from the preexisting claim page in SQLite's rollback journal and confirms the child is still alive. The marker is absent from other fixture tables and a clean journal is required before launch, so this journal page is attributable to the requested claim-table mutation. The child is killed and reaped before the reader lock is released, including on failure. Its five-second busy timeout cannot expire before the gate deadline.
+
+After termination, the test opens the existing database writable so SQLite can recover. It compares complete public task views from before and after, including the original claim owner and timestamp, claim absence on the target, actor/timestamp metadata, and an unrelated task. It then requires `PRAGMA integrity_check = ok`, no foreign-key violations, and healthy read-only `repo status`.
+
+The core test `recovery_rollback_claim_post_write_failure_preserves_claims_and_tasks` calls the public claim operation with a test-owned trigger that first writes a probe row and then raises `FAIL`. It confirms the claim row, probe write, and task metadata all retain their original state. This is a separate post-write rollback proof; CLI termination covers the process boundary.
+
+Earlier feasibility evidence showed that the old no-op migration transaction timed out under the SHARED reader before claim insertion (`DATABASE_UNAVAILABLE`, `database migration`, `database is locked`). Approved remediation commit `2c3276e` skips that transaction when the schema is current. The same hook-free gate then reached the claim mutation and passed. This evidence applies to the executed macOS platform; other platforms have not been checked.

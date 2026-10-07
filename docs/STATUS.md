@@ -41,23 +41,6 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 
 ## Next work
 
-- **H1 is the first priority before all remaining product-story plans.**
-  H1-T0 validated the node-first flow; H1-T1 Constitution is implemented and
-  H1-T11 Current Truth is implemented and verified; acceptance impact is `none`.
-- H1-T12 Intent and H1-T13 Risk Router are implemented and verified;
-  acceptance impact is `none`. H1-T14 Direct path, H1-T15 Research,
-  H1-T16 Explore, and H1-T17 Spike are implemented and verified; acceptance
-  impact is `none` for each. H1-T18A lazy workflow loading is implemented and
-  verified; acceptance impact is `none`. H1-T18B staged core workflow loading
-  is implemented and verified; acceptance impact is `none`. H1-T18 Plan is
-  implemented and verified; acceptance impact is `none`.
-  The user removed H1-T19 Commitment Gate from the active H1 flow; H1-T20
-  Execute, H1-T21 Proof of Work, and H1-T22 Learning Promotion are implemented
-  and verified. H1-T23 Integrated flow validation is complete and verified;
-  acceptance impact is `none` because it changed only harness-validation documentation.
-  Plan later nodes from that flow, not the
-  archived component roadmap. Do not begin E8 planning until H1 is complete or the
-  user explicitly changes the priority.
 - E1-S1-T2 is complete; repeat initialization now expects the authoritative
   exit `2`, and AT-E1-S1-001 passed its targeted rerun.
 - E4-S5-T2 is complete with focused core and CLI regression coverage for child
@@ -92,47 +75,6 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 - E7-S4-T1 is implemented and verified with availability/acquisition help, actor/force boundary coverage, claim conflict and empty-result checks, and a canonical-store lifecycle across main and linked worktrees. Acceptance impact is `none` because the audit found no user-visible behavior change.
 - E7-S5-T1 is implemented and verified with immutable correction help, exact command/actor/input boundary checks, repeatable JSON transport coverage, and a canonical-store add/list/delete journey across main and linked worktrees. Acceptance impact `add` for E7-S5 is queued for the separate scenario workflow.
 - E9-S1-T1 is implemented and verified with a deterministic process gate, 120 repeated race rounds across main-to-linked and linked-to-linked worktrees, exact command and canonical-row assertions, and SQLite integrity checks. Acceptance impact is `none`.
-
-## H1 — Adaptive repository harness (first priority)
-
-H1 is an engineering-enablement epic outside the `tbtm` product contract.
-H1-T0 validated the node-first flow; H1-T1 Constitution is implemented and
-verified. H1-T11 Current Truth is implemented as a generic Constitution workflow.
-Acceptance impact for both tasks is `none`.
-H1-T12 Intent, H1-T13 Risk Router, and H1-T14 Direct path planning and
-implementation are complete. Acceptance impact for each is `none`. H1-T15
-Research, H1-T16 Explore, and H1-T17 Spike implementation are complete;
-acceptance impact is `none` for each. H1-T18A lazy workflow loading is
-implemented and verified; acceptance impact is `none`. H1-T18 Plan planning is
-done and implementation is complete after H1-T18B staged core workflow loading.
-H1-T19 Commitment Gate is deferred outside the active flow. H1-T20 Execute
-is implemented and verified; H1-T21 and H1-T22 are implemented and verified.
-H1-T23 Integrated flow validation is complete and verified; acceptance impact
-is `none` because it changed only harness-validation documentation.
-H1-T24 remains an unplanned deferred workflow placeholder. Former
-H1-T2–H1-T10 are
-[archived for reference](handoff/H1-archived-component-roadmap.md), not active tasks.
-
-| ID | Kind | Planning | Implementation | Depends on |
-|---|---|---|---|---|
-| [H1](epics/H1-build-adaptive-repository-harness.md) | Engineering epic | done | in_progress | — |
-| [H1-T0](tasks/H1-T0-validate-working-flow.md) Validate working flow | Task | done | done | — |
-| [H1-T1](tasks/H1-T1-implement-constitution.md) Constitution | Task | done | done | H1-T0 |
-| [H1-T11](tasks/H1-T11-current-truth.md) Current Truth | Task | done | done | H1-T1 |
-| [H1-T12](tasks/H1-T12-intent.md) Intent | Task | done | done | H1-T1, H1-T11 |
-| [H1-T13](tasks/H1-T13-risk-router.md) Risk Router | Task | done | done | H1-T1, H1-T11, H1-T12 |
-| [H1-T14](tasks/H1-T14-direct-path.md) Direct path | Task | done | done | H1-T1, H1-T11, H1-T12, H1-T13 |
-| [H1-T15](tasks/H1-T15-research.md) Research | Task | done | done | H1-T1, H1-T11, H1-T12, H1-T13 |
-| [H1-T16](tasks/H1-T16-explore.md) Explore | Task | done | done | H1-T1, H1-T11, H1-T12, H1-T13 |
-| [H1-T17](tasks/H1-T17-spike.md) Spike | Task | done | done | H1-T1, H1-T11, H1-T12, H1-T13 |
-| [H1-T18A](tasks/H1-T18A-lazy-workflow-loading.md) Lazy workflow loading | Task | done | done | H1-T1, H1-T11, H1-T12, H1-T13, H1-T14, H1-T15, H1-T16, H1-T17 |
-| [H1-T18B](tasks/H1-T18B-staged-core-workflow-loading.md) Stage core workflow loading | Task | done | done | H1-T1, H1-T11, H1-T12, H1-T13, H1-T18A |
-| [H1-T18](tasks/H1-T18-plan.md) Plan | Task | done | done | H1-T18A, H1-T18B, H1-T1, H1-T11, H1-T12, H1-T13, H1-T15, H1-T16, H1-T17 |
-| [H1-T20](tasks/H1-T20-execute.md) Execute | Task | done | done | H1-T1, H1-T11, H1-T12, H1-T13, H1-T14, H1-T18A, H1-T18B, H1-T18 |
-| [H1-T21](tasks/H1-T21-proof-of-work.md) Proof of Work | Task | done | done | H1-T1, H1-T18A, H1-T20 |
-| [H1-T22](tasks/H1-T22-learning-promotion.md) Learning Promotion | Task | done | done | H1-T1, H1-T18A, H1-T21 |
-| [H1-T23](tasks/H1-T23-integrated-flow-validation.md) Integrated flow validation | Validation checkpoint | done | done | H1-T15, H1-T16, H1-T17, H1-T18, H1-T22 |
-| H1-T24 Manage Constitution rules | Deferred workflow placeholder | needed | not_planned | — |
 
 ## E1 — Repository foundation and identity
 
@@ -256,6 +198,8 @@ H1-T2–H1-T10 are
 |---|---|---|---|
 | [E9-S1](epics/E9-S1-verify-concurrent-claim-safety.md) | done | done | E1-S5, E5-S1, E5-S2 |
 | [E9-S1-T1](tasks/E9-S1-T1-harden-concurrent-claim-verification.md) | done | done | E1-S5-T1, E5-S1-T1, E5-S2-T1 |
-| E9-S2 Verify graph and availability invariants | needed | not_planned | E3-S3, E4-S1, E4-S2, E4-S3, E4-S4, E4-S5, E2-S5, E2-S6 |
-| E9-S3 Verify data recovery behavior | needed | not_planned | E1-S1, E4-S2, E5-S1 |
+| [E9-S2](epics/E9-S2-verify-graph-and-availability-invariants.md) | done | done | E3-S3, E4-S1, E4-S2, E4-S3, E4-S4, E4-S5, E2-S5, E2-S6 |
+| [E9-S2-T1](tasks/E9-S2-T1-verify-graph-and-availability-transitions.md) | done | done | E2-S3-T1, E2-S5-T1, E2-S6-T1, E3-S3-T1, E4-S1-T1, E4-S2-T1, E4-S3-T1, E4-S4-T1, E4-S5-T1, E4-S5-T2, E5-S1-T1, E5-S5-T1 |
+| [E9-S3](epics/E9-S3-verify-data-recovery-behavior.md) | done | done | E1-S1, E4-S2, E5-S1 |
+| [E9-S3-T1](tasks/E9-S3-T1-verify-interruption-and-offline-recovery.md) | done | done | E1-S1-T1, E1-S2-T1, E1-S3-T1, E1-S5-T1, E2-S1-T1, E4-S1-T1, E4-S2-T1, E5-S1-T1, E7-S1-T1 |
 | E9-S4 Document agent and human workflows | needed | not_planned | E7-S1, E7-S2, E7-S3, E7-S4, E7-S5, E8-S1, E8-S2, E8-S3, E8-S4, E8-S5, E8-S6, E8-S7, E8-S8 |

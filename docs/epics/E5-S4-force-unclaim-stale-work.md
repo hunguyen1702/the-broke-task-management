@@ -126,7 +126,7 @@ Syntax failures exit `2`. Repository, database, permission, busy-timeout, and un
 ## Out of scope
 
 - Authentication or proof that a human rather than an agent process invoked a logical-user command.
-- Agent-runtime approval rules for user-only commands; see [Agent approval for user-only commands](../improvements/agent-approval-for-user-only-commands.md).
+- Agent-runtime approval rules for user-only commands.
 - Automatic expiry, heartbeats, background stale detection, claim transfer, notifications, or daemons.
 - Changing task status or mutation metadata as a consequence of claim release.
 - Claim/status lifecycle regression consolidation; E5-S5.

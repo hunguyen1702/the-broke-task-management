@@ -217,4 +217,3 @@ Also smoke-test interactive and `--yes --json` force-unclaim from the main workt
 - [E2-S5 force-confirmation contract](../epics/E2-S5-archive-a-task.md)
 - [E2-S2 full-task shape](../epics/E2-S2-view-and-list-tasks.md)
 - [E4-S3 authoritative availability query](../epics/E4-S3-query-available-tasks.md)
-- [Agent approval future improvement](../improvements/agent-approval-for-user-only-commands.md)
