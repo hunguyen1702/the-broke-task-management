@@ -1,6 +1,8 @@
 # 11: Verify interrupted relationship mutations
 
+Type: task
 Status: resolved
+Blocked by: 10
 
 **What to build:** Prove real CLI termination and post-write failures preserve original dependency and hierarchy state, using the validated interruption boundary from ticket 10. This is a slice of approved E9-S3-T1.
 

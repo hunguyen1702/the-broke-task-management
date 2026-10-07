@@ -1,6 +1,8 @@
 # 09: Verify graph and availability transitions
 
+Type: task
 Status: resolved
+Blocked by: None
 
 **What to build:** Prove that agents receive exactly the eligible, deterministically ordered work through graph and lifecycle changes, while existing claims retain their contractual meaning. This ticket implements the approved E9-S2-T1 scope under E9-S2; it does not claim implementation by publication.
 

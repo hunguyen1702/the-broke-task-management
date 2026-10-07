@@ -157,6 +157,11 @@ fn documented_offline_backup_restores_saved_state_and_survives_uninstall() {
     recovery_script(&script);
     let backup = external.join("backup.tbtm");
     let displaced = external.join("displaced.tbtm");
+    let linked_backup = linked.join("backup.tbtm");
+    let refused = recover(&script, &[Path::new("backup"), &linked, &linked_backup]);
+    assert!(!refused.status.success());
+    assert!(String::from_utf8_lossy(&refused.stderr).contains("outside every repository worktree"));
+    assert!(!linked_backup.exists());
     let output = recover(&script, &[Path::new("backup"), &linked, &backup]);
     assert!(
         output.status.success(),
@@ -168,6 +173,29 @@ fn documented_offline_backup_restores_saved_state_and_survives_uninstall() {
             .status
             .success()
     );
+    fs::create_dir(&linked_backup).unwrap();
+    fs::copy(
+        backup.join("config.json"),
+        linked_backup.join("config.json"),
+    )
+    .unwrap();
+    fs::copy(backup.join("tbtm.db"), linked_backup.join("tbtm.db")).unwrap();
+    let refused = recover(
+        &script,
+        &[Path::new("restore"), &linked, &linked_backup, &displaced],
+    );
+    assert!(!refused.status.success());
+    assert!(String::from_utf8_lossy(&refused.stderr).contains("outside every repository worktree"));
+    assert!(!displaced.exists());
+    fs::remove_dir_all(&linked_backup).unwrap();
+    let linked_displaced = linked.join("displaced.tbtm");
+    let refused = recover(
+        &script,
+        &[Path::new("restore"), &linked, &backup, &linked_displaced],
+    );
+    assert!(!refused.status.success());
+    assert!(String::from_utf8_lossy(&refused.stderr).contains("outside every repository worktree"));
+    assert!(!linked_displaced.exists());
 
     run(
         &main,

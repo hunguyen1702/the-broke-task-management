@@ -21,11 +21,12 @@ def run(*args, cwd):
     return result.stdout
 
 
-def canonical_root(worktree):
+def worktree_roots(worktree):
     lines = run("git", "worktree", "list", "--porcelain", cwd=worktree).splitlines()
     if not lines or not lines[0].startswith("worktree "):
         raise RuntimeError("cannot resolve canonical Git worktree")
-    return pathlib.Path(lines[0][9:]).resolve(strict=True)
+    return [pathlib.Path(line[9:]).resolve(strict=True)
+            for line in lines if line.startswith("worktree ")]
 
 
 def check_workspace(workspace):
@@ -56,10 +57,10 @@ def health(worktree, root, identity):
         raise RuntimeError("repository health or canonical identity mismatch; preserve workspace")
 
 
-def outside_repo(path, root):
+def outside_repo(path, roots):
     path = path.resolve()
-    if path == root or root in path.parents:
-        raise RuntimeError("destination must be outside the repository")
+    if any(path == root or root in path.parents for root in roots):
+        raise RuntimeError("destination must be outside every repository worktree")
     if path.exists() or path.is_symlink():
         raise RuntimeError(f"destination already exists: {path}")
     if not path.parent.is_dir():
@@ -71,11 +72,12 @@ def main():
     if len(sys.argv) not in (4, 5) or sys.argv[1] not in ("backup", "restore"):
         raise RuntimeError("usage: recovery.py backup WORKTREE EXTERNAL_BACKUP | restore WORKTREE EXTERNAL_BACKUP EXTERNAL_DISPLACED")
     action, worktree = sys.argv[1], pathlib.Path(sys.argv[2]).resolve(strict=True)
-    root = canonical_root(worktree)
+    roots = worktree_roots(worktree)
+    root = roots[0]
     live = root / ".tbtm"
     backup = pathlib.Path(sys.argv[3]).resolve()
     if action == "backup":
-        destination = outside_repo(backup, root)
+        destination = outside_repo(backup, roots)
         identity = check_workspace(live)
         health(worktree, root, identity)
         shutil.copytree(live, destination)
@@ -84,9 +86,9 @@ def main():
     else:
         if len(sys.argv) != 5 or not backup.is_dir() or backup.is_symlink():
             raise RuntimeError("existing external backup and displaced destination required")
-        if backup == live or root in backup.parents:
-            raise RuntimeError("backup must be outside the repository")
-        displaced = outside_repo(pathlib.Path(sys.argv[4]), root)
+        if any(backup == root or root in backup.parents for root in roots):
+            raise RuntimeError("backup must be outside every repository worktree")
+        displaced = outside_repo(pathlib.Path(sys.argv[4]), roots)
         if displaced == backup or backup in displaced.parents or displaced in backup.parents:
             raise RuntimeError("backup and displaced destinations must be separate")
         identity = check_workspace(backup)

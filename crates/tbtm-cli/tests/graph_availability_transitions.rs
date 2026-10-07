@@ -120,10 +120,12 @@ fn chain_claims_follow_direct_effective_completion_and_hierarchy_is_independent(
     let root = isolated.path();
     data(root, &["init", "--prefix", "project", "--json"]);
     let a = task(root, "A", "to_do");
-    let b = task(root, "B", "done");
+    let b = task(root, "B", "to_do");
     let c = task(root, "C", "to_do");
     depends(root, &b, &a);
     depends(root, &c, &b);
+    available(root, &[&a]);
+    data(root, &["task", "update", &b, "--status", "done", "--json"]);
     available(root, &[&a, &c]);
     let blockers = data(root, &["task", "blockers", &c, "--json"]);
     assert_eq!(
@@ -146,6 +148,48 @@ fn chain_claims_follow_direct_effective_completion_and_hierarchy_is_independent(
         .collect();
     assert!(nodes.contains(&a.as_str()));
     assert!(nodes.contains(&b.as_str()));
+    let agent = data(root, &["agent", "register", "worker", "--json"])["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert_eq!(
+        data(root, &["task", "claim", &c, "--agent", &agent, "--json"])["claim"]["agent"]["id"],
+        agent
+    );
+    data(root, &["task", "unclaim", &c, "--agent", &agent, "--json"]);
+    data(root, &["task", "update", &b, "--status", "to_do", "--json"]);
+    available(root, &[&a]);
+    data(
+        root,
+        &["task", "archive", &b, "--reason", "obsolete", "--json"],
+    );
+    available(root, &[&a, &c]);
+    let blockers = data(root, &["task", "blockers", &c, "--json"]);
+    assert_eq!(
+        blockers["unresolvedDependencies"]["direct"],
+        serde_json::json!([])
+    );
+    assert_eq!(
+        blockers["unresolvedDependencies"]["recursive"],
+        serde_json::json!([])
+    );
+    let map = data(
+        root,
+        &["task", "map", &c, "--direction", "upstream", "--json"],
+    );
+    let nodes: Vec<_> = map["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|node| node["id"].as_str().unwrap())
+        .collect();
+    assert!(nodes.contains(&a.as_str()));
+    assert!(nodes.contains(&b.as_str()));
+    assert_eq!(
+        data(root, &["task", "claim", &c, "--agent", &agent, "--json"])["claim"]["agent"]["id"],
+        agent
+    );
+    data(root, &["task", "unclaim", &c, "--agent", &agent, "--json"]);
     let parent = data(
         root,
         &[

@@ -1,6 +1,8 @@
 # 13: Verify actionable repository failures
 
+Type: task
 Status: resolved
+Blocked by: None
 
 **What to build:** Prove existing repository/configuration/database/permission failures provide actionable recovery direction and stable machine-readable results while preserving repository data. This is a slice of approved E9-S3-T1.
 

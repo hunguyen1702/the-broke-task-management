@@ -1,6 +1,8 @@
 # 10: Verify interrupted claim acquisition
 
+Type: task
 Status: resolved
+Blocked by: None
 
 **What to build:** Establish trustworthy real CLI evidence that terminating claim acquisition after its mutation begins and before commit preserves original repository state. Include focused claim rollback evidence and recovered health checks. This is a slice of approved E9-S3-T1, not a new production feature.
 

@@ -1,6 +1,8 @@
 # 12: Verify offline backup and restoration
 
+Type: task
 Status: resolved
+Blocked by: None
 
 **What to build:** Give the human exact runnable offline recovery guidance and execute those same steps to prove complete saved repository state can be restored safely, including access through linked worktrees. This is a slice of approved E9-S3-T1.
 
