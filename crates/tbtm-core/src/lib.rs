@@ -1123,6 +1123,11 @@ fn validate_migration_ledger(connection: &Connection, path: &Path) -> Result<Vec
 }
 
 fn apply_pending_migrations(resolved: &mut ResolvedRepository) -> Result<(), Error> {
+    let versions = validate_migration_ledger(&resolved.connection, &resolved.database_path)?;
+    if versions.last() == Some(&LATEST_MIGRATION) {
+        return Ok(());
+    }
+
     let transaction = resolved
         .connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -2031,6 +2036,52 @@ mod tests {
                 database_before
             );
         }
+    }
+
+    #[test]
+    fn current_schema_needs_no_migration_write_under_reader_lock() {
+        let temp = tempdir().unwrap();
+        initialize(temp.path(), None, false, false, false).unwrap();
+        let mut resolved = resolve_repository(temp.path(), AccessIntent::ReadWrite).unwrap();
+        resolved
+            .connection
+            .busy_timeout(std::time::Duration::ZERO)
+            .unwrap();
+        let reader = Connection::open(&resolved.database_path).unwrap();
+        reader
+            .execute_batch("BEGIN; SELECT * FROM schema_migrations;")
+            .unwrap();
+
+        apply_pending_migrations(&mut resolved).unwrap();
+
+        reader.execute_batch("ROLLBACK").unwrap();
+    }
+
+    #[test]
+    fn pending_migration_rolls_back_when_reader_blocks_commit_then_retries() {
+        let temp = tempdir().unwrap();
+        let initialized = initialize(temp.path(), None, false, false, false).unwrap();
+        let setup = Connection::open(&initialized.database_path).unwrap();
+        setup
+            .execute_batch(
+                "DROP INDEX statuses_name_nocase; DELETE FROM schema_migrations WHERE version = 9;",
+            )
+            .unwrap();
+        drop(setup);
+        let mut resolved = resolve_repository(temp.path(), AccessIntent::ReadWrite).unwrap();
+        resolved
+            .connection
+            .busy_timeout(std::time::Duration::ZERO)
+            .unwrap();
+        let reader = Connection::open(&resolved.database_path).unwrap();
+        reader
+            .execute_batch("BEGIN; SELECT * FROM schema_migrations;")
+            .unwrap();
+
+        assert!(apply_pending_migrations(&mut resolved).is_err());
+        reader.execute_batch("ROLLBACK").unwrap();
+        apply_pending_migrations(&mut resolved).unwrap();
+        require_latest_migration(resolved.connection(), &resolved.database_path).unwrap();
     }
 
     #[test]
