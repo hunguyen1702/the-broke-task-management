@@ -12,10 +12,8 @@ Engineering skill issues and specs live in `.scratch/`.
   in `docs/agents/triage-labels.md`.
 - Conversation: append under `## Comments`.
 
-Approved behavior contracts remain in `docs/epics/` and `docs/tasks/`,
-with readiness recorded in `docs/STATUS.md`. A local ticket's triage
-status does not constitute contract approval or an implementation claim.
-Follow the repository workflows before planning or implementation.
+Existing behavior contracts remain in `docs/epics/` and `docs/tasks/`,
+with project status recorded in `docs/STATUS.md`.
 
 ## Publish and fetch
 
