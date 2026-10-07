@@ -203,6 +203,46 @@ fn available_filters_orders_and_does_not_duplicate_rows() {
 }
 
 #[test]
+fn available_breaks_equal_priority_and_creation_time_ties_by_task_id() {
+    let temp = tempdir().unwrap();
+    initialize(temp.path());
+    let low = create(temp.path(), "Low", &["--priority", "10"]);
+    let a = create(temp.path(), "A", &["--priority", "90"]);
+    let b = create(temp.path(), "B", &["--priority", "90"]);
+    let older = create(temp.path(), "Older", &["--priority", "90"]);
+    let connection = Connection::open(temp.path().join(".tbtm/tbtm.db")).unwrap();
+    connection
+        .execute(
+            "UPDATE tasks SET created_at = '2026-01-02T00:00:00Z' WHERE id IN (?1, ?2)",
+            params![a["id"].as_str().unwrap(), b["id"].as_str().unwrap()],
+        )
+        .unwrap();
+    connection
+        .execute(
+            "UPDATE tasks SET created_at = '2026-01-01T00:00:00Z' WHERE id = ?1",
+            [older["id"].as_str().unwrap()],
+        )
+        .unwrap();
+    let actual: Vec<String> = data(temp.path(), &["task", "available", "--json"])
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|task| task["id"].as_str().unwrap().to_owned())
+        .collect();
+    let mut tied = [a["id"].as_str().unwrap(), b["id"].as_str().unwrap()];
+    tied.sort();
+    assert_eq!(
+        actual,
+        [
+            older["id"].as_str().unwrap(),
+            tied[0],
+            tied[1],
+            low["id"].as_str().unwrap()
+        ]
+    );
+}
+
+#[test]
 fn available_outputs_and_errors_use_stable_contracts() {
     let temp = tempdir().unwrap();
     initialize(temp.path());
