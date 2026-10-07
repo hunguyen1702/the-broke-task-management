@@ -99,7 +99,7 @@ node demonstrates a concrete need.
 | [H1-T20](../tasks/H1-T20-execute.md) | Execute | done; implementation done |
 | [H1-T21](../tasks/H1-T21-proof-of-work.md) | Proof of Work | done; implementation done |
 | [H1-T22](../tasks/H1-T22-learning-promotion.md) | Learning Promotion | done; implementation done |
-| [H1-T23](../tasks/H1-T23-integrated-flow-validation.md) | Integrated flow validation | done; implementation ready |
+| [H1-T23](../tasks/H1-T23-integrated-flow-validation.md) | Integrated flow validation | done; implementation done and verified |
 | H1-T24 | Manage Constitution rules (deferred workflow) | needed |
 
 H1-T16, H1-T17, H1-T18A, H1-T18B, and H1-T18 Plan are implemented.

@@ -2,7 +2,7 @@
 id: H1-T23
 kind: implementation_task
 planning_status: done
-implementation_status: ready
+implementation_status: done
 depends_on:
   - H1-T15
   - H1-T16
@@ -172,6 +172,9 @@ ordering. Compare final status/diff with the captured baseline and allow only
 this task's report and authorized lifecycle-status updates.
 
 ## Verdict and definition of done
+
+Checkpoint evidence: [2026-10-06 integrated-flow validation results](../handoff/H1-T23-integrated-flow-validation-results.md).
+Acceptance impact: `none` (harness-only validation and documentation; no product behavior changed).
 
 Report `verified` only when required checks and coverage have sufficient current
 evidence and no unresolved blocking integration defect. Report `findings` when
