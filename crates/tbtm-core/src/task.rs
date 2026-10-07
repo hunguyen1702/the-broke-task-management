@@ -3159,6 +3159,140 @@ mod tests {
     }
 
     #[test]
+    fn recovery_rollback_relationship_post_write_failure_preserves_original_state() {
+        for operation in [
+            "dependency add",
+            "dependency remove",
+            "parent set",
+            "parent replace",
+            "parent remove",
+        ] {
+            let temp = tempdir().unwrap();
+            let root = temp.path();
+            let initialized =
+                crate::initialize(root, Some("project"), false, false, false).unwrap();
+            let create = |title: &str, task_type| {
+                create_task(
+                    root,
+                    CreateTaskInput {
+                        title: title.to_owned(),
+                        task_type,
+                        description: String::new(),
+                        goal: String::new(),
+                        acceptance_criteria: String::new(),
+                        status_code: "to_do".to_owned(),
+                        priority: 0,
+                        estimate: None,
+                        tags: vec![],
+                        external_urls: vec![],
+                        code_references: vec![],
+                        agent_id: None,
+                    },
+                )
+                .unwrap()
+                .id
+            };
+            let target = create("Target", TaskType::Task);
+            let upstream = create("Upstream", TaskType::Task);
+            let old_parent = create("Old parent", TaskType::Story);
+            let new_parent = create("New parent", TaskType::Story);
+            let unrelated = create("Unrelated", TaskType::Task);
+            if operation == "dependency remove" {
+                add_dependency(
+                    root,
+                    DependencyInput {
+                        task_id: target.clone(),
+                        depends_on: upstream.clone(),
+                        agent_id: None,
+                    },
+                )
+                .unwrap();
+            }
+            if matches!(operation, "parent replace" | "parent remove") {
+                set_parent(
+                    root,
+                    ParentSetInput {
+                        task_id: target.clone(),
+                        parent_id: old_parent.clone(),
+                        agent_id: None,
+                    },
+                )
+                .unwrap();
+            }
+            let ids = [&target, &upstream, &old_parent, &new_parent, &unrelated];
+            let before: Vec<_> = ids
+                .iter()
+                .map(|id| serde_json::to_value(view_task(root, id).unwrap()).unwrap())
+                .collect();
+            let hierarchy_before =
+                serde_json::to_value(task_hierarchy(root, &target, false).unwrap()).unwrap();
+            let connection = rusqlite::Connection::open(&initialized.database_path).unwrap();
+            connection.execute_batch("CREATE TABLE relationship_probe (task_id TEXT); CREATE TRIGGER fail_relationship BEFORE UPDATE ON tasks BEGIN INSERT INTO relationship_probe VALUES (NEW.id); SELECT RAISE(FAIL, 'injected relationship failure'); END;").unwrap();
+            drop(connection);
+            let error = match operation {
+                "dependency add" => add_dependency(
+                    root,
+                    DependencyInput {
+                        task_id: target.clone(),
+                        depends_on: upstream.clone(),
+                        agent_id: None,
+                    },
+                )
+                .unwrap_err(),
+                "dependency remove" => remove_dependency(
+                    root,
+                    DependencyInput {
+                        task_id: target.clone(),
+                        depends_on: upstream.clone(),
+                        agent_id: None,
+                    },
+                )
+                .unwrap_err(),
+                "parent set" | "parent replace" => set_parent(
+                    root,
+                    ParentSetInput {
+                        task_id: target.clone(),
+                        parent_id: new_parent.clone(),
+                        agent_id: None,
+                    },
+                )
+                .unwrap_err(),
+                "parent remove" => remove_parent(
+                    root,
+                    ParentRemoveInput {
+                        task_id: target.clone(),
+                        agent_id: None,
+                    },
+                )
+                .unwrap_err(),
+                _ => unreachable!(),
+            };
+            assert!(
+                error.to_string().contains("injected relationship failure"),
+                "{operation}: {error}"
+            );
+            let connection = rusqlite::Connection::open(&initialized.database_path).unwrap();
+            let probes: i64 = connection
+                .query_row("SELECT COUNT(*) FROM relationship_probe", [], |row| {
+                    row.get(0)
+                })
+                .unwrap();
+            assert_eq!(probes, 0, "{operation}: trigger-side write survived");
+            drop(connection);
+            let after: Vec<_> = ids
+                .iter()
+                .map(|id| serde_json::to_value(view_task(root, id).unwrap()).unwrap())
+                .collect();
+            assert_eq!(after, before, "{operation}: task or relationship changed");
+            assert_eq!(
+                serde_json::to_value(task_hierarchy(root, &target, false).unwrap()).unwrap(),
+                hierarchy_before,
+                "{operation}: hierarchy changed"
+            );
+        }
+    }
+
+    #[test]
     fn parses_types_and_code_references() {
         assert_eq!(TaskType::parse("poc").unwrap(), TaskType::Poc);
         assert!(TaskType::parse("feature").is_err());

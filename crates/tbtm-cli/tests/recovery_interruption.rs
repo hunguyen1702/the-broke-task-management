@@ -42,6 +42,18 @@ fn task(root: &Path, title: &str) -> String {
         .to_owned()
 }
 
+fn story(root: &Path, title: &str) -> String {
+    data(
+        root,
+        &[
+            "task", "create", "--title", title, "--type", "story", "--json",
+        ],
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_owned()
+}
+
 fn journal_for(database: &Path) -> PathBuf {
     database.with_file_name(format!(
         "{}-journal",
@@ -63,7 +75,7 @@ impl Drop for BlockedWriter {
 }
 
 impl BlockedWriter {
-    fn establish(root: &Path, database: &Path, args: &[&str]) -> (Connection, Self) {
+    fn establish(root: &Path, database: &Path, args: &[&str], marker: &str) -> (Connection, Self) {
         let reader =
             Connection::open_with_flags(database, OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
         reader
@@ -91,16 +103,16 @@ impl BlockedWriter {
             }
             if let Ok(journal) = fs::read(journal_for(database))
                 && journal
-                    .windows(SENTINEL.len())
-                    .any(|bytes| bytes == SENTINEL.as_bytes())
+                    .windows(marker.len())
+                    .any(|bytes| bytes == marker.as_bytes())
             {
-                // The marker lives only in a preexisting task_claims row. Its page in the
-                // rollback journal proves this writer changed the claim table before commit.
+                // The marker lives in a preexisting row of the mutated table. Its page in
+                // the rollback journal proves this writer reached that table before commit.
                 return (reader, writer);
             }
             assert!(
                 start.elapsed() < GATE_DEADLINE,
-                "claim journal marker absent before deadline; journal size: {:?}",
+                "mutation journal marker {marker:?} absent before deadline for {args:?}; journal size: {:?}",
                 fs::metadata(journal_for(database)).map(|m| m.len())
             );
             std::thread::yield_now();
@@ -145,6 +157,7 @@ fn killed_claim_writer_preserves_original_claims_and_repository_health() {
         root,
         &database,
         &["task", "claim", &target, "--agent", &contender, "--json"],
+        SENTINEL,
     );
     drop(writer); // kill and reap before releasing the reader lock
     reader.execute_batch("ROLLBACK").unwrap();
@@ -173,4 +186,136 @@ fn killed_claim_writer_preserves_original_claims_and_repository_health() {
     );
     let health = data(root, &["repo", "status", "--json"]);
     assert_eq!(health["health"], "healthy");
+}
+
+fn assert_recovered(root: &Path, database: &Path, ids: &[String], before: &[Value]) {
+    let connection =
+        Connection::open_with_flags(database, OpenFlags::SQLITE_OPEN_READ_WRITE).unwrap();
+    let integrity: String = connection
+        .query_row("PRAGMA integrity_check", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(integrity, "ok");
+    let violations: i64 = connection
+        .query_row("SELECT COUNT(*) FROM pragma_foreign_key_check", [], |row| {
+            row.get(0)
+        })
+        .unwrap();
+    assert_eq!(violations, 0);
+    drop(connection);
+    let after: Vec<Value> = ids
+        .iter()
+        .map(|id| data(root, &["task", "view", id, "--json"]))
+        .collect();
+    assert_eq!(
+        after, before,
+        "relationships, claims, or task metadata changed"
+    );
+    assert_eq!(
+        data(root, &["repo", "status", "--json"])["health"],
+        "healthy"
+    );
+}
+
+#[test]
+fn killed_dependency_add_writer_preserves_original_edges_and_repository_health() {
+    let temp = tempdir().unwrap();
+    let root = temp.path();
+    data(root, &["init", "--prefix", "project", "--json"]);
+    let downstream = task(root, "Downstream");
+    let original_upstream = task(root, "Original upstream");
+    let new_upstream = task(root, "New upstream");
+    let unrelated = task(root, "Unrelated");
+    data(
+        root,
+        &[
+            "task",
+            "dependency",
+            "add",
+            &downstream,
+            "--depends-on",
+            &original_upstream,
+            "--json",
+        ],
+    );
+    let ids = [
+        downstream.clone(),
+        original_upstream.clone(),
+        new_upstream.clone(),
+        unrelated,
+    ];
+    let before: Vec<Value> = ids
+        .iter()
+        .map(|id| data(root, &["task", "view", id, "--json"]))
+        .collect();
+    let database = root.join(".tbtm/tbtm.db");
+    let (reader, writer) = BlockedWriter::establish(
+        root,
+        &database,
+        &[
+            "task",
+            "dependency",
+            "add",
+            &downstream,
+            "--depends-on",
+            &new_upstream,
+            "--json",
+        ],
+        &original_upstream,
+    );
+    drop(writer);
+    reader.execute_batch("ROLLBACK").unwrap();
+    drop(reader);
+    assert_recovered(root, &database, &ids, &before);
+}
+
+#[test]
+fn killed_parent_replace_writer_preserves_original_edge_and_repository_health() {
+    let temp = tempdir().unwrap();
+    let root = temp.path();
+    data(root, &["init", "--prefix", "project", "--json"]);
+    let child = task(root, "Child");
+    let original_parent = story(root, "Original parent");
+    let new_parent = story(root, "New parent");
+    let unrelated = task(root, "Unrelated");
+    data(
+        root,
+        &[
+            "task",
+            "parent",
+            "set",
+            &child,
+            "--parent",
+            &original_parent,
+            "--json",
+        ],
+    );
+    let ids = [
+        child.clone(),
+        original_parent.clone(),
+        new_parent.clone(),
+        unrelated,
+    ];
+    let before: Vec<Value> = ids
+        .iter()
+        .map(|id| data(root, &["task", "view", id, "--json"]))
+        .collect();
+    let database = root.join(".tbtm/tbtm.db");
+    let (reader, writer) = BlockedWriter::establish(
+        root,
+        &database,
+        &[
+            "task",
+            "parent",
+            "set",
+            &child,
+            "--parent",
+            &new_parent,
+            "--json",
+        ],
+        &original_parent,
+    );
+    drop(writer);
+    reader.execute_batch("ROLLBACK").unwrap();
+    drop(reader);
+    assert_recovered(root, &database, &ids, &before);
 }
