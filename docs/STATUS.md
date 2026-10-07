@@ -198,6 +198,8 @@ This dashboard is the current human-readable status index. Frontmatter in an exi
 |---|---|---|---|
 | [E9-S1](epics/E9-S1-verify-concurrent-claim-safety.md) | done | done | E1-S5, E5-S1, E5-S2 |
 | [E9-S1-T1](tasks/E9-S1-T1-harden-concurrent-claim-verification.md) | done | done | E1-S5-T1, E5-S1-T1, E5-S2-T1 |
-| E9-S2 Verify graph and availability invariants | needed | not_planned | E3-S3, E4-S1, E4-S2, E4-S3, E4-S4, E4-S5, E2-S5, E2-S6 |
-| E9-S3 Verify data recovery behavior | needed | not_planned | E1-S1, E4-S2, E5-S1 |
+| [E9-S2](epics/E9-S2-verify-graph-and-availability-invariants.md) | done | done | E3-S3, E4-S1, E4-S2, E4-S3, E4-S4, E4-S5, E2-S5, E2-S6 |
+| [E9-S2-T1](tasks/E9-S2-T1-verify-graph-and-availability-transitions.md) | done | done | E2-S3-T1, E2-S5-T1, E2-S6-T1, E3-S3-T1, E4-S1-T1, E4-S2-T1, E4-S3-T1, E4-S4-T1, E4-S5-T1, E4-S5-T2, E5-S1-T1, E5-S5-T1 |
+| [E9-S3](epics/E9-S3-verify-data-recovery-behavior.md) | done | done | E1-S1, E4-S2, E5-S1 |
+| [E9-S3-T1](tasks/E9-S3-T1-verify-interruption-and-offline-recovery.md) | done | done | E1-S1-T1, E1-S2-T1, E1-S3-T1, E1-S5-T1, E2-S1-T1, E4-S1-T1, E4-S2-T1, E5-S1-T1, E7-S1-T1 |
 | E9-S4 Document agent and human workflows | needed | not_planned | E7-S1, E7-S2, E7-S3, E7-S4, E7-S5, E8-S1, E8-S2, E8-S3, E8-S4, E8-S5, E8-S6, E8-S7, E8-S8 |
