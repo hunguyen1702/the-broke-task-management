@@ -286,6 +286,8 @@ fn repo_status_unreadable_database_exits_five() {
     let temp = tempdir().unwrap();
     initialize(temp.path());
     let database = temp.path().join(".tbtm/tbtm.db");
+    let original_database = fs::read(&database).unwrap();
+    let original_config = fs::read(temp.path().join(".tbtm/config.json")).unwrap();
     let original_permissions = fs::metadata(&database).unwrap().permissions();
     fs::set_permissions(&database, fs::Permissions::from_mode(0o000)).unwrap();
 
@@ -296,6 +298,7 @@ fn repo_status_unreadable_database_exits_five() {
     );
 
     let output = tbtm(temp.path(), &["repo", "status", "--json"]);
+    let human = tbtm(temp.path(), &["repo", "status"]);
 
     fs::set_permissions(&database, original_permissions).unwrap();
     assert_eq!(output.status.code(), Some(5));
@@ -309,6 +312,15 @@ fn repo_status_unreadable_database_exits_five() {
             .contains("Grant access")
     );
     assert!(output.stderr.is_empty());
+    assert_eq!(human.status.code(), Some(5));
+    assert!(human.stdout.is_empty());
+    let stderr = String::from_utf8(human.stderr).unwrap();
+    assert!(stderr.contains("PERMISSION_DENIED") && stderr.contains("Next step: Grant access"));
+    assert_eq!(fs::read(&database).unwrap(), original_database);
+    assert_eq!(
+        fs::read(temp.path().join(".tbtm/config.json")).unwrap(),
+        original_config
+    );
 }
 
 #[cfg(windows)]
