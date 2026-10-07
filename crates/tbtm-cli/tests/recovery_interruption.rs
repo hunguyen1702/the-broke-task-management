@@ -8,7 +8,7 @@ use std::{
 };
 use tempfile::tempdir;
 
-const GATE_DEADLINE: Duration = Duration::from_secs(7);
+const GATE_DEADLINE: Duration = Duration::from_secs(3);
 const SENTINEL: &str = "2026-01-01T00:00:00Z-claim-journal-marker";
 
 fn run(root: &Path, args: &[&str]) -> Output {
@@ -109,7 +109,6 @@ impl BlockedWriter {
 }
 
 #[test]
-#[ignore = "feasibility: pre-held SHARED reader blocks migration commit before claim write"]
 fn killed_claim_writer_preserves_original_claims_and_repository_health() {
     let temp = tempdir().unwrap();
     let root = temp.path();
