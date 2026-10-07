@@ -10,6 +10,63 @@ fn tbtm(current: &std::path::Path, arguments: &[&str]) -> std::process::Output {
         .unwrap()
 }
 
+fn assert_recovery_failure(
+    root: &std::path::Path,
+    exit: i32,
+    code: &str,
+    check: Option<&str>,
+    guidance: &str,
+) {
+    let workspace = root.join(".tbtm");
+    let config = workspace.join("config.json");
+    let database = workspace.join("tbtm.db");
+    let original_config = fs::read(&config).ok();
+    let original_database = fs::read(&database).ok();
+
+    let json = tbtm(root, &["repo", "status", "--json"]);
+    assert_eq!(
+        json.status.code(),
+        Some(exit),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&json.stdout),
+        String::from_utf8_lossy(&json.stderr)
+    );
+    assert!(
+        json.stderr.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&json.stderr)
+    );
+    let response: Value = serde_json::from_slice(&json.stdout).unwrap();
+    assert_eq!(response["error"]["code"], code);
+    assert!(
+        response["error"]["details"]["suggestion"]
+            .as_str()
+            .unwrap()
+            .contains(guidance)
+    );
+    if let Some(check) = check {
+        assert_eq!(response["error"]["details"]["check"], check);
+        assert!(response["error"]["details"]["path"].as_str().is_some());
+    }
+
+    let human = tbtm(root, &["repo", "status"]);
+    assert_eq!(
+        human.status.code(),
+        Some(exit),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&human.stdout),
+        String::from_utf8_lossy(&human.stderr)
+    );
+    assert!(human.stdout.is_empty());
+    let stderr = String::from_utf8(human.stderr).unwrap();
+    assert!(
+        stderr.contains(code) && stderr.contains("Next step:") && stderr.contains(guidance),
+        "{stderr}"
+    );
+    assert_eq!(fs::read(&config).ok(), original_config);
+    assert_eq!(fs::read(&database).ok(), original_database);
+}
+
 fn initialize(current: &std::path::Path) {
     let output = tbtm(current, &["init", "--prefix", "stored-prefix", "--json"]);
     assert!(
@@ -232,12 +289,26 @@ fn repo_status_unreadable_database_exits_five() {
     let original_permissions = fs::metadata(&database).unwrap().permissions();
     fs::set_permissions(&database, fs::Permissions::from_mode(0o000)).unwrap();
 
+    assert_eq!(
+        fs::File::open(&database).unwrap_err().kind(),
+        std::io::ErrorKind::PermissionDenied,
+        "permission fixture must deny access"
+    );
+
     let output = tbtm(temp.path(), &["repo", "status", "--json"]);
 
     fs::set_permissions(&database, original_permissions).unwrap();
     assert_eq!(output.status.code(), Some(5));
     let response: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(response["error"]["code"], "PERMISSION_DENIED");
+    assert_eq!(response["error"]["details"]["check"], "database open");
+    assert!(
+        response["error"]["details"]["suggestion"]
+            .as_str()
+            .unwrap()
+            .contains("Grant access")
+    );
+    assert!(output.stderr.is_empty());
 }
 
 #[cfg(windows)]
@@ -326,4 +397,95 @@ fn repo_status_rejects_unsafe_database_value_before_access() {
     assert_eq!(response["error"]["code"], "INVALID_CONFIGURATION");
     assert_eq!(response["error"]["details"]["check"], "database");
     assert!(!temp.path().join("outside.db").exists());
+}
+
+#[test]
+fn repository_failures_give_recovery_steps_without_repairing_data() {
+    let bare = tempdir().unwrap();
+    assert!(
+        Command::new("git")
+            .current_dir(bare.path())
+            .args(["init", "--bare", "--quiet"])
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert_recovery_failure(
+        bare.path(),
+        1,
+        "REPOSITORY_UNAVAILABLE",
+        None,
+        "Git worktree metadata",
+    );
+
+    let missing = tempdir().unwrap();
+    assert_recovery_failure(
+        missing.path(),
+        3,
+        "REPOSITORY_NOT_INITIALIZED",
+        Some("workspace"),
+        "tbtm init",
+    );
+
+    let malformed = tempdir().unwrap();
+    initialize(malformed.path());
+    fs::write(malformed.path().join(".tbtm/config.json"), b"not json").unwrap();
+    assert_recovery_failure(
+        malformed.path(),
+        2,
+        "INVALID_CONFIGURATION",
+        Some("config parse"),
+        "matching config and database",
+    );
+
+    let unsafe_path = tempdir().unwrap();
+    initialize(unsafe_path.path());
+    let config_path = unsafe_path.path().join(".tbtm/config.json");
+    let mut config: Value = serde_json::from_slice(&fs::read(&config_path).unwrap()).unwrap();
+    config["database"] = Value::String("../outside.db".into());
+    fs::write(&config_path, serde_json::to_vec(&config).unwrap()).unwrap();
+    assert_recovery_failure(
+        unsafe_path.path(),
+        2,
+        "INVALID_CONFIGURATION",
+        Some("database"),
+        "matching config and database",
+    );
+    assert!(!unsafe_path.path().join("outside.db").exists());
+
+    let mismatched = tempdir().unwrap();
+    initialize(mismatched.path());
+    let config_path = mismatched.path().join(".tbtm/config.json");
+    let mut config: Value = serde_json::from_slice(&fs::read(&config_path).unwrap()).unwrap();
+    config["repositoryId"] = Value::String("00000000-0000-0000-0000-000000000000".into());
+    fs::write(&config_path, serde_json::to_vec(&config).unwrap()).unwrap();
+    assert_recovery_failure(
+        mismatched.path(),
+        2,
+        "INVALID_CONFIGURATION",
+        Some("config/database metadata agreement"),
+        "matching config and database",
+    );
+
+    let missing_db = tempdir().unwrap();
+    initialize(missing_db.path());
+    fs::remove_file(missing_db.path().join(".tbtm/tbtm.db")).unwrap();
+    assert_recovery_failure(
+        missing_db.path(),
+        1,
+        "DATABASE_UNAVAILABLE",
+        Some("database access"),
+        "valid database from backup",
+    );
+
+    let invalid_db = tempdir().unwrap();
+    initialize(invalid_db.path());
+    fs::write(invalid_db.path().join(".tbtm/tbtm.db"), b"not sqlite").unwrap();
+    assert_recovery_failure(
+        invalid_db.path(),
+        1,
+        "DATABASE_UNAVAILABLE",
+        Some("database validation"),
+        "valid database from backup",
+    );
 }
