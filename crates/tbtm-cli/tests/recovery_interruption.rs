@@ -216,6 +216,20 @@ fn assert_recovered(root: &Path, database: &Path, ids: &[String], before: &[Valu
     );
 }
 
+fn claim_unrelated(root: &Path, task_id: &str) {
+    let owner = data(root, &["agent", "register", "relationship-owner", "--json"])["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    data(
+        root,
+        &["task", "claim", task_id, "--agent", &owner, "--json"],
+    );
+    let claim = data(root, &["task", "view", task_id, "--json"])["claim"].clone();
+    assert_eq!(claim["agent"]["id"], owner);
+    assert!(claim["claimedAt"].as_str().is_some());
+}
+
 #[test]
 fn killed_dependency_add_writer_preserves_original_edges_and_repository_health() {
     let temp = tempdir().unwrap();
@@ -225,6 +239,7 @@ fn killed_dependency_add_writer_preserves_original_edges_and_repository_health()
     let original_upstream = task(root, "Original upstream");
     let new_upstream = task(root, "New upstream");
     let unrelated = task(root, "Unrelated");
+    claim_unrelated(root, &unrelated);
     data(
         root,
         &[
@@ -277,6 +292,7 @@ fn killed_parent_replace_writer_preserves_original_edge_and_repository_health() 
     let original_parent = story(root, "Original parent");
     let new_parent = story(root, "New parent");
     let unrelated = task(root, "Unrelated");
+    claim_unrelated(root, &unrelated);
     data(
         root,
         &[
