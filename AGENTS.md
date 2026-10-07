@@ -100,3 +100,20 @@ Use temporary directories for filesystem tests. Cover normal, invalid, no-op pat
 Use Conventional Commits: `feat(e1-s1): initialize repository workspace`. Keep subject imperative, scoped. Separate docs and code when practical.
 
 PRs: affected epic/task, user-visible behavior, verification run, migration/filesystem/output changes. Add output or screenshots only when useful.
+
+## Agent skills
+
+### Issue tracker
+
+Engineering skill tickets use local Markdown under `.scratch/<feature>/`.
+Read `docs/agents/issue-tracker.md` before ticket operations.
+
+### Triage labels
+
+Use the five default triage roles.
+Read `docs/agents/triage-labels.md` when triaging tickets.
+
+### Domain docs
+
+Single-context layout: root `GLOSSARY.md` and `docs/decisions/`.
+Read `docs/agents/domain.md` before domain exploration or decision work.
