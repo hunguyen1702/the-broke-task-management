@@ -3075,6 +3075,7 @@ fn is_task_id_collision(error: &Error) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
 
     fn empty_update() -> UpdateTaskInput {
         UpdateTaskInput {
@@ -3091,6 +3092,70 @@ mod tests {
             code_references: PatchValue::Omitted,
             agent_id: None,
         }
+    }
+
+    #[test]
+    fn recovery_rollback_claim_post_write_failure_preserves_claims_and_tasks() {
+        let temp = tempdir().unwrap();
+        let root = temp.path();
+        let initialized = crate::initialize(root, Some("project"), false, false, false).unwrap();
+        let create = |title: &str| {
+            create_task(
+                root,
+                CreateTaskInput {
+                    title: title.to_owned(),
+                    task_type: TaskType::Task,
+                    description: String::new(),
+                    goal: String::new(),
+                    acceptance_criteria: String::new(),
+                    status_code: "to_do".to_owned(),
+                    priority: 0,
+                    estimate: None,
+                    tags: vec![],
+                    external_urls: vec![],
+                    code_references: vec![],
+                    agent_id: None,
+                },
+            )
+            .unwrap()
+            .id
+        };
+        let target = create("Target");
+        let unrelated = create("Unrelated");
+        let owner = crate::register_agent(root, "worker").unwrap().id;
+        let before = [
+            serde_json::to_value(view_task(root, &target).unwrap()).unwrap(),
+            serde_json::to_value(view_task(root, &unrelated).unwrap()).unwrap(),
+        ];
+        let connection = rusqlite::Connection::open(&initialized.database_path).unwrap();
+        connection.execute_batch("CREATE TABLE claim_probe (task_id TEXT); CREATE TRIGGER fail_claim AFTER INSERT ON task_claims BEGIN INSERT INTO claim_probe VALUES (NEW.task_id); SELECT RAISE(FAIL, 'injected claim failure'); END;").unwrap();
+        drop(connection);
+
+        let error = claim_task(
+            root,
+            ClaimTaskInput {
+                task_id: target.clone(),
+                agent_id: owner,
+            },
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("injected claim failure"));
+        let connection = rusqlite::Connection::open(&initialized.database_path).unwrap();
+        let claims: i64 = connection
+            .query_row("SELECT COUNT(*) FROM task_claims", [], |row| row.get(0))
+            .unwrap();
+        let probes: i64 = connection
+            .query_row("SELECT COUNT(*) FROM claim_probe", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!((claims, probes), (0, 0));
+        assert_eq!(
+            serde_json::to_value(view_task(root, &target).unwrap()).unwrap(),
+            before[0]
+        );
+        assert_eq!(
+            serde_json::to_value(view_task(root, &unrelated).unwrap()).unwrap(),
+            before[1]
+        );
     }
 
     #[test]

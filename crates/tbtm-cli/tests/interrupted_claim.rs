@@ -6,7 +6,6 @@ use std::{
     process::{Child, Command, Output, Stdio},
     time::{Duration, Instant},
 };
-use tbtm_core::task::{ClaimTaskInput, claim_task};
 use tempfile::tempdir;
 
 const GATE_DEADLINE: Duration = Duration::from_secs(7);
@@ -175,48 +174,4 @@ fn killed_claim_writer_preserves_original_claims_and_repository_health() {
     );
     let health = data(root, &["repo", "status", "--json"]);
     assert_eq!(health["health"], "healthy");
-}
-
-#[test]
-fn claim_post_write_trigger_failure_rolls_back_claim_and_metadata() {
-    let temp = tempdir().unwrap();
-    let root = temp.path();
-    data(root, &["init", "--prefix", "project", "--json"]);
-    let target = task(root, "Target");
-    let unrelated = task(root, "Unrelated");
-    let agent = data(root, &["agent", "register", "worker", "--json"])["id"]
-        .as_str()
-        .unwrap()
-        .to_owned();
-    let database = root.join(".tbtm/tbtm.db");
-    let before = [
-        data(root, &["task", "view", &target, "--json"]),
-        data(root, &["task", "view", &unrelated, "--json"]),
-    ];
-    let connection = Connection::open(&database).unwrap();
-    connection.execute_batch("CREATE TABLE claim_probe (task_id TEXT); CREATE TRIGGER fail_claim AFTER INSERT ON task_claims BEGIN INSERT INTO claim_probe VALUES (NEW.task_id); SELECT RAISE(FAIL, 'injected claim failure'); END;").unwrap();
-    drop(connection);
-    let error = claim_task(
-        root,
-        ClaimTaskInput {
-            task_id: target.clone(),
-            agent_id: agent.parse().unwrap(),
-        },
-    )
-    .unwrap_err();
-    assert!(error.to_string().contains("injected claim failure"));
-    let connection = Connection::open(&database).unwrap();
-    let claims: i64 = connection
-        .query_row("SELECT COUNT(*) FROM task_claims", [], |row| row.get(0))
-        .unwrap();
-    let probes: i64 = connection
-        .query_row("SELECT COUNT(*) FROM claim_probe", [], |row| row.get(0))
-        .unwrap();
-    assert_eq!((claims, probes), (0, 0));
-    drop(connection);
-    assert_eq!(data(root, &["task", "view", &target, "--json"]), before[0]);
-    assert_eq!(
-        data(root, &["task", "view", &unrelated, "--json"]),
-        before[1]
-    );
 }
