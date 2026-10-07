@@ -155,6 +155,23 @@ fn documented_offline_backup_restores_saved_state_and_survives_uninstall() {
 
     let script = temp.path().join("recovery.py");
     recovery_script(&script);
+    let prunable = temp.path().join("prunable");
+    assert!(
+        Command::new("git")
+            .current_dir(&main)
+            .args([
+                "worktree",
+                "add",
+                "--quiet",
+                "-b",
+                "prunable",
+                prunable.to_str().unwrap()
+            ])
+            .status()
+            .unwrap()
+            .success()
+    );
+    fs::remove_dir_all(&prunable).unwrap();
     let backup = external.join("backup.tbtm");
     let displaced = external.join("displaced.tbtm");
     let linked_backup = linked.join("backup.tbtm");

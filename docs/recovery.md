@@ -25,7 +25,8 @@ def worktree_roots(worktree):
     lines = run("git", "worktree", "list", "--porcelain", cwd=worktree).splitlines()
     if not lines or not lines[0].startswith("worktree "):
         raise RuntimeError("cannot resolve canonical Git worktree")
-    return [pathlib.Path(line[9:]).resolve(strict=True)
+    # Git can list a prunable worktree whose directory no longer exists.
+    return [pathlib.Path(line[9:]).resolve()
             for line in lines if line.startswith("worktree ")]
 
 
